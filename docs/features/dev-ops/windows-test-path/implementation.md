@@ -1,10 +1,10 @@
 # Windows Test Path - Implementation Plan
 
 **Epic:** dev-ops (feature 3 of 3)
-**Status:** Planning
+**Status:** Ready for Review
 **Started:** 2026-10-16
 **Target Completion:** TBD
-**Last Updated:** 2026-10-16 14:05
+**Last Updated:** 2026-10-16 14:20
 
 ---
 
@@ -460,7 +460,7 @@ Run steps 1 to 9 from `/home/aaronstatic/dev/brutal-ui` on Linux. Use the sessio
 
 ### Open Scope Questions
 
-No interview ran for this draft. Each question lists its options with the recommended option first. The plan uses the recommended option.
+The author answered all six questions on 2026-10-16 and chose the recommended option each time. The plan uses those options.
 
 1. **The demo of phase 1** (rule 12 of the slice rules).
    - (Recommended) `the author runs .\scripts\test-windows.ps1 in a PowerShell window at the repository root on Windows, sees the HelloPanel window open and close, then sees one line that starts with test-windows: PASS, and $LASTEXITCODE is 0.`

@@ -1,0 +1,5 @@
+# Git stores each text file with LF line endings. A checkout on Windows can
+# convert the text files to CRLF. The shell scripts stay at LF on each
+# operating system, because bash fails on a CR character.
+* text=auto
+*.sh text eol=lf
