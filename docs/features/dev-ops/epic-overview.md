@@ -65,8 +65,8 @@ The constituent features of this epic, in build order. Each feature is a subfold
 
 ## Master Overview Rollup
 
-- **Rollup status:** Complete (3/3 features, 68/68 tasks). The Windows runs wait for a manual check in `human-testing.md`.
-- **One-line summary for master:** The solution builds and packs. `scripts/test-linux.sh` passes with a GPU smoke run. The Windows scripts and runbook wait for a manual run.
+- **Rollup status:** Complete (3/3 features, 68/68 tasks). All 22 manual checks in `human-testing.md` pass.
+- **One-line summary for master:** The solution builds and packs. `scripts/test-linux.sh` passes with a GPU smoke run. `scripts/test-windows.ps1` passes on Windows in 44 s.
 
 ---
 

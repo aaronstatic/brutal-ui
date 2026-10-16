@@ -1,7 +1,7 @@
 # brutal-ui - Overview
 
 **Last Updated:** 2026-10-16 18:30
-**Version:** v1.0
+**Version:** v1.1
 
 ## Project Summary
 
@@ -11,7 +11,7 @@ brutal-ui gives BRUTAL developers a retained-mode game UI framework with zero al
 
 | Feature | Status | Tasks | Notes |
 |---------|--------|-------|-------|
-| dev-ops (epic) | Complete | 68/68 (100%) | The solution builds and packs. `scripts/test-linux.sh` passes with a GPU smoke run. The Windows scripts and runbook wait for a manual run. |
+| dev-ops (epic) | Complete | 68/68 (100%) | The solution builds and packs. `scripts/test-linux.sh` passes with a GPU smoke run. `scripts/test-windows.ps1` passes on Windows in 44 s. |
 
 > An epic is one row. Its child features live in `docs/features/<epic>/epic-overview.md`.
 
@@ -23,4 +23,5 @@ brutal-ui gives BRUTAL developers a retained-mode game UI framework with zero al
 
 ## Changelog
 
+- v1.1 (2026-10-16): **dev-ops Windows checks pass** - The author ran all 22 manual checks. `scripts/test-windows.ps1` passes build, test, and a 120-frame smoke run in 44 s.
 - v1.0 (2026-10-16): **Initial overview, dev-ops epic complete** - The overview tracks 1 epic. dev-ops: 3/3 features, 68/68 tasks. It adds the solution with 11 projects and 5 packs, the Linux test and GPU scripts, and the Windows scripts and runbook. The Windows runs wait for a manual check in `docs/features/dev-ops/human-testing.md`.
