@@ -1,0 +1,16 @@
+<Project>
+
+  <!-- Import the root settings first. MSBuild reads only the nearest Directory.Build.props. -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <!-- Library projects. They become packages. -->
+  <PropertyGroup>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+
+  <!-- XML documentation. With warnings as errors, a public member without a doc comment breaks the build. -->
+  <PropertyGroup>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+</Project>

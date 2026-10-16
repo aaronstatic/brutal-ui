@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>The state, composition, and event inspector window for brutal-ui.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../BrutalUi.Framework/BrutalUi.Framework.csproj" />
+    <ProjectReference Include="../BrutalUi.ImGui/BrutalUi.ImGui.csproj" />
+  </ItemGroup>
+
+</Project>

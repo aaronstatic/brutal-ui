@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>The XML element loader and the stylesheet parser for brutal-ui.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../BrutalUi.Core/BrutalUi.Core.csproj" />
+  </ItemGroup>
+
+</Project>

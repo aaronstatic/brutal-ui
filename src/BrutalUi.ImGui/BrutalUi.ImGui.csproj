@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>The brutal-ui renderer on the ImGui draw list, with fonts and textures.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Ahwoo.BRUTAL.ImGui" />
+    <PackageReference Include="Ahwoo.BRUTAL.ImGui.Backends" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../BrutalUi.Core/BrutalUi.Core.csproj" />
+  </ItemGroup>
+
+</Project>

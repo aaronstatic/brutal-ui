@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Ahwoo.BRUTAL.Glfw" />
+    <PackageReference Include="Ahwoo.BRUTAL.Vulkan" />
+    <PackageReference Include="Ahwoo.BRUTAL.Vulkan.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/BrutalUi.Core/BrutalUi.Core.csproj" />
+    <ProjectReference Include="../../src/BrutalUi.ImGui/BrutalUi.ImGui.csproj" />
+  </ItemGroup>
+
+</Project>

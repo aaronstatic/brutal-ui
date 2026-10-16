@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>Stores, panels, modes, windows, commands, and events for brutal-ui.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../BrutalUi.Core/BrutalUi.Core.csproj" />
+  </ItemGroup>
+
+</Project>

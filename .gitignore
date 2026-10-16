@@ -6,6 +6,8 @@
 # .NET
 bin/
 obj/
+artifacts/
+BenchmarkDotNet.Artifacts/
 *.user
 .vs/
 .idea/

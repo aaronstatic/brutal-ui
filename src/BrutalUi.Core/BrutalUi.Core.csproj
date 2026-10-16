@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>Element tree, layout, style, input, and the renderer interface for brutal-ui. No ImGui reference.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Ahwoo.BRUTAL.Numerics" />
+    <PackageReference Include="Ahwoo.BRUTAL.Localization" />
+  </ItemGroup>
+
+</Project>
