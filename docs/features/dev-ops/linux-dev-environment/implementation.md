@@ -1,10 +1,10 @@
 # Linux Dev Environment - Implementation Plan
 
 **Epic:** dev-ops (feature 2 of 3)
-**Status:** Planning
+**Status:** Ready for Review
 **Started:** 2026-10-16
-**Target Completion:** TBD
-**Last Updated:** 2026-10-16 10:40
+**Target Completion:** 2026-10-16
+**Last Updated:** 2026-10-16 14:00
 
 ---
 
@@ -23,7 +23,7 @@
 
 ## Executive Summary
 
-This feature gives the agent one command for the full Linux test run on this machine: `scripts/test-linux.sh`. The script builds the solution, runs the unit tests, checks the GPU driver, and runs the `HelloPanel` sample for 120 frames under `xvfb-run` on the NVIDIA Vulkan ICD. It closes the `libvulkan.so` gap of the sibling feature with a link in a git-ignored folder, so no `sudo` step is necessary. A second script, `scripts/check-gpu.sh`, reports the NVIDIA kernel module version, the user space library version, and the Vulkan ICD. It exits non-zero on a mismatch and prints the fix. The runbook `docs/testing-linux.md` lists the one-time setup and the script call. The .NET SDK already exists on this machine, so the SDK install becomes a check plus a documented one-time command.
+This feature gives the agent one command for the full Linux test run on this machine: `scripts/test-linux.sh`. The script builds the solution, runs the unit tests, checks the GPU driver, and runs the `HelloPanel` sample for 120 frames under `xvfb-run` on the NVIDIA Vulkan ICD. The author closes the `libvulkan.so` gap of the sibling feature with a one-time `sudo apt install libvulkan-dev`. The script checks for the file and prints the fix. A second script, `scripts/check-gpu.sh`, reports the NVIDIA kernel module version, the user space library version, and the Vulkan ICD. It exits non-zero on a mismatch and prints the fix. The runbook `docs/testing-linux.md` lists the one-time setup and the script call. The .NET SDK already exists on this machine, so the SDK install becomes a check plus a documented one-time command.
 
 ---
 
@@ -41,7 +41,7 @@ No `docs/user-personas.md` file exists. The personas below come from the epic do
 - [x] **Simple** - The author follows one short runbook. Each failure message names its fix.
 
 **UX Approach:**
-- One script call with no argument. Two environment variables change the frame count and the smoke time limit (open scope question 4).
+- One script call with no argument. Two environment variables change the frame count and the smoke time limit (scope answer 4).
 - The output on success is one line. The output on failure is one header line, at most 30 lines of the failed step, and the log path.
 - Each check prints the exact command that fixes it.
 
@@ -52,7 +52,7 @@ No `docs/user-personas.md` file exists. The personas below come from the epic do
 ### Primary Goals
 1. Give the agent one script that proves the build, the unit tests, and the Vulkan path on the RTX 2060 with no display.
 2. Detect a driver mismatch before the smoke run, and print the fix.
-3. Close the `libvulkan.so` gap of `dev-ops/solution-skeleton` with no system change.
+3. Close the `libvulkan.so` gap of `dev-ops/solution-skeleton` with a one-time `libvulkan-dev` install. The script checks for the file.
 4. Set the script pattern that `dev-ops/windows-test-path` mirrors and the `github-ci` epic reuses.
 
 ### Success Criteria
@@ -81,8 +81,7 @@ brutal-ui/
 │   ├── testing-linux.md             # phase 3
 │   └── features/dev-ops/linux-dev-environment/context.md   # each phase records results
 └── artifacts/test-linux/            # written by each run, ignored by git (artifacts/)
-    ├── preflight.log, build.log, test.log, gpu.log, smoke.log
-    └── lib/libvulkan.so -> <path of libvulkan.so.1 from ldconfig>
+    └── preflight.log, build.log, test.log, gpu.log, smoke.log
 ```
 
 No other file changes. `.gitignore` already holds `artifacts/`.
@@ -95,7 +94,7 @@ No other file changes. `.gitignore` already holds `artifacts/`.
 | 2 | `build` | `dotnet build brutal-ui.sln` | the exit code of `dotnet` | 1 |
 | 3 | `test` | `dotnet test --solution brutal-ui.sln` | the exit code of `dotnet` | 1 |
 | 4 | `gpu` | `scripts/check-gpu.sh` | 1 | 2 |
-| 5 | `loader` | find `libvulkan.so.1` with `ldconfig -p`, link it as `artifacts/test-linux/lib/libvulkan.so` | 1 | 1 |
+| 5 | `loader` | read the folder of the x86-64 `libvulkan.so.1` entry of `ldconfig -p`, then test that `<folder>/libvulkan.so` exists (from `libvulkan-dev`) | 1 | 1 |
 | 6 | `smoke` | see below | the exit code of the sample, or 124 on a time-out | 1 |
 
 The smoke step runs this command line (one line in the script, split here for reading):
@@ -104,7 +103,6 @@ The smoke step runs this command line (one line in the script, split here for re
 env -u WAYLAND_DISPLAY -u VK_DRIVER_FILES -u VK_ADD_DRIVER_FILES \
     XDG_SESSION_TYPE=x11 \
     VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json \
-    LD_LIBRARY_PATH="<repo>/artifacts/test-linux/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
     timeout --kill-after=10 "$SMOKE_TIMEOUT" \
     xvfb-run -a dotnet run --project samples/HelloPanel/HelloPanel.csproj --no-build -- --frames "$FRAMES"
 ```
@@ -152,7 +150,7 @@ Two environment variables replace the sources for a test: `CHECK_GPU_PROC_FILE` 
 
 ## Implementation Phases
 
-Each phase is a slice: one narrow path that works end to end, with a demo line that a person can check. Section 11 of `.beast-mode/phase-handoff.md` holds the rules. The requirements do not name the demo of phase 1, so open scope question 2 asks for it. Phase 1 uses the recommended line.
+Each phase is a slice: one narrow path that works end to end, with a demo line that a person can check. Section 11 of `.beast-mode/phase-handoff.md` holds the rules. The requirements do not name the demo of phase 1. The author chose the line below (scope answer 2).
 
 ### Phase 1: The Linux Test Script Runs Build, Test, and the GPU Smoke Run
 **Goal:** Write `scripts/test-linux.sh` with the build, test, loader, and smoke steps, the failure output, and the one-line summary. Prove the full GPU path with no display.
@@ -163,11 +161,11 @@ Each phase is a slice: one narrow path that works end to end, with a demo line t
 **Tier note:** The research already proved each command of this phase on this machine. The plan fixes the load-bearing details: the exit code capture under `set -e`, the time limit, the ICD selection, and the GLFW platform selection. When the smoke step hangs past its time limit, or leaves an `Xvfb` process, stop and report. Do not try other designs.
 
 **Tasks:**
-- [ ] 1.1 Write the frame of `scripts/test-linux.sh`. Start with `#!/usr/bin/env bash` and `set -euo pipefail`. Add a header comment in ASD-STE100 prose: the purpose, the steps, the exit codes, and the two environment variables. Change to the repository root from the script path (`cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."`). Define the constants: the solution `brutal-ui.sln`, the sample project `samples/HelloPanel/HelloPanel.csproj`, the ICD `/usr/share/vulkan/icd.d/nvidia_icd.json`, `FRAMES="${BRUTAL_UI_FRAMES:-120}"`, `SMOKE_TIMEOUT="${BRUTAL_UI_SMOKE_TIMEOUT:-60}"`, and `LOG_DIR=artifacts/test-linux`. Export `DOTNET_NOLOGO=1`. Delete `LOG_DIR` and create `LOG_DIR/lib` at the start of each run.
+- [ ] 1.1 Write the frame of `scripts/test-linux.sh`. Start with `#!/usr/bin/env bash` and `set -euo pipefail`. Add a header comment in ASD-STE100 prose: the purpose, the steps, the exit codes, and the two environment variables. Change to the repository root from the script path (`cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."`). Define the constants: the solution `brutal-ui.sln`, the sample project `samples/HelloPanel/HelloPanel.csproj`, the ICD `/usr/share/vulkan/icd.d/nvidia_icd.json`, `FRAMES="${BRUTAL_UI_FRAMES:-120}"`, `SMOKE_TIMEOUT="${BRUTAL_UI_SMOKE_TIMEOUT:-60}"`, and `LOG_DIR=artifacts/test-linux`. Export `DOTNET_NOLOGO=1`. Delete and create `LOG_DIR` at the start of each run.
 - [ ] 1.2 Write two helpers. `run_step <name> <command...>` sends standard output and standard error of the command to `LOG_DIR/<name>.log`. It captures the exit code with `rc=0; "$@" >"$log" 2>&1 || rc=$?`, so `set -e` does not stop the script before the report. On a non-zero code it writes the failure block of the output contract to standard error and exits with `rc`. For `rc` 124 or 137 on the `smoke` step, the header adds `, timed out after <SMOKE_TIMEOUT> s`. `fail <step> <problem> <fix>` writes the two check lines of the output contract to standard error and exits 1.
 - [ ] 1.3 Add the build and test steps: `run_step build dotnet build brutal-ui.sln` and `run_step test dotnet test --solution brutal-ui.sln`. Use these exact forms. Do not add `-c`. Do not use the positional form `dotnet test brutal-ui.sln`. It fails in Microsoft.Testing.Platform mode.
-- [ ] 1.4 Add the `loader` step. Read `ldconfig -p` (use `/sbin/ldconfig` when `ldconfig` is not on `PATH`). Take the path of the `libvulkan.so.1` entry for `x86-64`. When no entry exists, call `fail loader "the Vulkan loader libvulkan.so.1 does not exist" "sudo apt install libvulkan1"`. Create the link with `ln -sfn <path> "$LOG_DIR/lib/libvulkan.so"`. Add a comment that gives the reason: `Brutal.Vulkan` loads the name `vulkan`, so .NET probes the unversioned `libvulkan.so`, and only `libvulkan-dev` installs that file. Name `docs/features/dev-ops/solution-skeleton/context.md`, section "Native Dependencies", in the comment.
-- [ ] 1.5 Add the `smoke` step with the command line of the Architecture Overview. Use the absolute path of `LOG_DIR/lib` in `LD_LIBRARY_PATH`. Keep `--kill-after=10`. Do not add `--foreground` to `timeout`. Without it, `timeout` signals its whole process group, so `xvfb-run`, `Xvfb`, `dotnet run`, and `HelloPanel` all stop.
+- [ ] 1.4 Add the `loader` step. Read `ldconfig -p` (use `/sbin/ldconfig` when `ldconfig` is not on `PATH`). Find the `libvulkan.so.1` entry for `x86-64`, and take the folder of its path. Then test `-e "<that folder>/libvulkan.so"`. `ldconfig -p` lists only the SONAME `libvulkan.so.1`, never the unversioned development link, so the step must not search `ldconfig -p` for `libvulkan.so`. When no `libvulkan.so.1` entry exists, or the unversioned file does not exist, call `fail loader "the unversioned Vulkan loader libvulkan.so does not exist" "sudo apt install libvulkan-dev"`. Create no link, and do not set `LD_LIBRARY_PATH`. Add a comment that gives the reason: `Brutal.Vulkan` loads the name `vulkan`, so .NET probes the unversioned `libvulkan.so`, and only `libvulkan-dev` installs that file. Name `docs/features/dev-ops/solution-skeleton/context.md`, section "Native Dependencies", in the comment.
+- [ ] 1.5 Add the `smoke` step with the command line of the Architecture Overview. Keep `--kill-after=10`. Do not add `--foreground` to `timeout`. Without it, `timeout` signals its whole process group, so `xvfb-run`, `Xvfb`, `dotnet run`, and `HelloPanel` all stop.
 - [ ] 1.6 Add the summary. Read the elapsed time from the `SECONDS` variable of `bash`. On success, write exactly one line to standard output: `test-linux: PASS build, test, smoke (<FRAMES> frames) in <S> s`. Write nothing else to standard output or standard error. The script reads the exit code of the sample, not its output (Mesa layers can print stray lines). Run `chmod +x scripts/test-linux.sh`. Run `bash -n scripts/test-linux.sh`. When `shellcheck` exists on the machine, run it and fix each finding. Do not install `shellcheck`.
 - [ ] 1.7 Verify in one shell command, and record each result in `docs/features/dev-ops/linux-dev-environment/context.md`. (a) `env -u DISPLAY -u WAYLAND_DISPLAY scripts/test-linux.sh; echo "exit=$?"`: expect one PASS line and `exit=0`. (b) Run the script by its absolute path from the session scratchpad folder: expect the same result. (c) `BRUTAL_UI_FRAMES=0 scripts/test-linux.sh; echo "exit=$?"`: expect `FAIL at smoke (exit 2)`, a tail with a `Usage:` line, and `exit=2`. (d) Count `Xvfb` processes with `pgrep -c -x Xvfb`, then run `BRUTAL_UI_FRAMES=100000000 BRUTAL_UI_SMOKE_TIMEOUT=5 scripts/test-linux.sh; echo "exit=$?"`: expect `timed out after 5 s` and `exit=124`, and the same `Xvfb` count after the run. (e) `VK_LOADER_DEBUG=all scripts/test-linux.sh`, then search `artifacts/test-linux/smoke.log` for `nvidia_icd.json` and for `lvp`: expect matches for the first and none for the second. (f) `git status --porcelain`: expect no `artifacts/` path and no change outside `scripts/` and the feature folder.
 
@@ -221,8 +219,8 @@ Each phase is a slice: one narrow path that works end to end, with a demo line t
 
 **Tasks:**
 - [ ] 3.1 Check the SDK install with no `sudo`, in one shell command: `dpkg-query -W -f='${Status} ${Version}\n' dotnet-sdk-10.0`, `readlink -f "$(command -v dotnet)"`, and `dotnet --version`. Record the results in `context.md`. When the apt package `dotnet-sdk-10.0` is not the source of `/usr/bin/dotnet`, record the conflict with the requirement in `context.md`. The runbook still names the apt package as the install command. Do not install anything.
-- [ ] 3.2 Write `docs/testing-linux.md` in ASD-STE100 prose. Sections: (1) Purpose, two sentences. (2) One-time setup: a table with the columns Item, Check, and Fix (the author runs each fix one time, with `sudo`). Rows: the .NET 10 SDK (`dotnet --version`, `sudo apt install dotnet-sdk-10.0`, from the Ubuntu archive, with a warning not to mix it with the `packages.microsoft.com` feed), Xvfb (`command -v xvfb-run`, `sudo apt install xvfb`), the Vulkan loader (`ldconfig -p | grep libvulkan.so.1`, `sudo apt install libvulkan1`), and the NVIDIA driver (`scripts/check-gpu.sh`, the fix that the script prints). Add one sentence: `libvulkan-dev` is not necessary, because the script makes its own `libvulkan.so` link. (3) Run the tests: the call `scripts/test-linux.sh` from any folder, the success line, and the log folder `artifacts/test-linux/`. (4) Exit codes: the table of the output contract. (5) Settings: `BRUTAL_UI_FRAMES` and `BRUTAL_UI_SMOKE_TIMEOUT` with their defaults. (6) Failures and fixes: one row for each `FAIL at <step>` header, with the first thing to read and the fix. Include the GPU mismatch, the time-out, and a `DllNotFoundException` for `vulkan`. (7) Limits: no CI, no Docker, no OpenGL run, no pixel compare, one run at a time.
-- [ ] 3.3 Write the system dependencies into `context.md`, per the rule of `AGENTS.md`. The scripts add no native file to the repository. List each system item that the scripts use: `dotnet`, `xvfb-run` and `Xvfb`, `timeout` (coreutils), `ldconfig`, `libvulkan.so.1` (libvulkan1), the NVIDIA ICD and `libnvidia-ml.so.1` (the NVIDIA driver). Record the answer to the open question of `docs/features/dev-ops/solution-skeleton/context.md`: the script links `libvulkan.so` in `artifacts/test-linux/lib/` and sets `LD_LIBRARY_PATH` for the smoke run only. Add a follow-up item: report to BRUTAL that `Brutal.Vulkan` must also try `libvulkan.so.1` on Linux.
+- [ ] 3.2 Write `docs/testing-linux.md` in ASD-STE100 prose. Sections: (1) Purpose, two sentences. (2) One-time setup: a table with the columns Item, Check, and Fix (the author runs each fix one time, with `sudo`). Rows: the .NET 10 SDK (`dotnet --version`, `sudo apt install dotnet-sdk-10.0`, from the Ubuntu archive, with a warning not to mix it with the `packages.microsoft.com` feed), Xvfb (`command -v xvfb-run`, `sudo apt install xvfb`), the Vulkan loader (`ls -l /usr/lib/x86_64-linux-gnu/libvulkan.so`, `sudo apt install libvulkan-dev`, with one note: `ldconfig -p` lists only `libvulkan.so.1`, so the `loader` step reads the folder of that entry and tests for `libvulkan.so` in it), and the NVIDIA driver (`scripts/check-gpu.sh`, the fix that the script prints). Add one sentence: `Brutal.Vulkan` loads the unversioned `libvulkan.so`, and only `libvulkan-dev` installs that file. (3) Run the tests: the call `scripts/test-linux.sh` from any folder, the success line, and the log folder `artifacts/test-linux/`. (4) Exit codes: the table of the output contract. (5) Settings: `BRUTAL_UI_FRAMES` and `BRUTAL_UI_SMOKE_TIMEOUT` with their defaults. (6) Failures and fixes: one row for each `FAIL at <step>` header, with the first thing to read and the fix. Include the GPU mismatch, the time-out, and a `DllNotFoundException` for `vulkan`. (7) Limits: no CI, no Docker, no OpenGL run, no pixel compare, one run at a time.
+- [ ] 3.3 Write the system dependencies into `context.md`, per the rule of `AGENTS.md`. The scripts add no native file to the repository. List each system item that the scripts use: `dotnet`, `xvfb-run` and `Xvfb`, `timeout` (coreutils), `ldconfig`, `libvulkan.so` (libvulkan-dev), the NVIDIA ICD and `libnvidia-ml.so.1` (the NVIDIA driver). Record the answer to the open question of `docs/features/dev-ops/solution-skeleton/context.md`: the author installs `libvulkan-dev` one time with `sudo`, and the `loader` step checks for `libvulkan.so`. Add a follow-up item: report to BRUTAL that `Brutal.Vulkan` must also try `libvulkan.so.1` on Linux.
 - [ ] 3.4 Verify. Run the Verification Method of the Definition of Done, steps 1 to 14. Compare each command in `docs/testing-linux.md` with the scripts, character for character. When `python3 /home/aaronstatic/.claude/skills/asd-ste100/scripts/ste-lint.py` exists, run it on `docs/testing-linux.md` and fix each finding. Record the results in `context.md`.
 
 **Estimated Steps:** about 24 (4 tasks, about six steps for one task)
@@ -240,7 +238,7 @@ Each phase is a slice: one narrow path that works end to end, with a demo line t
 
 ### Confirmed Assumptions
 
-none. This draft has no interview. Do not invent confirmed items. Write each choice that needs the user into Notes as an open scope question: one sentence, two to four options, and the recommended option first, marked `Recommended`. Write at most four open scope questions.
+The author answered the four scope questions on 2026-10-16. Notes, section "Scope Answers", holds the answers.
 
 ### Decision 1: Plain `bash` scripts with `set -euo pipefail`
 **Context:** The chosen approach names plain scripts in `scripts/`. The `github-ci` epic later runs them on a hosted runner.
@@ -248,11 +246,11 @@ none. This draft has no interview. Do not invent confirmed items. Write each cho
 **Rationale:** Every tool exists on a stock Ubuntu machine with Xvfb. A hosted runner has the same tools.
 **Alternatives Considered:** A `dotnet` tool or a C# script. Rejected: it needs a build before the build. A `Makefile`. Rejected: it adds a tool and hides the exit code rules.
 
-### Decision 2: The `libvulkan.so` link in `artifacts/test-linux/lib/`
+### Decision 2: A one-time `libvulkan-dev` install
 **Context:** Research finding 5. `Brutal.Vulkan` loads `libvulkan.so`. Only `libvulkan-dev` installs it. The sample cannot add its own resolver.
-**Decision:** The `loader` step always links `artifacts/test-linux/lib/libvulkan.so` to the `libvulkan.so.1` path that `ldconfig -p` reports. The smoke step puts that folder first on `LD_LIBRARY_PATH`. Only the smoke command gets the variable.
-**Rationale:** No `sudo` step. One code path on every machine, with or without `libvulkan-dev`. `.gitignore` already holds `artifacts/`. The phase 2 agent of `dev-ops/solution-skeleton` proved the same link.
-**Alternatives Considered:** Require `libvulkan-dev`. Rejected as the default: it adds a `sudo` step and a development package for one file name. Make the link only when `libvulkan.so` is missing. Rejected: two code paths, and the second path is never tested on this machine. Open scope question 1 asks the author.
+**Decision:** The author installs `libvulkan-dev` one time with `sudo`. The `loader` step reads the folder of the x86-64 `libvulkan.so.1` entry of `ldconfig -p`, and tests that `libvulkan.so` exists in that folder. `ldconfig -p` lists only the SONAME `libvulkan.so.1`, never the unversioned development link, so a search of `ldconfig -p` for `libvulkan.so` always fails (change of 2026-10-16, from the coordinator of the epic run). When the file is missing, the step fails and prints `sudo apt install libvulkan-dev`. The script makes no link and sets no `LD_LIBRARY_PATH`.
+**Rationale:** The author chose this answer (scope answer 1). The machine gets the standard system file, so a plain `dotnet run` of the sample also works. The script stays simpler.
+**Alternatives Considered:** A link in `artifacts/test-linux/lib/` on `LD_LIBRARY_PATH`. Rejected by the author. A link only when `libvulkan.so` is missing. Rejected: two code paths.
 
 ### Decision 3: One log file for each step, under `artifacts/test-linux/`
 **Context:** The requirements ask for the last 30 lines of a failed step and one line on success.
@@ -309,8 +307,8 @@ none. This draft has no interview. Do not invent confirmed items. Write each cho
 | GLFW selects Wayland on the desktop session of the author and opens a real window. | Medium | Low | Decision 7. Definition of Done I5 (MANUAL) checks it on the desktop. |
 | `ldconfig` is not on `PATH` for a non-root shell. | Low | Medium | Tasks 1.4 and 2.1 fall back to `/sbin/ldconfig`. |
 | The `libvulkan.so.1` path differs on another distribution or a hosted runner. | Low | Low | The script reads the path from `ldconfig -p`. It holds no fixed library path. |
-| A later BRUTAL version loads `libvulkan.so.1` itself. Then the link is not necessary. | Low | Low | The link does no harm. Remove it when BRUTAL changes (follow-up of task 3.3). |
-| A Windows checkout converts the `.sh` files to CRLF, and `bash` fails on `\r`. | Low | Medium | `dev-ops/windows-test-path` owns `.gitattributes` (open scope question 3). Definition of Done I2 checks the rule when the file exists. |
+| A later BRUTAL version loads `libvulkan.so.1` itself. Then `libvulkan-dev` is not necessary. | Low | Low | The package does no harm. Remove the `loader` step when BRUTAL changes (follow-up of task 3.3). |
+| A Windows checkout converts the `.sh` files to CRLF, and `bash` fails on `\r`. | Low | Medium | `dev-ops/windows-test-path` owns `.gitattributes` (scope answer 3). Definition of Done I2 checks the rule when the file exists. |
 | The first restore needs the network. | Low | Low | The build log shows the NuGet error in the tail. The package cache on this machine already holds every package. |
 | A Mesa layer or the loader prints extra lines. | Medium | Low | The output goes to the log only. The script reads exit codes, not output. |
 | Two runs at the same time share `artifacts/test-linux/`. | Low | Low | The runbook says: one run at a time. |
@@ -326,7 +324,7 @@ none. This draft has no interview. Do not invent confirmed items. Write each cho
 
 ### External Dependencies
 - The .NET SDK 10.0.112 at `/usr/bin/dotnet` (research finding 1).
-- The Ubuntu packages `xvfb` (for `xvfb-run` and `Xvfb`), `libvulkan1`, `coreutils`, and `libc-bin` (for `ldconfig`). All exist today.
+- The Ubuntu packages `xvfb` (for `xvfb-run` and `Xvfb`), `libvulkan1`, `libvulkan-dev`, `coreutils`, and `libc-bin` (for `ldconfig`). All exist today except `libvulkan-dev`, which the author installs one time.
 - The NVIDIA driver 595.99.02 with the kernel module 595.99.02 and the ICD `/usr/share/vulkan/icd.d/nvidia_icd.json` (research finding 6).
 - The NuGet package cache, or network access to nuget.org for a first restore.
 
@@ -425,27 +423,12 @@ Run each step from `/home/aaronstatic/dev/brutal-ui` in a shell with no `DISPLAY
 
 ## Notes
 
-### Open Scope Questions
+### Scope Answers (2026-10-16)
 
-1. **How does the smoke run get the unversioned `libvulkan.so`?**
-   - **Recommended:** The script always links `artifacts/test-linux/lib/libvulkan.so` to the `libvulkan.so.1` path from `ldconfig -p`, and puts that folder on `LD_LIBRARY_PATH` for the smoke run only. No `sudo`.
-   - The author installs `libvulkan-dev` one time with `sudo`. The script checks for `libvulkan.so` and stops with the fix when it is missing.
-   - The script makes the link only when `ldconfig -p` shows no `libvulkan.so`.
-
-2. **Which demo proves phase 1?**
-   - **Recommended:** the agent runs `env -u DISPLAY scripts/test-linux.sh` at the repository root, sees one line that starts with `test-linux: PASS`, and the exit code is 0.
-   - the agent runs `scripts/check-gpu.sh`, sees the three items and `check-gpu: OK`, and the exit code is 0. (This moves the GPU check to phase 1.)
-   - the author runs `scripts/test-linux.sh` in a desktop terminal, sees the PASS line, and no window opens.
-
-3. **Who writes the `*.sh text eol=lf` rule?**
-   - **Recommended:** `dev-ops/windows-test-path` owns `.gitattributes` and adds the rule. This feature writes no `.gitattributes`. Definition of Done I2 checks the rule when the file exists.
-   - This feature writes a `.gitattributes` with the one line `*.sh text eol=lf`, and the sibling adds its rules to it. This risks a merge conflict, because both features run in parallel.
-   - No rule. The scripts run only on Linux, and git keeps LF in the repository when no Windows editor commits a `.sh` file.
-
-4. **Which run settings can a caller change?**
-   - **Recommended:** The frame count (`BRUTAL_UI_FRAMES`, default 120) and the smoke time limit (`BRUTAL_UI_SMOKE_TIMEOUT`, default 60 s), through environment variables. The configuration stays Debug, and the ICD stays NVIDIA.
-   - No setting. The values are constants in the script. The time-out test then needs a temporary edit of the script.
-   - The two variables, plus a configuration variable and an ICD file variable, for the later `github-ci` epic.
+1. **libvulkan.so:** The author installs `libvulkan-dev` one time with `sudo`. The `loader` step checks for `libvulkan.so` and prints the fix when it is missing.
+2. **Phase 1 demo:** The agent runs `env -u DISPLAY scripts/test-linux.sh` at the repository root, sees one line that starts with `test-linux: PASS`, and the exit code is 0.
+3. **`.gitattributes`:** `dev-ops/windows-test-path` owns `.gitattributes` and adds the `*.sh text eol=lf` rule. This feature writes no `.gitattributes`.
+4. **Run settings:** `BRUTAL_UI_FRAMES` (default 120) and `BRUTAL_UI_SMOKE_TIMEOUT` (default 60 s). The configuration stays Debug, and the ICD stays NVIDIA.
 
 ### Other Notes
 
