@@ -2,7 +2,14 @@
 
   <PropertyGroup>
     <Description>Element tree, layout, style, input, and the renderer interface for brutal-ui. No ImGui reference.</Description>
+    <!-- This value repeats the value of src/Directory.Build.props on purpose. The project file shows that the build enforces the doc comments. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
+
+  <!-- The test project reads the internal tree types: the storage, the dirty bits, and the walk. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="BrutalUi.Core.Tests" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Ahwoo.BRUTAL.Numerics" />

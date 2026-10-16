@@ -166,16 +166,61 @@ The retained tree that every other layer reads and writes.
 ```csharp
 public class Element
 {
+    public Element();
     public string? Name { get; set; }
-    public ClassList Classes { get; }          // small inline set, no allocation on add
     public Element? Parent { get; }
-    public ElementList Children { get; }       // pooled list
+    public ElementList Children { get; }       // view on a pooled array, no allocation
+    public ClassList Classes { get; }          // view on an inline set of 8, then a pooled array
+    public PseudoStates States { get; set; }   // Hover, Active, Focus, Disabled, Checked
+    public bool IsPickable { get; set; }       // default true
     public ref ComputedStyle Style { get; }    // resolved style, struct
     public ref LayoutNode Layout { get; }      // flexbox input and output, struct
-    public PseudoStates States { get; }        // Hover, Active, Focus, Disabled, Checked
-    public bool PickingEnabled { get; set; }
+    public DirtyFlags Dirty { get; }           // self bits and descendant bits
+    public void MarkDirty(DirtyFlags kinds);
+}
+
+public readonly struct ElementList             // view on the children of one element
+{
+    public int Count { get; }
+    public Element this[int index] { get; }
+    public void Add(Element child);            // a child with a parent leaves it first
+    public void Insert(int index, Element child);
+    public bool Remove(Element child);
+    public void RemoveAt(int index);
+    public void Move(int fromIndex, int toIndex);
+    public int IndexOf(Element child);
+    public bool Contains(Element child);
+    public ReadOnlySpan<Element>.Enumerator GetEnumerator();
+}
+
+public readonly struct ClassList               // view on the classes of one element
+{
+    public int Count { get; }
+    public ClassId this[int index] { get; }
+    public bool Add(ClassId id);               // false for a duplicate
+    public bool Remove(ClassId id);            // false when absent
+    public bool Contains(ClassId id);
+}
+
+public readonly struct ClassId;                // small integer id of an interned class name
+
+public static class ClassName
+{
+    public static ClassId Intern(string name); // thread-safe, call it before the hot path
+    public static string GetName(ClassId id);
+}
+
+public sealed class UiContext
+{
+    public UiContext();
+    public ReadOnlySpan<Element> Roots { get; }
+    public void AddRoot(Element root);
+    public bool RemoveRoot(Element root);
+    public void Update(float deltaTime);
 }
 ```
+
+`DirtyFlags` has the kinds `Style`, `Layout`, and `Paint`, and one descendant bit for each kind. `ElementBuilder` adds the extension methods `Class(string)`, `Class(ClassId)`, and `Child(Element)` for a fluent build.
 
 Built-in element types: `Element`, `Label`, `Image`, `Button`, `Toggle`, `Slider`, `TextField`, `ScrollView`, `ListView`, `WindowChrome`.
 
@@ -186,6 +231,7 @@ A struct event with a phase (capture, target, bubble) walks the tree. Handlers r
 ### Design Decisions
 
 - `ComputedStyle` and `LayoutNode` are structs stored inline in the element. The layout engine reads them through `ref`. No per-node heap object beyond the element itself.
+- Each dirty kind has a self bit and a descendant bit. A mark sets the self bit and sends the descendant bit up to the root, and it stops at the first ancestor that holds the bit. The walk enters only the subtrees that have a descendant bit.
 - Text lives in owned UTF-8 buffers on the element. A `Label` accepts `ReadOnlySpan<byte>`, `string`, and `LString`.
 
 ---
