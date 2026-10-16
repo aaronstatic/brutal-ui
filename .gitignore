@@ -1,0 +1,11 @@
+
+# Beast Mode - Backups
+.claude/.beast-mode-backup-*/
+.beast-mode/briefs/
+
+# .NET
+bin/
+obj/
+*.user
+.vs/
+.idea/

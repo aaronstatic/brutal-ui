@@ -1,0 +1,279 @@
+{
+  "schema": 1,
+  "beastModeVersion": "6.1.0",
+  "harness": "claude",
+  "harnessRoot": ".claude",
+  "generated": "2026-10-16T09:02:43.895Z",
+  "files": [
+    {
+      "destination": ".claude/skills/audit-feature/SKILL.md",
+      "source": "templates/skills/audit-feature/SKILL.md",
+      "sha256": "16fe5d0456f725c921a66eb1f2345fa5db7dbbdbf76510f07ddaee0079252e9f",
+      "owned": true
+    },
+    {
+      "destination": ".claude/skills/autorun-epic/SKILL.md",
+      "source": "templates/skills/autorun-epic/SKILL.md",
+      "sha256": "e4e0047b3dafdf8b6a62e18a5955394aa74cf8a1c0ee7b5625a84049c74567be",
+      "owned": true
+    },
+    {
+      "destination": ".claude/skills/autorun-feature/SKILL.md",
+      "source": "templates/skills/autorun-feature/SKILL.md",
+      "sha256": "9fc5cf84f51dd9578df05a073a28f593e80abfde82f39f85048dd7c1d969c11e",
+      "owned": true
+    },
+    {
+      "destination": ".claude/skills/continue-feature/SKILL.md",
+      "source": "templates/skills/continue-feature/SKILL.md",
+      "sha256": "0f21c6e77143bf102bc46e6b71003daef98e14c5d72e4a42ecbf92d375b9889d",
+      "owned": true
+    },
+    {
+      "destination": ".claude/skills/create-epic/SKILL.md",
+      "source": "templates/skills/create-epic/SKILL.md",
+      "sha256": "722e5c07d66f86867dcea5569d29f961c54513dc4f0c2c1915a658dd5bf8e2b9",
+      "owned": true
+    },
+    {
+      "destination": ".claude/skills/discover-feature/SKILL.md",
+      "source": "templates/skills/discover-feature/SKILL.md",
+      "sha256": "319b77d0d9f43fd21d71274a17fbf3283db660b9449a306cf4052766b92c5fb2",
+      "owned": true
+    },
+    {
+      "destination": ".claude/skills/document-feature/SKILL.md",
+      "source": "templates/skills/document-feature/SKILL.md",
+      "sha256": "770036f2ab8ddd6c9a6d00a352c4304dcf19117355bbc9ab43327d04151cf84c",
+      "owned": true
+    },
+    {
+      "destination": ".claude/skills/evaluate-feature/SKILL.md",
+      "source": "templates/skills/evaluate-feature/SKILL.md",
+      "sha256": "7fb940543e2067047e76b2c8fde052d65ab9c6e1a3276e2eb62a8af2a46645dd",
+      "owned": true
+    },
+    {
+      "destination": ".claude/skills/fix-bug/SKILL.md",
+      "source": "templates/skills/fix-bug/SKILL.md",
+      "sha256": "5c74f3fb0e7e468c92edd74f67d556980124875799b2be1f4ad5b16e4222e1f8",
+      "owned": true
+    },
+    {
+      "destination": ".claude/skills/fix-feature/SKILL.md",
+      "source": "templates/skills/fix-feature/SKILL.md",
+      "sha256": "fcc3d819feaac7a9c9f8cac8bdc4c50dfea2d64ba42632809d7f00b65b850c04",
+      "owned": true
+    },
+    {
+      "destination": ".claude/skills/plan-epic/SKILL.md",
+      "source": "templates/skills/plan-epic/SKILL.md",
+      "sha256": "f92fa8c13800f7d715b40977656a49304dd3e270b132359e2c472d8f7eccb6b3",
+      "owned": true
+    },
+    {
+      "destination": ".claude/skills/plan-feature/SKILL.md",
+      "source": "templates/skills/plan-feature/SKILL.md",
+      "sha256": "7f128ce08c5b3b3371df2271f077281f8b84e94b5fc58ce79ba57e38eaba3000",
+      "owned": true
+    },
+    {
+      "destination": ".claude/skills/proceed/SKILL.md",
+      "source": "templates/skills/proceed/SKILL.md",
+      "sha256": "9c9aa25f86835cacc16391b1a11460c8f85d41db20063aef279a896cad831038",
+      "owned": true
+    },
+    {
+      "destination": ".claude/skills/proceed-advanced/SKILL.md",
+      "source": "templates/skills/proceed-advanced/SKILL.md",
+      "sha256": "e3c872fdffb49325d38a4d1ce1827b12401fa70964574e46ece725fc44fe1045",
+      "owned": true
+    },
+    {
+      "destination": ".claude/skills/review-epic/SKILL.md",
+      "source": "templates/skills/review-epic/SKILL.md",
+      "sha256": "0f9e25e77e91fca2aa3a9b9e999d781823ac17fe5e00c026718d6889749bcef9",
+      "owned": true
+    },
+    {
+      "destination": ".claude/skills/review-feature/SKILL.md",
+      "source": "templates/skills/review-feature/SKILL.md",
+      "sha256": "3b38ecf970fdbf5ecc3b04f41533f5f4bffaab6cc45f4d7049499948f87f2bf3",
+      "owned": true
+    },
+    {
+      "destination": ".claude/skills/review-mobile/SKILL.md",
+      "source": "templates/skills/review-mobile/SKILL.md",
+      "sha256": "5fbc47bcdb2cc8235cacddaa53d65eadd002c4b8920be3a47d4a625c71863dca",
+      "owned": true
+    },
+    {
+      "destination": ".claude/skills/review-pr/SKILL.md",
+      "source": "templates/skills/review-pr/SKILL.md",
+      "sha256": "11dbe77e784c9a904c48f0b008508171e50c48bfe426c4296f3883f13f260c16",
+      "owned": true
+    },
+    {
+      "destination": ".claude/skills/review-session/SKILL.md",
+      "source": "templates/skills/review-session/SKILL.md",
+      "sha256": "dd4ff956ff33502b7a42a9a0e2faeddbe548552b28daed88fac87fcbacd7f9de",
+      "owned": true
+    },
+    {
+      "destination": ".claude/skills/review-ui/SKILL.md",
+      "source": "templates/skills/review-ui/SKILL.md",
+      "sha256": "dc1d0479d05a2755c1917063e2eed0ecf9e98562e1517bc026ef486cd8d95f3c",
+      "owned": true
+    },
+    {
+      "destination": ".claude/skills/review-ux/SKILL.md",
+      "source": "templates/skills/review-ux/SKILL.md",
+      "sha256": "3ef970c9f8535876fe158e934f8d90c46d57d27ef43dc41e528bc7a66658b410",
+      "owned": true
+    },
+    {
+      "destination": ".claude/skills/start-feature/SKILL.md",
+      "source": "templates/skills/start-feature/SKILL.md",
+      "sha256": "c488c923ce95dcab5e9f9c4c185058da65b38f0f53b94f0b0088e88e613cd189",
+      "owned": true
+    },
+    {
+      "destination": ".claude/skills/suggest-epic/SKILL.md",
+      "source": "templates/skills/suggest-epic/SKILL.md",
+      "sha256": "55498afc9fc6ba788bda6011747b6d4c07cade43f0b55aa9a596df4c485becd9",
+      "owned": true
+    },
+    {
+      "destination": ".claude/skills/suggest-feature/SKILL.md",
+      "source": "templates/skills/suggest-feature/SKILL.md",
+      "sha256": "116e1883d8a256373710de7d8864fbb6b77d491e2563a9a38574b971a6c6e298",
+      "owned": true
+    },
+    {
+      "destination": ".claude/skills/token-report/SKILL.md",
+      "source": "templates/skills/token-report/SKILL.md",
+      "sha256": "3dfac3bee5dab0cc8233d3d938a1a76d92c60ebe6a554abac439f3c0268889c0",
+      "owned": true
+    },
+    {
+      "destination": ".claude/skills/update-epic/SKILL.md",
+      "source": "templates/skills/update-epic/SKILL.md",
+      "sha256": "e9d3da1307c4ac60b853b78dcfe55d17dd1f648506acf96b372cc5253b4f6247",
+      "owned": true
+    },
+    {
+      "destination": ".claude/skills/update-feature/SKILL.md",
+      "source": "templates/skills/update-feature/SKILL.md",
+      "sha256": "281c2b47aa99b943bf8094ca3aa49d85c34eb3fe36fff77ba168660a3f282d68",
+      "owned": true
+    },
+    {
+      "destination": ".claude/skills/update-master/SKILL.md",
+      "source": "templates/skills/update-master/SKILL.md",
+      "sha256": "8b455b0588e9267280bb7be1e4ab4899e9436f268a150f69df88694e17110e57",
+      "owned": true
+    },
+    {
+      "destination": ".claude/agents/feature-orchestrator.md",
+      "source": "templates/agents/feature-orchestrator.md",
+      "sha256": "78d64c2c91fb10decf802979f67bf2697b2a80112dbd5fb32656844aa4460fdf",
+      "owned": true
+    },
+    {
+      "destination": ".claude/agents/solution-architect.md",
+      "source": "templates/agents/solution-architect.md",
+      "sha256": "5caf66dc9b6ecf76c64b213a9e506d4105c63412950a2f74faa8180742af0a8c",
+      "owned": true
+    },
+    {
+      "destination": ".beast-mode/templates/context.md",
+      "source": "templates/dev-docs/context.md",
+      "sha256": "3dd6f68f46c29f8510b800e4bc452fc6be5dcc7095a953ec77b039f30f53dc32",
+      "owned": true
+    },
+    {
+      "destination": ".beast-mode/templates/epic-overview.md",
+      "source": "templates/dev-docs/epic-overview.md",
+      "sha256": "79d431c81e458e4a6c121a592a07efad7980018e46be473bde129edcf65daaa0",
+      "owned": true
+    },
+    {
+      "destination": ".beast-mode/templates/epic-requirements.md",
+      "source": "templates/dev-docs/epic-requirements.md",
+      "sha256": "64e3ca70bebd123cf73c9cae8cbca7308dd31475aa25d7725a0b45ac18239602",
+      "owned": true
+    },
+    {
+      "destination": ".beast-mode/templates/human-testing.md",
+      "source": "templates/dev-docs/human-testing.md",
+      "sha256": "b02b92a4e2deda6f0a5924f7dbceec02415ed419296055c33c312743e544fb7b",
+      "owned": true
+    },
+    {
+      "destination": ".beast-mode/templates/implementation.md",
+      "source": "templates/dev-docs/implementation.md",
+      "sha256": "ad2d59da4ebe7e0edeaac0149b65ee4c61828504a138790dcead9d8d00a2ed4d",
+      "owned": true
+    },
+    {
+      "destination": ".beast-mode/templates/inbox.md",
+      "source": "templates/dev-docs/inbox.md",
+      "sha256": "d98784176d5f3af73fcb10bce5e7a94cdf1f48aa5720cb6c488fd8766684b289",
+      "owned": true
+    },
+    {
+      "destination": ".beast-mode/templates/tasks.md",
+      "source": "templates/dev-docs/tasks.md",
+      "sha256": "59394e74b8459910e5d3600727f840fb36bf9d9ce4a794306e821f4d0b495f93",
+      "owned": true
+    },
+    {
+      "destination": ".beast-mode/agent-structure-example.md",
+      "source": "templates/formats/agent-structure-example.md",
+      "sha256": "210f79cbb6e1f644d8d13d146608eec29313120a0a57108e0e1b64f5a8429db9",
+      "owned": true
+    },
+    {
+      "destination": ".beast-mode/epic-resolution.md",
+      "source": "templates/formats/epic-resolution.md",
+      "sha256": "d20bdc31a1b328ceae6b09af1cdeaba8fff9a8bb871157b6ecfd5729916178e4",
+      "owned": true
+    },
+    {
+      "destination": ".beast-mode/interview.md",
+      "source": "templates/formats/interview.md",
+      "sha256": "8ddb1e6a1cfa62f3cf56c5c831cb53b65c2dc038e32958a600441ee3cb9fab93",
+      "owned": true
+    },
+    {
+      "destination": ".beast-mode/mission-statement-template.md",
+      "source": "templates/formats/mission-statement-template.md",
+      "sha256": "134e9cc29ba5307b70a8fdc8c77b1c272bade9461f29023997a65136ee340537",
+      "owned": true
+    },
+    {
+      "destination": ".beast-mode/phase-handoff.md",
+      "source": "templates/formats/phase-handoff.md",
+      "sha256": "5e13a5f94c42408a3052bcb0589c1915f8482be298d4bcd3c72dbb597b303fba",
+      "owned": true
+    },
+    {
+      "destination": ".beast-mode/skill-structure-example.md",
+      "source": "templates/formats/skill-structure-example.md",
+      "sha256": "6f5c04ee4234a48ea3ecac7f6be32359b98a55b8c40fbeb67264505ba7729b9d",
+      "owned": true
+    },
+    {
+      "destination": ".beast-mode/technical-design-template.md",
+      "source": "templates/formats/technical-design-template.md",
+      "sha256": "1d8bce65d4617f9249089854d37668ad8ad5a1f483c9680b4ac4cb57694b445f",
+      "owned": true
+    },
+    {
+      "destination": ".beast-mode/tool-rules.md",
+      "source": "templates/formats/tool-rules.md",
+      "sha256": "07b08227f71ecbd10211cea9b5675d1b1199ed54b43b51b1014c976c28eddfda",
+      "owned": true
+    }
+  ]
+}
