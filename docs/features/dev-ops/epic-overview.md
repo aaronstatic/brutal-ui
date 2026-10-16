@@ -1,8 +1,8 @@
 # Dev Ops - Epic Overview
 
 **Epic:** dev-ops
-**Status:** Planned
-**Last Updated:** 2026-10-16 09:16
+**Status:** Complete
+**Last Updated:** 2026-10-16 18:30
 
 > **This file is the epic marker.** Its presence in `docs/features/dev-ops/` tells every Beast Mode command that this folder is an **epic**, not a plain feature. Keep it present and keep the required sections below filled in. The master `docs/overview.md` tracks this epic as a **single row**. The per-feature detail lives **here**.
 
@@ -22,9 +22,9 @@ The constituent features of this epic, in build order. Each feature is a subfold
 
 | # | Feature | Status | Tasks | Description |
 |---|---------|--------|-------|-------------|
-| 1 | solution-skeleton | Planned | — | The solution, the props files, the package pins, and every empty project from the technical design. |
-| 2 | linux-dev-environment | Planned | — | The .NET 10 SDK on this machine, a GPU health check, and one script for unit tests plus a Vulkan smoke run under Xvfb. |
-| 3 | windows-test-path | Planned | — | PowerShell build and test scripts and a short runbook for pull, build, and run on Windows. |
+| 1 | solution-skeleton | Complete | 31/31 (100%) | The solution, the props files, the package pins, and every empty project from the technical design. |
+| 2 | linux-dev-environment | Complete | 18/18 (100%) | The .NET 10 SDK on this machine, a GPU health check, and one script for unit tests plus a Vulkan smoke run under Xvfb. |
+| 3 | windows-test-path | Complete | 19/19 (100%) | PowerShell build and test scripts and a short runbook for pull, build, and run on Windows. |
 
 > Reference any feature with the slash form `dev-ops/<feature-name>`. Task counts come from each feature's own `tasks.md` and `/update-epic` refreshes them.
 
@@ -40,7 +40,8 @@ The constituent features of this epic, in build order. Each feature is a subfold
 - solution-skeleton → linux-dev-environment (the solution file, the test projects, and the `HelloPanel` sample)
 - solution-skeleton → windows-test-path (the solution file and the sample)
 - linux-dev-environment and windows-test-path have no dependency on each other. Build them in parallel.
-- External: the `Ahwoo.BRUTAL.*` 2026.10 packages on nuget.org. The Ubuntu `dotnet-sdk-10.0` apt package. A reboot of this machine to align the NVIDIA kernel module and the user space library.
+- External: the `Ahwoo.BRUTAL.*` 2026.10 packages on nuget.org. The Ubuntu `dotnet-sdk-10.0` apt package. The Ubuntu `libvulkan-dev` apt package, because `Brutal.Vulkan` loads the unversioned `libvulkan.so`. No reboot was necessary: the NVIDIA kernel module and the user space library both report 595.99.02.
+- The `/autorun-epic` run built features 2 and 3 one after the other, not in parallel.
 
 ---
 
@@ -64,8 +65,8 @@ The constituent features of this epic, in build order. Each feature is a subfold
 
 ## Master Overview Rollup
 
-- **Rollup status:** Planned (0/3 features)
-- **One-line summary for master:** The solution skeleton, the Linux test script with a GPU smoke run, and the Windows pull-build-run path.
+- **Rollup status:** Complete (3/3 features, 68/68 tasks). The Windows runs wait for a manual check in `human-testing.md`.
+- **One-line summary for master:** The solution builds and packs. `scripts/test-linux.sh` passes with a GPU smoke run. The Windows scripts and runbook wait for a manual run.
 
 ---
 
