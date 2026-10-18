@@ -8,6 +8,12 @@
     <PackageReference Include="BenchmarkDotNet" />
   </ItemGroup>
 
+  <!-- Decision 1: the benchmark compiles the shared tree builders of the test project. A linked Compile item is not
+       a reference, so this project still references only BrutalUi.Core and BenchmarkDotNet. -->
+  <ItemGroup>
+    <Compile Include="../BrutalUi.Core.Tests/Shared/*.cs" LinkBase="Shared" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="../../src/BrutalUi.Core/BrutalUi.Core.csproj" />
   </ItemGroup>

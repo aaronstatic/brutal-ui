@@ -1,7 +1,7 @@
 # Core Tree — Human Testing
 
 **Epic:** core-tree
-**Last Updated:** 2026-10-18 04:25
+**Last Updated:** 2026-10-18 05:52
 
 > An `/autorun-epic` run adds one section per feature, and one demo line per slice as the slice lands. Check an item after you test it.
 
@@ -28,3 +28,14 @@
 - [ ] Phase 9 demo: the developer runs `dotnet run --project tests/BrutalUi.Core.Tests/BrutalUi.Core.Tests.csproj -- --filter-class '*LayoutCacheTests'` and reads `failed: 0`, with the test that runs a second `Update` with no change and counts 0 measure calls.
 - [ ] Phase 10 demo: the developer runs `dotnet run --project tests/BrutalUi.Core.Tests/BrutalUi.Core.Tests.csproj -- --filter-class '*LayoutAllocationTests'` and reads `failed: 0`.
 - [ ] Windows run (flexbox-layout Q6): on Windows, after `git pull --ff-only`, run `.\scripts\test-windows.ps1`. Expect the PASS line and `$LASTEXITCODE` 0.
+
+## allocation-guard
+
+- [ ] Phase 1 demo: the developer runs `dotnet run --project tests/BrutalUi.Core.Tests/BrutalUi.Core.Tests.csproj -- --filter-class '*ThousandElementAllocationTests'` and reads a total of 6 with `failed: 0`.
+- [ ] Phase 2 demo: the developer runs `dotnet run -c Release --project tests/BrutalUi.Benchmarks/BrutalUi.Benchmarks.csproj -- --filter '*TreeLayoutBenchmark*' --job short` and sees a summary table with the rows `FullLayout`, `DirtySubtree`, and `CleanUpdate`, each with `-` or `0 B` in the `Allocated` column.
+- [ ] Phase 3 demo: the developer runs `dotnet run --project tests/BrutalUi.Core.Tests/BrutalUi.Core.Tests.csproj -- --filter-class '*PercentChainBudgetTests'` and reads a total of 2 with `failed: 0`.
+- [ ] Phase 4 demo: the developer runs `dotnet run -c Release --project tests/BrutalUi.Benchmarks/BrutalUi.Benchmarks.csproj -- --facts` and reads four lines that start with `facts:`. The last line names the number of levels that pass on a 1 MB stack in a Release build.
+- [ ] Phase 5 demo: the developer opens `CHANGELOG.md` and reads, under `## [Unreleased]`, a table of the 5 benchmarks with the mean and the allocated bytes, the machine line of BenchmarkDotNet, and the four facts lines.
+- [ ] Full benchmark run: the developer runs `dotnet run -c Release --project tests/BrutalUi.Benchmarks/BrutalUi.Benchmarks.csproj -- --filter '*'` (several minutes) and sees a summary table of the 5 benchmarks, each with `-` in the `Allocated` column.
+- [ ] Windows facts run (allocation-guard CR-5): on Windows, run `dotnet run -c Release --project tests/BrutalUi.Benchmarks/BrutalUi.Benchmarks.csproj -- --facts`. Expect four `facts:` lines, a stack line with a level count, no error dialog that blocks the run, and exit code 0.
+- [ ] Windows run (allocation-guard): on Windows, after `git pull --ff-only`, run `.\scripts\test-windows.ps1`. Expect the PASS line and `$LASTEXITCODE` 0.

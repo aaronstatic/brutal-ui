@@ -275,7 +275,7 @@ An element is dirty for layout when it holds `Layout` or `DescendantLayout`. The
 
 Each element holds one layout entry and eight measurement entries. The cache is stricter than the Yoga cache. It compares inner sizes, it uses an exact key for a callback leaf with a limit, and it adds the owner size to the key of each entry when the element or a child holds a percent. A hit then needs the same owner width and owner height. Thus the entries for two owner sizes stay valid together. This costs some cache hits and removes stale rects. `LayoutDifferentialTests` compares the incremental result with a fresh layout.
 
-The engine recurses about 4 KB of stack for each level in a Debug build and about 2 KB in a Release build. A plain column chain passes 293 levels (Debug) and 520 levels (Release) on a 1 MB stack, the default for the main thread on Windows. On an 8 MB stack, it passes 2378 levels (Debug) and 4219 levels (Release). A stack overflow ends the process, and code cannot catch it. Keep the tree under 200 levels on a 1 MB stack. A wrapped container or a percent can use larger frames, so the limits are an upper bound.
+The engine recurses about 4 KB of stack for each level in a Debug build and about 2 KB in a Release build. A plain column chain passes 292 levels (Debug) and 519 levels (Release) on a 1 MB stack, the default for the main thread on Windows (measured by `--facts`). On an 8 MB stack, it passes 2378 levels (Debug) and 4219 levels (Release). A stack overflow ends the process, and code cannot catch it. Keep the tree under 200 levels on a 1 MB stack. A wrapped container or a percent can use larger frames, so the limits are an upper bound.
 
 ### Differences from Yoga
 
@@ -469,9 +469,19 @@ The Vulkan backend binds one render pass at construction. Phase 5 tests a second
 
 - **Unit tests** on the layout engine with fixtures from the Yoga test suite, ported by hand.
 - **Unit tests** on the style cascade, the XML loader, the stylesheet parser, and the framework diff.
-- **Allocation tests** that run update and draw on a warm 1000-element tree and assert zero bytes allocated.
-- **Benchmarks** with BenchmarkDotNet for layout and draw on that tree.
+- **Allocation tests** that run update and draw on a warm 1000-element tree and assert zero bytes allocated. `ThousandElementAllocationTests` is the gate. In the core-tree epic, it covers the update only. The imgui-renderer epic adds the draw.
+- **Benchmarks** with BenchmarkDotNet for layout and draw on that tree. `TreeLayoutBenchmark` measures the full layout, a dirty subtree, and a clean update on the 1000-element tree. The settings panel is hidden, so the full layout pass lays out 780 elements and sets the 220 elements of the panel to zero. `PercentChainBenchmark` measures a leaf mark under a chain of percent sizes.
+- **Facts report.** The `--facts` mode of the benchmark project prints four `facts:` lines: the size of the tree, the callback calls of the two percent chains, and the number of levels that pass on a 1 MB stack.
 - **Sample projects** as the integration test, built in CI.
+
+Run the benchmarks and the facts report from the repository root:
+
+```
+dotnet run -c Release --project tests/BrutalUi.Benchmarks/BrutalUi.Benchmarks.csproj -- --filter '*'
+dotnet run -c Release --project tests/BrutalUi.Benchmarks/BrutalUi.Benchmarks.csproj -- --facts
+```
+
+The tests assert no time. The recorded times come from one run on the machine of the author. `CHANGELOG.md` holds them.
 
 ### What is not tested
 

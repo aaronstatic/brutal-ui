@@ -1,10 +1,10 @@
 # Allocation Guard - Implementation Plan
 
 **Epic:** core-tree (feature 3 of 3)
-**Status:** Planning
+**Status:** Ready for Review
 **Started:** 2026-10-18
 **Target Completion:** TBD
-**Last Updated:** 2026-10-18 04:20
+**Last Updated:** 2026-10-18 04:34
 
 ---
 
@@ -450,6 +450,8 @@ Run steps 1 to 11 from `/home/aaronstatic/dev/brutal-ui` on Linux. Step 12 is MA
 ### Open Scope Questions
 
 `/autorun-epic` asks these questions. The plan uses the recommended option (the first one) of each.
+
+**Answered on 2026-10-18.** The user chose the recommended option of each question. The plan uses these answers as written.
 
 **Q1. What does the gate measure?**
 - **A (recommended):** One warm `Update`, two double rounds of the 8 kinds, then 100 rotating steps. Reason: CR-5 showed that a single change runs one path and hits the cache for the rest.
