@@ -1,8 +1,8 @@
 # Core Tree - Epic Overview
 
 **Epic:** core-tree
-**Status:** Planned
-**Last Updated:** 2026-10-16 19:10
+**Status:** Complete
+**Last Updated:** 2026-10-18 12:00
 
 > **This file is the epic marker.** Its presence in `docs/features/core-tree/` tells every Beast Mode command that this folder is an **epic**, not a plain feature. Keep it present and keep the required sections below filled in. The master `docs/overview.md` tracks this epic as a **single row**. The per-feature detail lives **here**.
 
@@ -22,9 +22,9 @@ The constituent features of this epic, in build order. Each feature is a subfold
 
 | # | Feature | Status | Tasks | Description |
 |---|---------|--------|-------|-------------|
-| 1 | element-tree | Planned | — | The `Element` class, the pooled child list, the inline class list, pseudo-states, the dirty flags, and a minimal `UiContext` with the roots and `Update`. |
-| 2 | flexbox-layout | Planned | — | The `LayoutNode` struct, the layout properties, the Yoga algorithm subset, the measure callback slot, and the hand-ported Yoga fixtures. |
-| 3 | allocation-guard | Planned | — | The 1000-element allocation test under `dotnet test` and the BenchmarkDotNet layout benchmark. |
+| 1 | element-tree | Complete | 35/35 (100%) | The `Element` class, the pooled child list, the inline class list, pseudo-states, the dirty flags, and a minimal `UiContext` with the roots and `Update`. |
+| 2 | flexbox-layout | Complete | 88/88 (100%) | The `LayoutNode` struct, the layout properties, the Yoga algorithm subset, the measure callback slot, and the hand-ported Yoga fixtures. |
+| 3 | allocation-guard | Complete | 27/27 (100%) | The 1000-element allocation test under `dotnet test` and the BenchmarkDotNet layout benchmark. |
 
 > Reference any feature with the slash form `core-tree/<feature-name>`. Task counts come from each feature's own `tasks.md` and `/update-epic` refreshes them.
 
@@ -71,8 +71,8 @@ The constituent features of this epic, in build order. Each feature is a subfold
 
 ## Master Overview Rollup
 
-- **Rollup status:** Planned (0/3 features)
-- **One-line summary for master:** The retained element tree, the C# flexbox engine, and the zero-allocation test on a 1000-element tree.
+- **Rollup status:** Complete (3/3 features, 150/150 tasks)
+- **One-line summary for master:** The element tree, the C# flexbox engine (337 Yoga fixtures), and the 0-byte gate on a 1000-element tree. 574 tests pass.
 
 ---
 
