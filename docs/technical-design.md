@@ -174,7 +174,7 @@ public class Element
     public PseudoStates States { get; set; }   // Hover, Active, Focus, Disabled, Checked
     public bool IsPickable { get; set; }       // default true
     public ref ComputedStyle Style { get; }    // resolved style, struct
-    public ref LayoutNode Layout { get; }      // flexbox input and output, struct
+    public ref LayoutNode Layout { get; }      // the output rect, the measure callback, and the layout cache
     public DirtyFlags Dirty { get; }           // self bits and descendant bits
     public void MarkDirty(DirtyFlags kinds);
 }
@@ -216,6 +216,7 @@ public sealed class UiContext
     public ReadOnlySpan<Element> Roots { get; }
     public void AddRoot(Element root);
     public bool RemoveRoot(Element root);
+    public float2 ViewportSize { get; set; }   // available size of each root, default (0, 0)
     public void Update(float deltaTime);
 }
 ```
@@ -246,9 +247,48 @@ Flexbox layout on the element tree with the Yoga subset that games use.
 
 `display`, `position` (relative, absolute), `flex-direction`, `flex-wrap`, `justify-content`, `align-items`, `align-self`, `align-content`, `flex-grow`, `flex-shrink`, `flex-basis`, `width`, `height`, `min-*`, `max-*`, `margin`, `padding`, `border-width`, `left`, `top`, `right`, `bottom`, `overflow`. Length units: pixels, percent, auto.
 
+### Inputs
+
+The inputs are the 25 public fields of `ComputedStyle`: `FlexDirection`, `Width`, `Height`, `Margin`, `Padding`, `BorderWidth`, `FlexGrow`, `FlexShrink`, `FlexBasis`, `MinWidth`, `MinHeight`, `MaxWidth`, `MaxHeight`, `JustifyContent`, `AlignItems`, `AlignSelf`, `FlexWrap`, `AlignContent`, `Display`, `Position`, `Left`, `Top`, `Right`, `Bottom`, and `Overflow`. The fields are public so that `element.Style.Width = 120;` compiles. A write sets no dirty bit. The caller then calls `MarkDirty(DirtyFlags.Layout)`. The enums are `FlexDirection`, `FlexWrap`, `Justify`, `Align`, `Display`, `PositionType`, and `Overflow`.
+
+A `Length` holds a value and a `LengthUnit`: `Undefined`, `Pixel`, `Percent`, or `Auto`. `Length.Px(10)`, `Length.Percent(50)`, and `Length.Auto` make the values. A `float` converts to pixels. A percent resolves against the size of the parent content box on the same axis. The exceptions are a margin and a padding, which resolve against the parent width on all four edges. `LengthEdges` holds a `Length` for `Left`, `Top`, `Right`, and `Bottom`. The engine has no start or end edge.
+
+`default(ComputedStyle)` gives the Yoga defaults: a column direction, grow 0, shrink 0, auto basis, auto sizes, no minimum, no maximum, stretch alignment, flex-start content, relative position, and `Display.Flex`. `Length.Undefined` means the default of the property. `AlignItems` auto acts as stretch. `AlignContent` auto acts as flex-start. A callback on `LayoutNode.Measure` supplies the content size of a leaf (see "The measure callback").
+
+`UiContext.ViewportSize` is the available size of each root. It starts at `(0, 0)`. A `NaN` component means no limit. A negative or infinite component throws `ArgumentOutOfRangeException`. A root with an auto size takes the viewport size. A root with a style size keeps it. A new `ViewportSize` and `AddRoot` mark nothing. The next `Update` uses the new size.
+
+### Output
+
+The output is `LayoutNode.Rect`, a `float4` in pixels. X and Y are the position of the border box relative to the border box of the parent. Z is the width. W is the height. The X and Y of a root hold its margin and its offsets. To get a position in the viewport, the reader adds the positions of the ancestors on the walk down. A `Display.None` element and its subtree have rects of zero. The rects keep float values. The engine does not round to the pixel grid. The renderer can snap at draw time.
+
 ### Algorithm
 
-The engine follows the Yoga algorithm structure: measure, main-axis line breaking, main-axis distribution, cross-axis alignment, absolute children. It runs on `ref LayoutNode` structs and writes `float4` rects. A measure callback on an element returns intrinsic size for text and images.
+The engine is a structural port of Yoga `v3.2.1` (MIT). It follows the Yoga steps: measure, main-axis line breaking, main-axis distribution, cross-axis alignment, wrapped lines, and absolute children. It runs on `ref LayoutNode` structs and writes `float4` rects. `UiContext.Update` runs the layout pass on each root against `ViewportSize`, then clears the layout bits. The engine allocates nothing after warm-up. `LayoutAllocationTests` guards this.
+
+### The measure callback
+
+A `MeasureCallback` gives the content size of an element with no children, for example text or an image. A callback on an element with children has no effect. The callback gets the available inner size and a `MeasureMode` for each axis: `Undefined`, `Exactly`, or `AtMost`. It returns the size of the content only. The engine adds padding and border and applies the minimum and the maximum. The callback must not change the tree, mark a bit, or allocate. With `AtMost`, it must give the result of the `Undefined` size when that result fits the limit. A callback that breaks this contract can get a stale size from the layout cache.
+
+### The dirty-bit rule and the cache
+
+An element is dirty for layout when it holds `Layout` or `DescendantLayout`. The pass reads these bits and does not change them while it computes. Each pass takes a new generation number. On the first visit of a dirty element in a generation, the engine resets the cache of the element. On each visit, the engine reads the cache first. A hit sets the measured size and does not enter the subtree. A miss runs the flex steps and stores the result. After the pass, a clear walk removes the layout bits. A clean root with the same viewport costs one check. A deep change lays out again from the root, and each clean sibling subtree returns its cached size.
+
+Each element holds one layout entry and eight measurement entries. The cache is stricter than the Yoga cache. It compares inner sizes, it uses an exact key for a callback leaf with a limit, and it adds the owner size to the key of each entry when the element or a child holds a percent. A hit then needs the same owner width and owner height. Thus the entries for two owner sizes stay valid together. This costs some cache hits and removes stale rects. `LayoutDifferentialTests` compares the incremental result with a fresh layout.
+
+The engine recurses about 4 KB of stack for each level in a Debug build and about 2 KB in a Release build. A plain column chain passes 293 levels (Debug) and 520 levels (Release) on a 1 MB stack, the default for the main thread on Windows. On an 8 MB stack, it passes 2378 levels (Debug) and 4219 levels (Release). A stack overflow ends the process, and code cannot catch it. Keep the tree under 200 levels on a 1 MB stack. A wrapped container or a percent can use larger frames, so the limits are an upper bound.
+
+### Differences from Yoga
+
+The port drops these Yoga parts: `direction` and right-to-left layout, start and end edges, `gap`, `aspect-ratio`, baseline alignment, `position: static` and the containing-block search, `box-sizing`, `display: contents`, errata and experimental flags, the config object, the pixel-grid rounding, node cloning and owners, `hasNewLayout`, the dirtied callback, logging, the edge shorthands, the `flex` shorthand, and the reuse of a flex basis across passes.
+
+The engine follows CSS in place of Yoga in these cases:
+
+- The three space values on `AlignItems` and `AlignSelf` act as flex-start.
+- A relative offset moves the child in its physical direction, also on a reverse axis and in a wrapped container.
+- A percent margin of an absolute child resolves against the width.
+- Step 8 places each item of a wrapped line by its margin box. It stretches the item to its line only.
+- When the minimum or maximum freezes each growing item, the total grow factor is 0 or a small rounding value. Then each item keeps its bound flex basis. Yoga divides by that total and gives an infinite or very large size.
+- A `WrapReverse` container mirrors the margin box of each item inside its content box. Thus the first line starts inside the padding and the border of the flex-end edge, and the trailing cross margin of the item comes first. Yoga mirrors the border box against the full cross size and uses the padding and the margins of the wrong edge.
 
 ### Design Decisions
 

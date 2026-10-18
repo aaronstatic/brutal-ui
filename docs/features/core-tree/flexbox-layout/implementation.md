@@ -1,10 +1,10 @@
 # Flexbox Layout - Implementation Plan
 
 **Epic:** core-tree (feature 2 of 3)
-**Status:** Planning
-**Started:** 2026-10-16
-**Target Completion:** TBD
-**Last Updated:** 2026-10-16 19:20
+**Status:** Ready for Review
+**Started:** 2026-10-17
+**Target Completion:** 2026-10-18
+**Last Updated:** 2026-10-18 04:25
 
 ---
 
@@ -735,6 +735,8 @@ Run steps 1 to 12 from `/home/aaronstatic/dev/brutal-ui` on Linux.
 ## Notes
 
 ### Open Scope Questions
+
+**Answered on 2026-10-17.** The user chose option A for Q1, Q2, Q3, and Q4. The plan uses these answers as written.
 
 **Q1.** Where do the layout input properties live?
 - A. `ComputedStyle` holds the inputs, and `LayoutNode` holds the output rect, the measure callback, and the engine cache. **(Recommended)**

@@ -1,4 +1,5 @@
 using System;
+using Brutal.Numerics;
 
 namespace BrutalUi.Core;
 
@@ -7,6 +8,10 @@ namespace BrutalUi.Core;
 /// </summary>
 /// <remarks>
 /// <para>The tree is main-thread only. The context and the elements use no locks.</para>
+/// <para>
+/// <see cref="ViewportSize"/> gives the available size of each root. Set it before the first
+/// <see cref="Update(float)"/> and after each resize of the window.
+/// </para>
 /// <para>
 /// An element is a root of one context at most. An element holds no reference to its context.
 /// It holds a root flag instead. <see cref="AddRoot(Element)"/> throws for an element with the flag.
@@ -20,8 +25,9 @@ namespace BrutalUi.Core;
 public sealed class UiContext
 {
     private ElementStorage _roots;
+    private float2 _viewportSize;
 
-    /// <summary>Creates a context with no roots.</summary>
+    /// <summary>Creates a context with no roots and a viewport size of (0, 0).</summary>
     public UiContext()
     {
     }
@@ -32,6 +38,39 @@ public sealed class UiContext
     /// After a growth, the span can read null or the children of another element.
     /// </remarks>
     public ReadOnlySpan<Element> Roots => _roots.AsSpan();
+
+    /// <summary>
+    /// Gets or sets the available size of each root, in pixels. X is the width and Y is the height.
+    /// The default is (0, 0).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Set the size before the first <see cref="Update(float)"/> and after each resize of the window.
+    /// A <c>NaN</c> component means no limit on that axis. Then a root with an auto size on that axis
+    /// takes the size of its content.
+    /// </para>
+    /// <para>
+    /// A root with an auto size gets the viewport size on that axis. A root with a style size keeps its style size.
+    /// A new value marks no element. The next <see cref="Update(float)"/> uses it.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="ArgumentOutOfRangeException">A component of the value is negative or infinite.</exception>
+    public float2 ViewportSize
+    {
+        get => _viewportSize;
+        set
+        {
+            if (!IsValidViewportComponent(value.X) || !IsValidViewportComponent(value.Y))
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(value),
+                    value,
+                    "Each component of the viewport size must be 0 or more and finite, or NaN for no limit.");
+            }
+
+            _viewportSize = value;
+        }
+    }
 
     /// <summary>
     /// Adds a root element at the end of the roots. The root keeps its dirty bits.
@@ -78,17 +117,33 @@ public sealed class UiContext
     }
 
     /// <summary>
-    /// Runs the passes on each root in frame order. A clean subtree costs one flag check.
-    /// The last pass clears each dirty bit that remains.
+    /// Runs the passes on each root in frame order. The layout pass lays out each root against
+    /// <see cref="ViewportSize"/> and clears the layout bits. The last pass clears each dirty bit that remains.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// After the call, <see cref="LayoutNode.Rect"/> of each element in each root holds the new layout.
+    /// Set <see cref="ViewportSize"/> before the first call.
+    /// </para>
+    /// <para>
+    /// The layout pass enters only the dirty elements and the elements with new constraints.
+    /// A clean root with the same viewport costs one cache check.
+    /// A new <see cref="ViewportSize"/> takes effect on the next call with no dirty bit, because the root sees new constraints.
+    /// </para>
+    /// </remarks>
     /// <param name="deltaTime">The time since the last update, in seconds. No pass reads it yet. The framework and the transitions read it later.</param>
     public void Update(float deltaTime)
     {
         ReadOnlySpan<Element> roots = _roots.AsSpan();
 
         // Seam: the style pass of the style-system epic goes here.
-        // Seam: the layout pass of core-tree/flexbox-layout goes here.
-        //       It walks DirtyFlags.Layout and clears the layout bits.
+
+        // The layout pass. It lays out each root against the viewport size and clears the layout bits.
+        float2 viewport = _viewportSize;
+        for (int i = 0; i < roots.Length; i++)
+        {
+            LayoutEngine.Calculate(roots[i], viewport.X, viewport.Y);
+        }
 
         // The clear pass. It clears the bits that no earlier pass cleared.
         for (int i = 0; i < roots.Length; i++)
@@ -96,5 +151,15 @@ public sealed class UiContext
             ClearVisitor clear = default;
             DirtyWalk.Walk(roots[i], DirtyFlags.Style | DirtyFlags.Layout | DirtyFlags.Paint, ref clear);
         }
+    }
+
+    /// <summary>
+    /// Checks one component of a viewport size. <c>NaN</c> is valid and means no limit.
+    /// </summary>
+    /// <param name="component">The width or the height.</param>
+    /// <returns><see langword="true"/> for <c>NaN</c> and for a finite value of 0 or more.</returns>
+    private static bool IsValidViewportComponent(float component)
+    {
+        return float.IsNaN(component) || (component >= 0f && float.IsFinite(component));
     }
 }

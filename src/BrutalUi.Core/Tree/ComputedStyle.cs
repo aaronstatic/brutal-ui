@@ -1,14 +1,273 @@
 namespace BrutalUi.Core;
 
 /// <summary>
-/// The computed style of an element. The struct lives inline in the element and holds no field yet.
+/// The computed style of an element. The struct lives inline in the element and holds the layout inputs.
 /// </summary>
 /// <remarks>
-/// The core-tree/flexbox-layout feature adds the layout fields.
-/// The style-system epic adds the paint fields.
+/// <para>
+/// <c>default(ComputedStyle)</c> gives the Yoga defaults: a column direction and auto sizes.
+/// A new <see cref="Element"/> holds the default style. Each field doc gives the default and the units.
+/// </para>
+/// <para>
 /// Code writes the fields through the <c>ref</c> that <see cref="Element.Style"/> returns.
-/// The struct is not <c>readonly</c>, because those features add mutable fields.
+/// A write sets no dirty bit. After a write of a layout field, call
+/// <see cref="Element.MarkDirty(DirtyFlags)"/> with <see cref="DirtyFlags.Layout"/>.
+/// </para>
+/// <para>
+/// The members are public fields and not properties, so a nested write such as
+/// <c>element.Style.Width = 120;</c> goes to the field and compiles. A property gives a copy and error CS1612.
+/// </para>
+/// <para>The style-system epic adds the paint fields and writes the struct from the cascade.</para>
 /// </remarks>
 public struct ComputedStyle
 {
+    /// <summary>
+    /// The direction of the main axis of the children. The default is <see cref="FlexDirection.Column"/>.
+    /// </summary>
+    public FlexDirection FlexDirection;
+
+    /// <summary>
+    /// The width of the border box, in pixels or in percent of the width of the parent content box.
+    /// The default is <see cref="Length.Undefined"/>, which means auto: the flex rules and the content give the width.
+    /// </summary>
+    public Length Width;
+
+    /// <summary>
+    /// The height of the border box, in pixels or in percent of the height of the parent content box.
+    /// The default is <see cref="Length.Undefined"/>, which means auto: the flex rules and the content give the height.
+    /// </summary>
+    public Length Height;
+
+    /// <summary>
+    /// The space outside the border box, for each edge, in pixels or in percent of the width of the parent content box.
+    /// A percent on all four edges uses the width of the parent, as in Yoga. The default is
+    /// <see cref="LengthEdges"/> with <see cref="Length.Undefined"/> on each edge, which counts as 0.
+    /// A negative pixel value is valid.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="Length.Auto"/> on an edge takes free space, as in CSS and Yoga. On the main axis of the parent, the
+    /// auto margins of a line share the positive free space in equal parts, and
+    /// <see cref="JustifyContent"/> of the parent then gives no space. On the cross axis, an auto margin stops the
+    /// stretch. Two auto margins center the element, and one auto margin pushes the element to the other edge.
+    /// An auto margin takes no negative space. The margin of an absolute element counts auto as 0.
+    /// </remarks>
+    public LengthEdges Margin;
+
+    /// <summary>
+    /// The space between the border and the content, for each edge, in pixels or in percent of the width of the
+    /// parent content box. A percent on all four edges uses the width of the parent, as in Yoga.
+    /// The default is <see cref="Length.Undefined"/> on each edge, which counts as 0.
+    /// A negative value and <see cref="Length.Auto"/> count as 0.
+    /// </summary>
+    public LengthEdges Padding;
+
+    /// <summary>
+    /// The width of the border, for each edge, in pixels. The border lies inside the border box, between the edge and the padding.
+    /// The default is <see cref="Length.Undefined"/> on each edge, which counts as 0.
+    /// A percent, <see cref="Length.Auto"/>, and a negative value count as 0.
+    /// </summary>
+    public LengthEdges BorderWidth;
+
+    /// <summary>
+    /// The part of the free space on the main axis of the parent that the element takes, as a factor with no unit.
+    /// The default is 0: the element does not grow. A root element does not grow.
+    /// A negative, infinite, or <c>NaN</c> value counts as 0.
+    /// </summary>
+    /// <remarks>
+    /// The engine gives each growing child a part of the free space in the ratio of the factors.
+    /// When the sum of the factors of a line is more than 0 and less than 1, the engine uses a sum of 1.
+    /// </remarks>
+    public float FlexGrow;
+
+    /// <summary>
+    /// The part of the negative free space on the main axis of the parent that the element gives up, as a factor
+    /// with no unit. The engine multiplies the factor by the flex basis of the element.
+    /// The default is 0: the element does not shrink. This is the Yoga default, not the CSS default of 1.
+    /// A root element does not shrink. A negative, infinite, or <c>NaN</c> value counts as 0.
+    /// </summary>
+    public float FlexShrink;
+
+    /// <summary>
+    /// The main size of the element before the engine distributes the free space, in pixels or in percent of the
+    /// main size of the parent content box. The default is <see cref="Length.Undefined"/>.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="Length.Undefined"/> and <see cref="Length.Auto"/> both mean auto: a definite
+    /// <see cref="Width"/> or <see cref="Height"/> on the main axis gives the basis, else the content gives it.
+    /// A percent of an undefined parent size acts as auto. A basis less than the padding and border sum
+    /// gives that sum.
+    /// </remarks>
+    public Length FlexBasis;
+
+    /// <summary>
+    /// The smallest width of the border box, in pixels or in percent of the width of the parent content box.
+    /// The default is <see cref="Length.Undefined"/>, which means no limit.
+    /// </summary>
+    /// <remarks>
+    /// The minimum overrides the maximum, as in Yoga. A minimum equal to the maximum also gives the
+    /// <see cref="Width"/>.
+    /// </remarks>
+    public Length MinWidth;
+
+    /// <summary>
+    /// The smallest height of the border box, in pixels or in percent of the height of the parent content box.
+    /// The default is <see cref="Length.Undefined"/>, which means no limit.
+    /// </summary>
+    /// <remarks>
+    /// The minimum overrides the maximum, as in Yoga. A minimum equal to the maximum also gives the
+    /// <see cref="Height"/>.
+    /// </remarks>
+    public Length MinHeight;
+
+    /// <summary>
+    /// The largest width of the border box, in pixels or in percent of the width of the parent content box.
+    /// The default is <see cref="Length.Undefined"/>, which means no limit.
+    /// </summary>
+    /// <remarks><see cref="MinWidth"/> overrides this value.</remarks>
+    public Length MaxWidth;
+
+    /// <summary>
+    /// The largest height of the border box, in pixels or in percent of the height of the parent content box.
+    /// The default is <see cref="Length.Undefined"/>, which means no limit.
+    /// </summary>
+    /// <remarks><see cref="MinHeight"/> overrides this value.</remarks>
+    public Length MaxHeight;
+
+    /// <summary>
+    /// The position of the children on the main axis when the line has free space.
+    /// The default is <see cref="Justify.FlexStart"/>.
+    /// </summary>
+    public Justify JustifyContent;
+
+    /// <summary>
+    /// The position of the children on the cross axis of their line. A child with an
+    /// <see cref="AlignSelf"/> value that is not <see cref="Align.Auto"/> overrides this value.
+    /// The default is <see cref="Align.Auto"/>, which means <see cref="Align.Stretch"/>.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="Align.SpaceBetween"/>, <see cref="Align.SpaceAround"/>, and <see cref="Align.SpaceEvenly"/>
+    /// act as <see cref="Align.FlexStart"/>.
+    /// </remarks>
+    public Align AlignItems;
+
+    /// <summary>
+    /// The position of the element on the cross axis of its line. The default is <see cref="Align.Auto"/>, which
+    /// means the <see cref="AlignItems"/> value of the parent.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="Align.SpaceBetween"/>, <see cref="Align.SpaceAround"/>, and <see cref="Align.SpaceEvenly"/>
+    /// act as <see cref="Align.FlexStart"/>. A root element has no parent, so this value has no effect on a root.
+    /// </remarks>
+    public Align AlignSelf;
+
+    /// <summary>
+    /// The rule for the children that do not fit on one line. The default is <see cref="FlexWrap.NoWrap"/>.
+    /// </summary>
+    /// <remarks>
+    /// With <see cref="FlexWrap.Wrap"/> or <see cref="FlexWrap.WrapReverse"/>, a child that goes past the inner main
+    /// size of the element starts a new line. A line holds one child or more. The cross size of each line is the
+    /// largest cross size of its children, with the margins. A relative offset on the cross axis moves a child in its
+    /// physical direction, also with <see cref="FlexWrap.WrapReverse"/>.
+    /// </remarks>
+    public FlexWrap FlexWrap;
+
+    /// <summary>
+    /// The position of the lines on the cross axis of the element. The default is <see cref="Align.Auto"/>, which
+    /// means <see cref="Align.FlexStart"/>, the Yoga default.
+    /// </summary>
+    /// <remarks>
+    /// The value applies to a wrapped element only (<see cref="FlexWrap"/> is not <see cref="FlexWrap.NoWrap"/>).
+    /// Then it applies also when the element has one line. When the lines need more space than the element has,
+    /// <see cref="Align.Stretch"/>, <see cref="Align.SpaceBetween"/>, <see cref="Align.SpaceAround"/>, and
+    /// <see cref="Align.SpaceEvenly"/> act as <see cref="Align.FlexStart"/>, as in Yoga.
+    /// <see cref="Align.Stretch"/> gives each line an equal part of the free space. With each value, a child with the
+    /// stretch alignment and no definite cross size fills the cross size of its line. The CSS default is
+    /// <c>normal</c>, which acts as stretch.
+    /// </remarks>
+    public Align AlignContent;
+
+    /// <summary>
+    /// The display type of the element. The default is <see cref="Display.Flex"/>.
+    /// </summary>
+    /// <remarks>
+    /// With <see cref="Display.None"/>, the element and its subtree take no space, and the layout pass sets each
+    /// rect of the subtree to zeros. The pass does this only when the element holds a layout bit, so call
+    /// <see cref="Element.MarkDirty(DirtyFlags)"/> with <see cref="DirtyFlags.Layout"/> after a change of this field.
+    /// The value has no effect on a root element.
+    /// </remarks>
+    public Display Display;
+
+    /// <summary>
+    /// The position type of the element. The default is <see cref="PositionType.Relative"/>.
+    /// </summary>
+    /// <remarks>
+    /// A relative element is in the flex flow. <see cref="Left"/>, <see cref="Top"/>, <see cref="Right"/>, and
+    /// <see cref="Bottom"/> move it from its flex position. An absolute element is out of the flex flow and takes
+    /// no space in the line of its parent. The offsets place it in the padding box of the parent.
+    /// </remarks>
+    public PositionType Position;
+
+    /// <summary>
+    /// The offset from the left edge, in pixels or in percent of the width of the parent.
+    /// The default is <see cref="Length.Undefined"/>, which means "not set". <see cref="Length.Auto"/> also means "not set".
+    /// </summary>
+    /// <remarks>
+    /// On a relative element, a positive value moves the element to the right from its flex position. When
+    /// <see cref="Left"/> and <see cref="Right"/> are both set, <see cref="Left"/> applies. The move is physical, as
+    /// in CSS: it goes to the right in each flex direction, also in a parent with <see cref="FlexDirection.RowReverse"/>.
+    /// On an absolute element, the value is the space between the left edge of the padding box of the parent and the
+    /// left margin edge of the element. With <see cref="Right"/> also set and an auto <see cref="ComputedStyle.Width"/>,
+    /// the two offsets give the width.
+    /// </remarks>
+    public Length Left;
+
+    /// <summary>
+    /// The offset from the top edge, in pixels or in percent of the height of the parent.
+    /// The default is <see cref="Length.Undefined"/>, which means "not set". <see cref="Length.Auto"/> also means "not set".
+    /// </summary>
+    /// <remarks>
+    /// On a relative element, a positive value moves the element down from its flex position. When
+    /// <see cref="Top"/> and <see cref="Bottom"/> are both set, <see cref="Top"/> applies. The move is physical, as
+    /// in CSS: it goes down in each flex direction, also in a parent with <see cref="FlexDirection.ColumnReverse"/>.
+    /// On an absolute element, the value is the space between the top edge of the padding box of the parent and the
+    /// top margin edge of the element. With <see cref="Bottom"/> also set and an auto <see cref="ComputedStyle.Height"/>,
+    /// the two offsets give the height.
+    /// </remarks>
+    public Length Top;
+
+    /// <summary>
+    /// The offset from the right edge, in pixels or in percent of the width of the parent.
+    /// The default is <see cref="Length.Undefined"/>, which means "not set". <see cref="Length.Auto"/> also means "not set".
+    /// </summary>
+    /// <remarks>
+    /// On a relative element, a positive value moves the element to the left from its flex position. The value has
+    /// no effect when <see cref="Left"/> is set. The move is physical, as in CSS: it goes to the left in each flex
+    /// direction, also in a parent with <see cref="FlexDirection.RowReverse"/>.
+    /// On an absolute element, the value is the space between the right edge of the padding box of the parent and the
+    /// right margin edge of the element. It applies only when <see cref="Left"/> is not set.
+    /// </remarks>
+    public Length Right;
+
+    /// <summary>
+    /// The offset from the bottom edge, in pixels or in percent of the height of the parent.
+    /// The default is <see cref="Length.Undefined"/>, which means "not set". <see cref="Length.Auto"/> also means "not set".
+    /// </summary>
+    /// <remarks>
+    /// On a relative element, a positive value moves the element up from its flex position. The value has no
+    /// effect when <see cref="Top"/> is set. The move is physical, as in CSS: it goes up in each flex direction,
+    /// also in a parent with <see cref="FlexDirection.ColumnReverse"/>.
+    /// On an absolute element, the value is the space between the bottom edge of the padding box of the parent and the
+    /// bottom margin edge of the element. It applies only when <see cref="Top"/> is not set.
+    /// </remarks>
+    public Length Bottom;
+
+    /// <summary>
+    /// The rule for content that is larger than the element. The default is <see cref="Overflow.Visible"/>.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="Overflow.Visible"/> and <see cref="Overflow.Hidden"/> give the same layout.
+    /// <see cref="Overflow.Scroll"/> changes the measure limits of the children and the final size of the element.
+    /// The renderer epic clips the content.
+    /// </remarks>
+    public Overflow Overflow;
 }
