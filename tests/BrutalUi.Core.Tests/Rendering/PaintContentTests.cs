@@ -187,8 +187,65 @@ public sealed class PaintContentTests
     }
 
     /// <summary>
+    /// The recorder keeps the wrap width of the text call. The description shows a wrap width above 0 before the text.
+    /// </summary>
+    [Fact]
+    public void RecordsTheWrapWidth()
+    {
+        UiContext context = new() { ViewportSize = new float2(400, 300) };
+
+        ContentProbe probe = new() { WrapWidth = 70f };
+        probe.Style.Width = 100;
+        probe.Style.Height = 50;
+        context.AddRoot(probe);
+
+        RecordingRenderer renderer = new();
+        context.Update(0f);
+        context.Draw(renderer);
+
+        ReadOnlySpan<DrawCall> calls = renderer.Calls;
+        Assert.Equal(3, calls.Length);
+        Assert.Equal(DrawCallKind.Text, calls[1].Kind);
+        Assert.Equal(70f, calls[1].WrapWidth);
+
+        string expected = string.Join(
+            "\n",
+            "Begin 400x300 scale 1",
+            "Text 0,0 font 0 size 16 #FFFFFFFF wrap 70 \"hi\"",
+            "End");
+        Assert.Equal(expected, renderer.Describe());
+    }
+
+    /// <summary>
+    /// A recorded wrap width of 0 or less, or <c>NaN</c>, means no wrap. The description of such a call has no wrap
+    /// part, so the golden lines of the earlier tests stay the same.
+    /// </summary>
+    /// <param name="wrapWidth">The wrap width of the hook.</param>
+    [Theory]
+    [InlineData(0f)]
+    [InlineData(-5f)]
+    [InlineData(float.NaN)]
+    public void DescribesNoWrapForAWidthOfZeroOrLess(float wrapWidth)
+    {
+        UiContext context = new() { ViewportSize = new float2(400, 300) };
+
+        ContentProbe probe = new() { WrapWidth = wrapWidth };
+        probe.Style.Width = 100;
+        probe.Style.Height = 50;
+        context.AddRoot(probe);
+
+        RecordingRenderer renderer = new();
+        context.Update(0f);
+        context.Draw(renderer);
+
+        // A compare of the bits also holds for NaN.
+        Assert.Equal(BitConverter.SingleToInt32Bits(wrapWidth), BitConverter.SingleToInt32Bits(renderer.Calls[1].WrapWidth));
+        Assert.Contains("Text 0,0 font 0 size 16 #FFFFFFFF \"hi\"", renderer.Describe(), StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// A probe element. The hook records its arguments and draws the text "hi" at the top-left corner of the border
-    /// box, with font 0, size 16, and a white color scaled by the opacity.
+    /// box, with font 0, size 16, a white color scaled by the opacity, and the wrap width of <see cref="WrapWidth"/>.
     /// </summary>
     private sealed class ContentProbe : Element
     {
@@ -203,6 +260,9 @@ public sealed class PaintContentTests
         /// <summary>Gets the opacity of the last hook call.</summary>
         public float LastOpacity { get; private set; }
 
+        /// <summary>Gets or sets the wrap width that the hook gives to the text call. The default is 0, no wrap.</summary>
+        public float WrapWidth { get; set; }
+
         /// <inheritdoc/>
         internal override void PaintContent(IUiRenderer renderer, in float4 borderBox, float opacity)
         {
@@ -212,7 +272,7 @@ public sealed class PaintContentTests
 
             float2 position = new(borderBox.X, borderBox.Y);
             Rgba8 color = White.ScaleAlpha(opacity);
-            renderer.Text(in position, new FontHandle(0), 16f, in color, "hi"u8);
+            renderer.Text(in position, new FontHandle(0), 16f, in color, "hi"u8, WrapWidth);
         }
     }
 }

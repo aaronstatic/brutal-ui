@@ -69,6 +69,9 @@ internal struct DrawCall
     /// <summary>The font size. <see cref="DrawCallKind.Text"/> sets it.</summary>
     public float Size;
 
+    /// <summary>The wrap width, as the caller gave it. <see cref="DrawCallKind.Text"/> sets it.</summary>
+    public float WrapWidth;
+
     /// <summary>The display scale. <see cref="DrawCallKind.Begin"/> sets it.</summary>
     public float Scale;
 
@@ -189,7 +192,7 @@ internal sealed class RecordingRenderer : IUiRenderer
     }
 
     /// <inheritdoc/>
-    public void Text(in float2 pos, FontHandle font, float size, in Rgba8 color, ReadOnlySpan<byte> utf8)
+    public void Text(in float2 pos, FontHandle font, float size, in Rgba8 color, ReadOnlySpan<byte> utf8, float wrapWidth)
     {
         int start = _textCount;
         int needed = start + utf8.Length;
@@ -211,6 +214,7 @@ internal sealed class RecordingRenderer : IUiRenderer
         call.Position = pos;
         call.Font = font;
         call.Size = size;
+        call.WrapWidth = wrapWidth;
         call.Color = color;
         call.TextStart = start;
         call.TextLength = utf8.Length;
@@ -248,6 +252,7 @@ internal sealed class RecordingRenderer : IUiRenderer
     /// <item><c>Rect 0,0,200,100 fill #0A141EFF border 0 #00000000 radius 0,0,0,0</c> (the radius order is top-left, top-right, bottom-right, and bottom-left)</item>
     /// <item><c>Image 0,0,32,32 texture 7 uv 0,0,1,1 tint #FFFFFFFF radius 0,0,0,0</c></item>
     /// <item><c>Text 12,12 font 0 size 16 #FFFFFFFF "hi"</c> (the text is the UTF-8 bytes as a string, with no escape)</item>
+    /// <item><c>Text 12,12 font 0 size 16 #FFFFFFFF wrap 70 "hi"</c> (a call with a wrap width above 0 adds <c>wrap</c> and the width before the text)</item>
     /// <item><c>End</c></item>
     /// </list>
     /// <para>A line feed (<c>\n</c>) separates the lines. The text has no line feed at the end.</para>
@@ -295,8 +300,13 @@ internal sealed class RecordingRenderer : IUiRenderer
                     text.Append("Text ").Append(F(call.Position.X)).Append(',').Append(F(call.Position.Y))
                         .Append(" font ").Append(call.Font.Id.ToString(CultureInfo.InvariantCulture))
                         .Append(" size ").Append(F(call.Size))
-                        .Append(' ').Append(call.Color.ToString())
-                        .Append(" \"").Append(Encoding.UTF8.GetString(GetText(in call))).Append('"');
+                        .Append(' ').Append(call.Color.ToString());
+                    if (call.WrapWidth > 0f)
+                    {
+                        text.Append(" wrap ").Append(F(call.WrapWidth));
+                    }
+
+                    text.Append(" \"").Append(Encoding.UTF8.GetString(GetText(in call))).Append('"');
                     break;
                 case DrawCallKind.End:
                     text.Append("End");

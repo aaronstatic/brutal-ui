@@ -1118,7 +1118,7 @@ public sealed class PaintWalkTests
         }
 
         /// <inheritdoc/>
-        public void Text(in float2 pos, FontHandle font, float size, in Rgba8 color, ReadOnlySpan<byte> utf8)
+        public void Text(in float2 pos, FontHandle font, float size, in Rgba8 color, ReadOnlySpan<byte> utf8, float wrapWidth)
         {
         }
 
@@ -1177,7 +1177,7 @@ public sealed class PaintWalkTests
         }
 
         /// <inheritdoc/>
-        public void Text(in float2 pos, FontHandle font, float size, in Rgba8 color, ReadOnlySpan<byte> utf8)
+        public void Text(in float2 pos, FontHandle font, float size, in Rgba8 color, ReadOnlySpan<byte> utf8, float wrapWidth)
         {
         }
 

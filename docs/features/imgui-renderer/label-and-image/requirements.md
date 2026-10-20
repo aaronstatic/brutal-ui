@@ -16,6 +16,9 @@ This feature adds the first two element types. `Label` shows UTF-8 text and `Ima
 - `Image` is an element that holds a texture handle, a UV rect, a tint, and a scale mode. It draws through `IUiRenderer.Image`.
 - `Image` sets the measure callback from the texture size.
 - The measure callbacks allocate nothing and follow the contract in `MeasureCallback.cs`.
+- `UiContext` gets a measurer slot, set at creation. The `Label` measure callback reads it during `Update` to call `MeasureText` (answer of 2026-10-20).
+- `Image` reads its natural size from `TextureHandle.Size`, which imgui-draw-list adds (answer of 2026-10-20).
+- A wrapped `Label` passes the same wrap width to `MeasureText` and to `IUiRenderer.Text` (answer of 2026-10-20).
 - `BrutalUi.Core.Tests` tests both elements with the recording renderer: the measure result, the wrap, and the draw call.
 - All code uses `Brutal.Numerics` types, UTF-8 text, file-scoped namespaces, nullable on, and XML doc comments on public members.
 

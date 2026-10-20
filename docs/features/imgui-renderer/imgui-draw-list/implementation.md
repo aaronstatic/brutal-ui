@@ -1,10 +1,10 @@
 # ImGui Draw List - Implementation Plan
 
 **Epic:** imgui-renderer (feature 2 of 4)
-**Status:** Planning
+**Status:** Ready for Review
 **Started:** 2026-10-20
 **Target Completion:** TBD
-**Last Updated:** 2026-10-20 04:25
+**Last Updated:** 2026-10-20 18:13
 
 ---
 
@@ -272,7 +272,7 @@ Group B (the renderer, 6 files):
 **Tasks:**
 - [ ] 2.1 Edit `ImGuiFontService.cs`: the table, `Add`, and `GetFont` per "The Font Service". The context check throws `InvalidOperationException` when `Gui.GetCurrentContext()` has no value.
 - [ ] 2.2 Edit `ImGuiMapping.cs`: add `FontSize`, `WrapWidth`, and `RoundUpWidth` per "The Pure Rules".
-- [ ] 2.3 Edit `ImGuiRenderer.cs`: `Text` and `MeasureText` per "The Mapping Table", in the call form of task 1.1. The empty-span check comes before `fixed` (the gotcha). The `MeasureText` remarks state each rule of the table row: the frame independence, the width rounding, the height, the break rules, the empty text, and the default size. Write the text draw as a private method with a wrap argument (`DrawText(..., float wrapWidth)`) that `Text` calls with 0. Option (a) of open scope question 3 then costs one line.
+- [ ] 2.3 Edit `ImGuiRenderer.cs`: `Text` and `MeasureText` per "The Mapping Table", in the call form of task 1.1. The empty-span check comes before `fixed` (the gotcha). The `MeasureText` remarks state each rule of the table row: the frame independence, the width rounding, the height, the break rules, the empty text, and the default size. The user picked option (a) of open scope question 3. Add a `float wrapWidth` parameter after `utf8` to `IUiRenderer.Text` in `BrutalUi.Core`, with the same wrap rule as `MeasureText`. Update `RecordingRenderer` (record the wrap width), each caller in `BrutalUi.Core.Tests`, and the `IUiRenderer` doc comment and section 8 of `docs/technical-design.md`. `ImGuiRenderer.Text` passes the wrap width to the ImGui text draw.
 - [ ] 2.4 Add to `ImGuiMappingTests.cs`: `FontSize` of 0, -1, `NaN`, and positive infinity gives the default, and 20 gives 20. `WrapWidth` of 0, -5, and `NaN` gives 0, and 70 gives 70. `RoundUpWidth` of 112 gives 112, and of 112.2 gives 113.
 - [ ] 2.5 Write `tests/BrutalUi.ImGui.Tests/ImGuiFontServiceTests.cs`: `ReturnsTheDefaultFontForIdZero` (an empty atlas gets one default font, and a second call gives the same font), `PrefersTheIoDefaultFont`, `GivesIdsFromOne` (two `io.Fonts.AddFontDefault()` fonts give ids 1 and 2, and `GetFont` returns each), `ThrowsForAnUnknownId` (3 and -1), `ThrowsForANullFont`, and `ThrowsWithNoContext`.
 - [ ] 2.6 Write `tests/BrutalUi.ImGui.Tests/ImGuiRendererTextTests.cs` with the measure tests: `MeasuresOneLineWithTheSizeAsHeight`, `DoublesTheHeightForTwiceTheSize`, `WrapsAtANarrowWidth` (two lines at 70), `TreatsAZeroNegativeOrNaNWrapAsNoWrap` (equal to the no-wrap result), `CutsAWordThatIsWiderThanTheWrapWidth` (`brutal-ui` at a wrap width of 40 gives more than one line and a width at or below 40. When ImGui gives another result, record it in `context.md` and assert the real rule), `MeasuresEmptyTextAsZeroWidthAndOneLine`, `UsesTheFontSizeForASizeOfZero`, `MeasuresTheSameBeforeInsideAndBetweenFrames` (before the first `NewFrame`, inside a frame, and after `Render`, unless task 1.1 found a limit, see Risk 2), `MeasureDrawsNothing` (the vertex count of the list does not change), `MeasuresWithASecondFont`, and `ThrowsForAnUnknownFont`.
@@ -560,13 +560,15 @@ Run steps 1 to 10 from `/home/aaronstatic/dev/brutal-ui` on Linux. Step 11 is MA
 3. **The `scale` and `displaySize` arguments.** The renderer uses neither (Decision 6). The game must set `UiContext.ViewportSize` to `io.DisplaySize`. A later epic that sets a scale must define the unit again.
 4. **External unknowns.** The planner read the binding XML docs, but it did not run the binding. Task 1.1 settles these unknowns on the real package: the visibility of `ImGui.PInvoke`, the raw pointer of `ImDrawListPtr` and `ImFontPtr`, the `VulkanBackend.AddTexture` and `RemoveTexture` signatures, the texture status members, the `ImDrawFlags` names, and `CalcTextSizeA` before the first frame. The main thread does not need to run research for them, because the probe answers each one.
 5. **Mixed corner radii.** Decision 4 draws mixed radii above 0 with the largest one. The contract names four radii. The class remarks and section 8 state the limit. An exact path is a later change.
-6. **`Text` has no wrap width.** `MeasureText` can wrap, but `IUiRenderer.Text` takes no wrap width. A wrapped `Label` cannot draw its lines through ImGui with the same breaks. Open scope question 3 asks for the route. The private `DrawText` takes a wrap width already (task 2.3).
+6. **`Text` has no wrap width.** `MeasureText` can wrap, but `IUiRenderer.Text` takes no wrap width today. The user picked option (a) of open scope question 3, so task 2.3 adds a `wrapWidth` parameter to `IUiRenderer.Text`.
 7. **A clip with an area of 0.** The renderer still draws into a command with an empty clip. The Vulkan backend skips such a command. A later change can skip the draw calls while the clip is empty.
 8. **No font file loader.** The service registers fonts of `io.Fonts` and loads no file. The game loads a TTF with `io.Fonts.AddFontFromFileTTF` (the default loader, Q3). A test of a file loader needs a font file in the repository, and no feature of this epic needs one.
 9. **The epic text "an `ImFontPtr` and a size".** The service maps a handle to an `ImFontPtr`. The size comes with each call, and the size rule takes the `LegacySize` of the font for a size of 0 or less.
 10. **A native dependency note.** `AGENTS.md` asks for a note for each native dependency. The test project loads `libimgui` from a pinned package, which the sample loads already. Task 5.7 records it.
 
 ### Open Scope Questions
+
+**Answered 2026-10-20 by the user in `/autorun-epic`:** question 2 (a), question 3 (a), question 4 (a), question 5 (a). Question 1 uses the recommended demo (a). The plan follows each answer.
 
 1. **The demo of phase 1 (rule 12).** Recommended first.
    - (a) **Recommended.** `**Demo:** the developer runs dotnet run --project tests/BrutalUi.ImGui.Tests/BrutalUi.ImGui.Tests.csproj -- --filter-method '*DrawsThreeElementTreeWithOneClip' --show-live-output on and reads two command lines: the root fill under the viewport clip, then the two child fills under the clip 2,2,198,98.` Reason: it runs on each machine with no GPU and checks each value.
@@ -595,7 +597,8 @@ Run steps 1 to 10 from `/home/aaronstatic/dev/brutal-ui` on Linux. Step 11 is MA
   - `MeasureText` rules: the width rounds up to a whole pixel, the height is the line count times the size, and empty text gives `(0, size)`. ImGui breaks after a blank or after `. , ; ! ? "`, and it cuts a word that is wider than the wrap width. A wrap width of 0 or less, or `NaN`, means no wrap. A size of 0 or less uses the default size of the font. It works outside a frame, and it needs a current ImGui context (or the limit of Risk 2, when task 1.1 finds one).
   - Font id 0 is the ImGui default font. An unknown id throws.
   - With option (a) of question 2, `Image` reads `handle.Size` for its natural size.
-  - `Text` draws one line with no wrap until question 3 has an answer.
+  - `IUiRenderer.Text` takes a `wrapWidth` (question 3, option a). A wrapped `Label` passes the same wrap width to `MeasureText` and `Text`.
+  - The measure route is a measurer slot on `UiContext`, set at creation (question 4, option a). label-and-image builds the slot.
   - The `RecordingRenderer` measure rule (`length * size * 0.5`, `size`) differs from ImGui. The label tests in `BrutalUi.Core.Tests` stay on the recording renderer. A label test in `BrutalUi.ImGui.Tests` can use the real measure.
 - **hello-panel-sample:**
   - Create order: `ImGui.CreateContext`, then the services and the renderer, then the backends. Register the procedural texture with `AddVulkan` after the upload.

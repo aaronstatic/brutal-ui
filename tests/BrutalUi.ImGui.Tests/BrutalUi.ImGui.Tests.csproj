@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" />
+  </ItemGroup>
+
+  <!-- The tests compile the shared tree builders and the recording renderer of the Core test project. A linked
+       Compile item is not a reference, so this project references only BrutalUi.ImGui and xunit.v3. -->
+  <ItemGroup>
+    <Compile Include="../BrutalUi.Core.Tests/Shared/*.cs" LinkBase="Shared" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/BrutalUi.ImGui/BrutalUi.ImGui.csproj" />
+  </ItemGroup>
+
+</Project>

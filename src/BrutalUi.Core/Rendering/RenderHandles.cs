@@ -1,4 +1,5 @@
 using System;
+using Brutal.Numerics;
 
 namespace BrutalUi.Core;
 
@@ -49,23 +50,46 @@ public readonly struct FontHandle : IEquatable<FontHandle>
 }
 
 /// <summary>
-/// A handle to a texture of the renderer.
+/// A handle to a texture of the renderer, with the size of the texture in texels.
 /// </summary>
 /// <remarks>
+/// <para>
 /// Id 0 (the default value) is no texture. <see cref="IUiRenderer.Image"/> draws nothing for it.
 /// The renderer gives the other ids. The ids have a meaning for one renderer only. Do not store them between runs.
+/// </para>
+/// <para>
+/// <see cref="Size"/> is the size of the texture in texels. An image element reads it for its natural size.
+/// The default handle has the size (0, 0).
+/// </para>
+/// <para>
+/// Equality and the hash code use the id only, not the size. One renderer gives one size for each id, so two
+/// handles with the same id from the same renderer always have the same size.
+/// </para>
 /// </remarks>
 public readonly struct TextureHandle : IEquatable<TextureHandle>
 {
-    /// <summary>Creates a handle with an id.</summary>
+    /// <summary>Creates a handle with an id and the size (0, 0).</summary>
     /// <param name="id">The id of the texture. The id 0 is no texture.</param>
     public TextureHandle(int id)
     {
         Id = id;
     }
 
+    /// <summary>Creates a handle with an id and a size.</summary>
+    /// <param name="id">The id of the texture. The id 0 is no texture.</param>
+    /// <param name="size">The size of the texture in texels.</param>
+    public TextureHandle(int id, int2 size)
+    {
+        Id = id;
+        Size = size;
+    }
+
     /// <summary>Gets the id of the texture. The id 0 is no texture.</summary>
     public int Id { get; }
+
+    /// <summary>Gets the size of the texture in texels. An image element reads it for its natural size.</summary>
+    /// <remarks>The equality of two handles does not use the size.</remarks>
+    public int2 Size { get; }
 
     /// <summary>Gets a value that shows whether the handle is no texture (id 0).</summary>
     public bool IsNone => Id == 0;

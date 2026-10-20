@@ -98,12 +98,19 @@ public interface IUiRenderer
     /// <summary>
     /// Draws UTF-8 text.
     /// </summary>
+    /// <remarks>
+    /// An empty span draws nothing. A <paramref name="color"/> with an alpha of 0 draws nothing.
+    /// </remarks>
     /// <param name="pos">The top-left corner of the first line in viewport pixels.</param>
     /// <param name="font">The font. Id 0 is the default font of the renderer.</param>
     /// <param name="size">The font size in pixels.</param>
     /// <param name="color">The text color.</param>
     /// <param name="utf8">The text as UTF-8 bytes. The span is valid for the call only. Do not keep it.</param>
-    void Text(in float2 pos, FontHandle font, float size, in Rgba8 color, ReadOnlySpan<byte> utf8);
+    /// <param name="wrapWidth">
+    /// The width in viewport pixels at which the text wraps. A value of 0 or less, or <c>NaN</c>, means no wrap.
+    /// The same value given to <see cref="MeasureText"/> gives the same lines.
+    /// </param>
+    void Text(in float2 pos, FontHandle font, float size, in Rgba8 color, ReadOnlySpan<byte> utf8, float wrapWidth);
 
     /// <summary>
     /// Measures UTF-8 text. The call draws nothing.

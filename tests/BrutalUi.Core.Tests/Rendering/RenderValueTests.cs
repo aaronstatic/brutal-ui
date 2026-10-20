@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.CompilerServices;
+using Brutal.Numerics;
 using Xunit;
 
 namespace BrutalUi.Core.Tests;
@@ -141,6 +142,51 @@ public sealed class RenderValueTests
         Assert.True(default(TextureHandle).IsNone);
         Assert.True(new TextureHandle(0).IsNone);
         Assert.False(a.IsNone);
+    }
+
+    /// <summary>The two-argument constructor keeps the id and the size.</summary>
+    [Fact]
+    public void TextureHandleSizeReadsBack()
+    {
+        TextureHandle handle = new(4660, new int2(64, 32));
+
+        Assert.Equal(4660, handle.Id);
+        Assert.Equal(64, handle.Size.X);
+        Assert.Equal(32, handle.Size.Y);
+        Assert.False(handle.IsNone);
+    }
+
+    /// <summary>The one-argument constructor and the default handle give the size (0, 0).</summary>
+    [Fact]
+    public void TextureHandleWithNoSizeHasSizeZero()
+    {
+        TextureHandle handle = new(7);
+
+        Assert.Equal(0, handle.Size.X);
+        Assert.Equal(0, handle.Size.Y);
+        Assert.Equal(0, default(TextureHandle).Size.X);
+        Assert.Equal(0, default(TextureHandle).Size.Y);
+        Assert.True(new TextureHandle(0, new int2(0, 0)).IsNone);
+    }
+
+    /// <summary>Equality and the hash code use the id only. Two handles with the same id and another size are equal.</summary>
+    [Fact]
+    public void TextureHandleEqualityIgnoresTheSize()
+    {
+        TextureHandle a = new(7, new int2(64, 32));
+        TextureHandle otherSize = new(7, new int2(16, 16));
+        TextureHandle noSize = new(7);
+        TextureHandle otherId = new(8, new int2(64, 32));
+
+        Assert.True(a == otherSize);
+        Assert.False(a != otherSize);
+        Assert.True(a.Equals(otherSize));
+        Assert.True(a.Equals((object)otherSize));
+        Assert.Equal(a.GetHashCode(), otherSize.GetHashCode());
+        Assert.True(a == noSize);
+        Assert.Equal(a.GetHashCode(), noSize.GetHashCode());
+        Assert.True(a != otherId);
+        Assert.False(a.Equals(otherId));
     }
 
     /// <summary>The default style and a new element have an opacity of 1, so they are visible.</summary>

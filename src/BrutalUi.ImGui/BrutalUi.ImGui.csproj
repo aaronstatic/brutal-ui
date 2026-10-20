@@ -4,6 +4,11 @@
     <Description>The brutal-ui renderer on the ImGui draw list, with fonts and textures.</Description>
   </PropertyGroup>
 
+  <!-- The headless test project reads the internal types: the mapping rules and the frame state. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="BrutalUi.ImGui.Tests" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Ahwoo.BRUTAL.ImGui" />
     <PackageReference Include="Ahwoo.BRUTAL.ImGui.Backends" />

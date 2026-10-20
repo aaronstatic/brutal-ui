@@ -98,6 +98,7 @@ brutal-ui/
 │   └── WorldSpace/             # panel on a quad
 ├── tests/
 │   ├── BrutalUi.Core.Tests/
+│   ├── BrutalUi.ImGui.Tests/
 │   ├── BrutalUi.Framework.Tests/
 │   ├── BrutalUi.Markup.Tests/
 │   └── BrutalUi.Benchmarks/
@@ -118,7 +119,7 @@ brutal-ui/
 
 **`src/BrutalUi.Markup/`** holds the XML element loader and the stylesheet parser. It references Core only.
 
-**`tests/`** holds xUnit tests for each package and a BenchmarkDotNet project with the allocation guard.
+**`tests/`** holds xUnit tests for each package and a BenchmarkDotNet project with the allocation guard. `BrutalUi.ImGui.Tests` runs the ImGui renderer headless: it creates an ImGui context with no window and no GPU, and it reads the background draw list.
 
 ---
 
@@ -347,15 +348,33 @@ public interface IUiRenderer
     void PopClip();
     void Rect(in float4 rect, in Rgba8 color, in Corners radius, float borderWidth, in Rgba8 borderColor);
     void Image(in float4 rect, TextureHandle texture, in float4 uv, in Rgba8 tint, in Corners radius);
-    void Text(in float2 pos, FontHandle font, float size, in Rgba8 color, ReadOnlySpan<byte> utf8);
+    void Text(in float2 pos, FontHandle font, float size, in Rgba8 color, ReadOnlySpan<byte> utf8, float wrapWidth);
     float2 MeasureText(FontHandle font, float size, ReadOnlySpan<byte> utf8, float wrapWidth);
     void End();
 }
 ```
 
+`Text` and `MeasureText` use the same wrap rule: a wrap width of 0 or less, or `NaN`, means no wrap, and the same wrap width gives the same lines.
+
 ### ImGui implementation
 
-`ImGuiRenderer` writes into a private `ImDrawList` owned by the context, or into `ImGui.GetBackgroundDrawList()` when the game asks for that. `FontHandle` maps to an `ImFontPtr`. `TextureHandle` maps to an `ImTextureRef` registered through `VulkanBackend.AddTexture` or the OpenGL equivalent.
+In this epic, `ImGuiRenderer` writes into the background draw list of the main viewport (Q2). The list is under all ImGui windows, so a debug window shows on top of the UI. A private list waits for the world-space epic. Then `Begin` gets a second draw-list source. `Begin` reads the list in one place, and both renderers share the two services.
+
+**Services.** `ImGuiFontService` maps a `FontHandle` to an `ImFontPtr` of `io.Fonts`. Id 0 is the default font: `io.FontDefault`, else the first font of the atlas, else one `AddFontDefault()` call. `Add` registers a font that the game loaded, and it gives ids from 1 that never repeat. `ImGuiTextureService` maps a `TextureHandle` to an `ImTextureRef`. `Add` takes a reference that the game registered. `AddVulkan` calls `VulkanBackend.AddTexture` (the OpenGL equivalent waits). `AddVulkan` checks the size, the sampler, the image view, and the backend before it calls the backend. The handle holds the size of the texture. The service owns the registration only, and the game owns the image, the view, and the sampler. `Remove` makes the id unknown for ever, and for a Vulkan texture it calls `RemoveTexture`. Call `Remove` after `vulkan.WaitIdle()` and before the backend is disposed. The font service needs a current ImGui context. The texture service reads no ImGui state.
+
+**Handle errors (Decision 7).** An unknown font id, an unknown texture id, a removed texture, and the none handle in a lookup throw `ArgumentOutOfRangeException`. The none handle in `Image` draws nothing, but a stale id throws, also for a tint alpha of 0 or a rect with no area. A draw call before `Begin` throws `InvalidOperationException`. So do a `PopClip` with no open clip, a `PopClip` when the clip stack of the list holds only the viewport clip (a frame with no `End` in an earlier ImGui frame), and a `Begin`, `Text`, or `MeasureText` with no current context. Each check runs before the native call, because a native ImGui assert does not stop the process. `Begin` does not detect a call outside an ImGui frame. The game calls `Update` and `Draw` between `ImGui.NewFrame` and `ImGui.Render`.
+
+**Explicit font and size (Decision 2).** `Text` and `MeasureText` pass the font and the size to each ImGui call (`AddText` with a font and a size, `ImFont.CalcTextSizeA`). They push no font and use no font stack of the frame, so `MeasureText` works before the first frame, inside a frame, and between frames. The dynamic fonts of ImGui 1.92 bake each size on demand. A size of 0 or less, `NaN`, or infinity gives the size of the font (the size of its `AddFont` call). A resolved size of 0 or less, or not finite, draws nothing and measures `(0, 0)`, because ImGui stops the process on a negative size.
+
+**Size and wrap rules.** `MeasureText` resolves the font before the empty-text check, so an unknown id throws also for empty text. Empty text gives `(0, size)`. The width rounds up to a whole pixel with `floor(width + 0.99999)` in single precision, as `ImGui.CalcTextSize` does. A whole width of 256 or more gives the width plus 1, as ImGui does. The height is the line count times the size, and a line feed at the end adds no line. A wrap width of 0 or less, `NaN`, or infinity means no wrap. With a wrap, a line breaks after a blank or after one of the marks `. , ; ! ? "`. ImGui cuts a word that is wider than the wrap width inside the word, so the width stays at or below the wrap width, except when the wrap width is below one glyph. `Text` skips an empty span, an alpha of 0, a resolved size that is not drawable, and a position that is not finite.
+
+**Corners (Decision 4).** ImGui rounds a rect with one radius and a corner mask. Each radius of 0 or less, or `NaN`, becomes 0, and each radius is limited to half the shorter side. The rounding is the largest radius, and the mask names each corner with a radius above 0. With no such corner, the mask is `RoundCornersNone`, because ImGui reads a mask with no corner bit as "all corners". The result is exact when the radii above 0 are equal. Mixed radii above 0 draw with the largest one. An exact path for mixed radii is a later change. `Image` uses the same rule with `AddImageRounded`. A rounded fill and a rounded image draw an anti-alias fringe of 0.5 pixel.
+
+**Border (Decision 5).** The border stays inside the box. The stroke rect is the rect inset by `borderWidth / 2 - 0.5`, and the stroke radius is `max(radius - borderWidth / 2, 0)`, so the outer edge of the stroke follows the radius of the fill. The anti-alias fringe of the stroke reaches 1 pixel outside the rect. A border below 1 pixel draws as 1 pixel: ImGui draws a thin stroke as 1 pixel, so the inset uses `max(borderWidth, 1)` and is never below 0. A border of `borderWidth * 2 >= min(width, height)` covers the box. It draws as one fill in the border color with no stroke, and an opaque border skips the hidden fill. A rect draws nothing when its width or height is 0 or less, or when a component is not finite. **The finite bounds rule:** a rect or an image also draws nothing when a bound in viewport pixels is not finite, because two finite values can add up to infinity (`3e38 + 3e38`).
+
+**Viewport (Decision 6).** A viewport pixel is one ImGui display unit. The renderer adds the position of the main viewport to each position. It uses neither the `scale` argument nor the `displaySize` argument of `Begin`, and the ImGui backend applies the framebuffer scale. The game sets `UiContext.ViewportSize` equal to `io.DisplaySize`. `PushClip` intersects with the current clip, so a finite clip stays in the viewport. A clip with an area of 0 is valid, and the Vulkan backend skips its draw commands. **The non-finite clip rule:** when a bound of the clip is not finite (a `NaN` or infinite component, or an overflow of `x + width`), `PushClip` pushes a clip with an area of 0. A coordinate of the top-left point that is not finite becomes the origin, and the bottom-right point equals the top-left point. The push still happens, so the stack stays balanced. ImGui keeps a `NaN` and an infinite min in its intersect, and the Vulkan backend casts the clip to an integer scissor. `End` pops each clip that is still open.
+
+**Allocation.** `Begin`, the draw calls, `MeasureText`, and `End` allocate no managed memory after warm-up. A warm-up frame must use each font and size, because ImGui bakes a size on its first use.
 
 ### The draw walk
 
@@ -500,6 +519,8 @@ The Vulkan backend binds one render pass at construction. Phase 5 tests a second
 - **Unit tests** on the layout engine with fixtures from the Yoga test suite, ported by hand.
 - **Unit tests** on the style cascade, the XML loader, the stylesheet parser, and the framework diff.
 - **Allocation tests** that run update and draw on a warm 1000-element tree and assert zero bytes allocated. `ThousandElementAllocationTests` is the gate. It covers the update and the draw. The draw test runs full frames (`Update`, then `Draw` into a `RecordingRenderer`) after a warm-up.
+- **Headless ImGui tests** in `BrutalUi.ImGui.Tests`. A harness creates an ImGui context with no window and no GPU, runs frames, and reads the background draw list as text lines (clip, texture, element count, vertex bounds, colors). The tests need no `VulkanBackend`. `dotnet test` loads the native ImGui library of the pinned `Ahwoo.BRUTAL.ImGui` package.
+- **A second allocation gate.** `ImGuiRendererAllocationTests` runs full frames through `ImGuiRenderer` on the 1000-element tree and through the direct calls (rounded rect with a border, square and rounded image, wrapped text, and a measure outside a frame). It asserts zero allocated bytes after warm-up. A test also checks that the measured draw does real work, so a draw that does nothing cannot pass.
 - **Benchmarks** with BenchmarkDotNet for layout and draw on that tree. `TreeLayoutBenchmark` measures the full layout, a dirty subtree, and a clean update on the 1000-element tree. The settings panel is hidden, so the full layout pass lays out 780 elements and sets the 220 elements of the panel to zero. `PercentChainBenchmark` measures a leaf mark under a chain of percent sizes.
 - **Facts report.** The `--facts` mode of the benchmark project prints four `facts:` lines: the size of the tree, the callback calls of the two percent chains, and the number of levels that pass on a 1 MB stack.
 - **Sample projects** as the integration test, built in CI.
