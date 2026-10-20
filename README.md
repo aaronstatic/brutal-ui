@@ -1,6 +1,6 @@
 # brutal-ui
 
-A UI framework for the [BRUTAL](https://github.com/Ahwoo/BRUTAL) C# framework. Retained tree, flexbox, styles, markup, data binding. Zero allocations per frame.
+A UI framework for the [BRUTAL](https://github.com/ahwootech/brutal) C# framework. Retained tree, flexbox, styles, markup, data binding. Zero allocations per frame.
 
 brutal-ui gives you an element tree, a flexbox layout engine, a stylesheet, an XML markup format, data binding, and a panel and mode model. It renders through the Dear ImGui draw list that BRUTAL already ships. It allocates nothing in the frame loop after warm-up, and a test proves it.
 
