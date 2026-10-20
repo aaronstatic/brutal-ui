@@ -22,18 +22,81 @@ namespace BrutalUi.Core;
 /// A root keeps its root flag until <see cref="RemoveRoot(Element)"/>.
 /// Call <see cref="RemoveRoot(Element)"/> on each root before you drop a context.
 /// </para>
+/// <para>
+/// A <see cref="Label"/> measures its text with the <see cref="Measurer"/> of its context during
+/// <see cref="Update(float)"/>. Create the context with <see cref="UiContext(in CreateInfo)"/> when the tree holds
+/// a label. A context with no measurer throws from <see cref="Update(float)"/> when a label needs a measure.
+/// </para>
+/// <para>
+/// The measurer and the renderer of <see cref="Draw(IUiRenderer)"/> must use the same font ids. Pass the renderer
+/// that draws, or a renderer that shares its font service. Otherwise the layout and the draw use different fonts.
+/// </para>
 /// </remarks>
 public sealed class UiContext
 {
+    /// <summary>The create-info of a <see cref="UiContext"/>.</summary>
+    public struct CreateInfo
+    {
+        /// <summary>
+        /// The renderer that measures text for the layout pass. It must not be <see langword="null"/>.
+        /// </summary>
+        /// <remarks>
+        /// The measurer and the renderer of <see cref="Draw(IUiRenderer)"/> must use the same font ids. Pass the
+        /// renderer that draws, or a renderer that shares its font service.
+        /// </remarks>
+        public required IUiRenderer Measurer;
+    }
+
+    /// <summary>
+    /// The measurer of the <see cref="Update(float)"/> call that runs on this thread. It is <see langword="null"/>
+    /// outside <see cref="Update(float)"/>.
+    /// </summary>
+    /// <remarks>
+    /// The field is thread-static because tests lay out trees on more than one thread at the same time.
+    /// </remarks>
+    [ThreadStatic]
+    private static IUiRenderer? t_measurer;
+
+    private readonly IUiRenderer? _measurer;
     private ElementStorage _roots;
     private float2 _viewportSize;
     private PaintFrame[] _paintStack = new PaintFrame[PaintWalk.InitialStackSize];
     private bool _drawing;
 
-    /// <summary>Creates a context with no roots and a viewport size of (0, 0).</summary>
+    /// <summary>Creates a context with no roots, a viewport size of (0, 0), and no measurer.</summary>
+    /// <remarks>
+    /// A context with no measurer cannot lay out a <see cref="Label"/>. Use <see cref="UiContext(in CreateInfo)"/>
+    /// for a tree with text.
+    /// </remarks>
     public UiContext()
     {
     }
+
+    /// <summary>Creates a context with no roots, a viewport size of (0, 0), and the measurer of the create-info.</summary>
+    /// <param name="info">The create-info.</param>
+    /// <exception cref="ArgumentNullException">The measurer of <paramref name="info"/> is <see langword="null"/>.</exception>
+    public UiContext(in CreateInfo info)
+    {
+        if (info.Measurer is null)
+        {
+            throw new ArgumentNullException(nameof(info), "The Measurer of the UiContext.CreateInfo must not be null.");
+        }
+
+        _measurer = info.Measurer;
+    }
+
+    /// <summary>
+    /// Gets the renderer that measures text for the layout pass. It is <see langword="null"/> for a context from
+    /// <see cref="UiContext()"/>.
+    /// </summary>
+    /// <remarks>The value is set at creation only.</remarks>
+    public IUiRenderer? Measurer => _measurer;
+
+    /// <summary>
+    /// Gets the measurer of the <see cref="Update(float)"/> call that runs on this thread. It is
+    /// <see langword="null"/> outside <see cref="Update(float)"/> and during an update of a context with no measurer.
+    /// </summary>
+    internal static IUiRenderer? CurrentMeasurer => t_measurer;
 
     /// <summary>Gets the root elements in the order of add.</summary>
     /// <remarks>
@@ -133,8 +196,16 @@ public sealed class UiContext
     /// A clean root with the same viewport costs one cache check.
     /// A new <see cref="ViewportSize"/> takes effect on the next call with no dirty bit, because the root sees new constraints.
     /// </para>
+    /// <para>
+    /// A <see cref="Label"/> measures its text with <see cref="Measurer"/> during this call only. The call puts the
+    /// measurer into a scope of the current thread for the layout pass, and it restores the old scope at the end,
+    /// also after an exception. A nested call thus keeps the scope of the outer call.
+    /// </para>
     /// </remarks>
     /// <param name="deltaTime">The time since the last update, in seconds. No pass reads it yet. The framework and the transitions read it later.</param>
+    /// <exception cref="InvalidOperationException">
+    /// A <see cref="Label"/> needs a measure and the context has no <see cref="Measurer"/>.
+    /// </exception>
     public void Update(float deltaTime)
     {
         ReadOnlySpan<Element> roots = _roots.AsSpan();
@@ -142,10 +213,20 @@ public sealed class UiContext
         // Seam: the style pass of the style-system epic goes here.
 
         // The layout pass. It lays out each root against the viewport size and clears the layout bits.
+        // The measure scope gives the measurer of this context to the measure callbacks of the labels.
         float2 viewport = _viewportSize;
-        for (int i = 0; i < roots.Length; i++)
+        IUiRenderer? previousMeasurer = t_measurer;
+        t_measurer = _measurer;
+        try
         {
-            LayoutEngine.Calculate(roots[i], viewport.X, viewport.Y);
+            for (int i = 0; i < roots.Length; i++)
+            {
+                LayoutEngine.Calculate(roots[i], viewport.X, viewport.Y);
+            }
+        }
+        finally
+        {
+            t_measurer = previousMeasurer;
         }
 
         // The clear pass. It clears the bits that no earlier pass cleared.
@@ -202,6 +283,55 @@ public sealed class UiContext
         finally
         {
             _drawing = false;
+        }
+    }
+
+    /// <summary>
+    /// Reads the localized text of each <see cref="Label"/> with a <see cref="Label.LocalizedText"/> again, in each
+    /// root and its subtree. A label with a new text gets <see cref="DirtyFlags.Layout"/> and
+    /// <see cref="DirtyFlags.Paint"/>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <c>Brutal.Localization</c> has no change event. Call this method after a locale change: after
+    /// <c>LocalizedStrings.SetLocalizedStringProvider</c>, <c>LStrings.SetLocalizedStringProvider</c>,
+    /// <see cref="Brutal.Localization.LString.Localize(string)"/>, or
+    /// <see cref="Brutal.Localization.LString.RemoveLocalization"/>. Do not call it in each frame.
+    /// <see cref="Update(float)"/> does not call it.
+    /// </para>
+    /// <para>
+    /// The method walks each element of each root. It marks a label only when the content of its localized text
+    /// changed (ordinal). A new string with the same content marks nothing. The method marks no other element.
+    /// </para>
+    /// <para>
+    /// The method allocates nothing when the buffer of each label is large enough. A longer text grows the buffer of
+    /// its label one time. The method needs no <see cref="Measurer"/>. The next <see cref="Update(float)"/> measures
+    /// the new text.
+    /// </para>
+    /// </remarks>
+    public void RefreshLocalizedText()
+    {
+        ReadOnlySpan<Element> roots = _roots.AsSpan();
+        for (int i = 0; i < roots.Length; i++)
+        {
+            RefreshSubtree(roots[i]);
+        }
+    }
+
+    /// <summary>Calls <see cref="Label.RefreshLocalized"/> on each label in a subtree, in tree order.</summary>
+    /// <remarks>The recursion depth is the depth of the tree. A refresh changes no child list.</remarks>
+    /// <param name="element">The root of the subtree.</param>
+    private static void RefreshSubtree(Element element)
+    {
+        if (element is Label label)
+        {
+            label.RefreshLocalized();
+        }
+
+        ReadOnlySpan<Element> children = element.ChildStorage.AsSpan();
+        for (int i = 0; i < children.Length; i++)
+        {
+            RefreshSubtree(children[i]);
         }
     }
 

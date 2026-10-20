@@ -1,10 +1,10 @@
 # Label And Image - Implementation Plan
 
 **Epic:** imgui-renderer (feature 3 of 4)
-**Status:** Planning
+**Status:** Ready for Review
 **Started:** 2026-10-20
 **Target Completion:** TBD
-**Last Updated:** 2026-10-20 06:30
+**Last Updated:** 2026-10-20 22:13
 
 ---
 
@@ -636,6 +636,8 @@ The epic interview confirmed A4, A5, A7, and A9 (`epic-requirements.md`, `epic-o
 ## Notes
 
 ### Open Scope Questions
+
+**Answered 2026-10-20 by the user in `/autorun-epic`:** each of the four questions takes its recommended option. Question 1: the Core `*DrawsAOneLineLabel` demo. Question 2: `UiContext.RefreshLocalizedText()`. Question 3: `LayoutNode.ContentInsets`. Question 4: the thread-static scope. The plan follows each answer.
 
 **Question 1: What is the demo of phase 1? (rule 12)**
 - **Recommended:** `**Demo:** the developer runs dotnet run --project tests/BrutalUi.Core.Tests/BrutalUi.Core.Tests.csproj -- --filter-method '*DrawsAOneLineLabel' --show-live-output on and reads rect 0,0,40,16, then Begin 400x300 scale 1, Text 0,0 font 0 size 16 #FFFFFFFF wrap 40 "Hello", and End.` Reason: the smallest path that proves the measurer slot, the layout size, and the draw call, with no native library.

@@ -9,8 +9,8 @@ using Gui = Brutal.ImGuiApi.ImGui;
 namespace BrutalUi.ImGui.Tests;
 
 /// <summary>
-/// The release gate of the ImGui renderer. After warm-up, a frame that draws the 1000-element tree, and a frame of
-/// direct renderer calls, must allocate 0 managed bytes.
+/// The release gate of the ImGui renderer. After warm-up, a frame that draws the 1000-element tree, a frame of direct
+/// renderer calls, and a frame that changes, measures, and draws labels and images must allocate 0 managed bytes.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -38,8 +38,123 @@ public sealed unsafe class ImGuiRendererAllocationTests
     private static readonly Rgba8 White = new(255, 255, 255);
     private static readonly Rgba8 Transparent = new(255, 255, 255, 0);
 
+    /// <summary>The label count and the image count of the label scene.</summary>
+    private const int LabelSceneCount = 50;
+
+    /// <summary>The count of labels and of images that the label frame changes.</summary>
+    private const int LabelSceneChangedCount = 10;
+
+    /// <summary>The width of a label of the label scene. The padding of 4 leaves 112 pixels: 16 glyphs at size 13.</summary>
+    private const float LabelSceneLabelWidth = 120f;
+
+    /// <summary>The padding of a label of the label scene.</summary>
+    private const float LabelScenePadding = 4f;
+
+    /// <summary>The font size of the label scene and of the even label frames, the size of the default font of the harness.</summary>
+    private const float LabelSceneFontSize = 13f;
+
+    /// <summary>The font size of the odd label frames. Both texts wrap to two lines at this size too.</summary>
+    private const float LabelSceneSecondFontSize = 12f;
+
+    /// <summary>The width of an image of the label scene. The height comes from the image measure.</summary>
+    private const float LabelSceneImageWidth = 32f;
+
+    /// <summary>The display width of the label scene.</summary>
+    private const float LabelSceneWidth = 400f;
+
+    /// <summary>The display height of the label scene. The column of 101 elements is about 2520 pixels high.</summary>
+    private const float LabelSceneHeight = 2600f;
+
+    private static readonly int2 LabelSceneTextureSize = new(16, 16);
+    private static readonly Rgba8 FirstTint = new(255, 200, 100);
+    private static readonly Rgba8 SecondTint = new(100, 200, 255);
+    private static readonly Rgba8 FirstColor = new(255, 240, 200);
+    private static readonly Rgba8 SecondColor = new(200, 240, 255);
+
+    /// <summary>The UV rect of the odd label frames: the top half of the texture, a natural size of 16 by 8.</summary>
+    private static readonly float4 HalfUv = new(0f, 0f, 1f, 0.5f);
+
     /// <summary>The text of the direct calls. The text is long enough to wrap at a width of 70.</summary>
     private static ReadOnlySpan<byte> Hello => "Hello, brutal-ui"u8;
+
+    /// <summary>The text of the even label frames: 25 glyphs, two lines at a wrap width of 112.</summary>
+    private static ReadOnlySpan<byte> FirstLabelText => "The first text of a label"u8;
+
+    /// <summary>The text of the odd label frames: 24 glyphs, two lines at a wrap width of 112.</summary>
+    private static ReadOnlySpan<byte> SecondLabelText => "A second text that wraps"u8;
+
+    /// <summary>
+    /// The label scene: the context, the renderer, the changed labels and images, and the frame counter.
+    /// </summary>
+    private sealed class LabelScene
+    {
+        public required UiContext Context { get; init; }
+
+        /// <summary>The renderer that measures the text and draws the frame.</summary>
+        public required ImGuiRenderer Renderer { get; init; }
+
+        /// <summary>The labels with a plain text, in tree order.</summary>
+        public required Label[] Labels { get; init; }
+
+        /// <summary>The images, in tree order.</summary>
+        public required BrutalUi.Core.Image[] Images { get; init; }
+
+        /// <summary>The texture of the even frames.</summary>
+        public required TextureHandle FirstTexture { get; init; }
+
+        /// <summary>The texture of the odd frames. It has the size of <see cref="FirstTexture"/> and another id.</summary>
+        public required TextureHandle SecondTexture { get; init; }
+
+        /// <summary>The label with an <see cref="Brutal.Localization.LString"/>. It is the last child of the root.</summary>
+        public required Label Localized { get; init; }
+
+        /// <summary>The <see cref="Brutal.Localization.LString"/> of the even frames: "Hello".</summary>
+        public required Brutal.Localization.LString FirstLocalized { get; init; }
+
+        /// <summary>The <see cref="Brutal.Localization.LString"/> of the odd frames: "World".</summary>
+        public required Brutal.Localization.LString SecondLocalized { get; init; }
+
+        /// <summary>The number of frames that ran. An even number takes the first value, an odd number the second.</summary>
+        public int FrameCount { get; set; }
+    }
+
+    /// <summary>
+    /// The body of the Core <c>ElementAllocationTests</c> allocates nothing with the real ImGui measure and draw. A frame
+    /// sets a new text, color, and size on 10 labels, a new tint, UV rect, texture, and scale mode on 10 images, and a
+    /// new <see cref="Brutal.Localization.LString"/> on the last label. It runs <c>Update</c> outside the ImGui frame.
+    /// Then it runs <c>Draw</c> between <see cref="HeadlessImGui.BeginFrame"/> and <see cref="HeadlessImGui.EndFrame"/>.
+    /// </summary>
+    /// <remarks>
+    /// The harness has one font, so the frame does not change the font. The warm-up frames use both texts and both font
+    /// sizes, so the first bake of each glyph is not in a measured frame.
+    /// </remarks>
+    [Fact]
+    public void LabelUpdateAndDrawAllocateNothingAfterWarmUp()
+    {
+        using HeadlessImGui imgui = new(LabelSceneWidth, LabelSceneHeight);
+        ImGuiRenderer renderer = CreateRenderer();
+        TextureHandle first = renderer.Textures.Add(ImGuiTextureServiceTests.TestTexture(4660), LabelSceneTextureSize);
+        TextureHandle second = renderer.Textures.Add(ImGuiTextureServiceTests.TestTexture(4661), LabelSceneTextureSize);
+        LabelScene scene = BuildLabelScene(renderer, first, second);
+
+        for (int i = 0; i < WarmUpFrames; i++)
+        {
+            LabelFrame(imgui, scene);
+        }
+
+        long bytes = 0;
+        for (int i = 0; i < MeasuredFrames; i++)
+        {
+            bytes += LabelFrame(imgui, scene);
+
+            // The body is a real change: each element shows the values of the frame. The checks run outside the
+            // measured region.
+            AssertLabelFrame(scene, ((scene.FrameCount - 1) & 1) == 1, i);
+        }
+
+        TestContext.Current.TestOutputHelper?.WriteLine("frames " + MeasuredFrames + ", bytes " + bytes);
+        Assert.Equal(0L, bytes);
+    }
 
     /// <summary>The 1000-element tree draws through <c>UiContext.Draw</c> with no managed allocation.</summary>
     [Fact]
@@ -196,6 +311,148 @@ public sealed unsafe class ImGuiRendererAllocationTests
 
         GC.KeepAlive(plain.X + wrapped.X + outside.X + emptyMeasure.X > 0f ? renderer : null);
         return (after - before) + (outsideAfter - outsideBefore);
+    }
+
+    /// <summary>
+    /// Builds the label scene: a root column with 50 labels (a width of 120 and a padding of 4), 50 images (a width of
+    /// 32), and one label with an <see cref="Brutal.Localization.LString"/>. The renderer is the measurer. The scene runs
+    /// no <c>Update</c>.
+    /// </summary>
+    private static LabelScene BuildLabelScene(ImGuiRenderer renderer, TextureHandle texture, TextureHandle second)
+    {
+        Rgba8 white = new(255, 255, 255);
+        UiContext context = new(new UiContext.CreateInfo { Measurer = renderer })
+        {
+            ViewportSize = new float2(LabelSceneWidth, LabelSceneHeight),
+        };
+
+        Element root = new();
+        root.Style.FlexDirection = FlexDirection.Column;
+        root.Style.AlignItems = Align.FlexStart;
+        context.AddRoot(root);
+
+        Label[] labels = new Label[LabelSceneCount];
+        for (int i = 0; i < labels.Length; i++)
+        {
+            Label label = new(new Label.CreateInfo
+            {
+                Color = white,
+                Size = LabelSceneFontSize,
+                Text = "A label that wraps in its box",
+            });
+            label.Style.Width = LabelSceneLabelWidth;
+            label.Style.Padding = LengthEdges.All(LabelScenePadding);
+            root.Children.Add(label);
+            labels[i] = label;
+        }
+
+        BrutalUi.Core.Image[] images = new BrutalUi.Core.Image[LabelSceneCount];
+        for (int i = 0; i < images.Length; i++)
+        {
+            BrutalUi.Core.Image image = new(new BrutalUi.Core.Image.CreateInfo { Texture = texture });
+            image.Style.Width = LabelSceneImageWidth;
+            root.Children.Add(image);
+            images[i] = image;
+        }
+
+        Brutal.Localization.LString hello = new("imgui-renderer-allocation-tests.localized", "Hello");
+        Brutal.Localization.LString world = new("imgui-renderer-allocation-tests.other-localized", "World");
+        Label localized = new(new Label.CreateInfo
+        {
+            Color = white,
+            Size = LabelSceneFontSize,
+            LocalizedText = hello,
+        });
+        root.Children.Add(localized);
+
+        return new LabelScene
+        {
+            Context = context,
+            Renderer = renderer,
+            Labels = labels,
+            Images = images,
+            FirstTexture = texture,
+            SecondTexture = second,
+            Localized = localized,
+            FirstLocalized = hello,
+            SecondLocalized = world,
+        };
+    }
+
+    /// <summary>
+    /// Runs one label frame and gives the managed bytes of the measured calls: the changes and <c>Update</c> outside
+    /// the ImGui frame, and <c>Draw</c> inside it. The harness calls are outside the measured regions.
+    /// </summary>
+    private static long LabelFrame(HeadlessImGui imgui, LabelScene scene)
+    {
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        bool odd = (scene.FrameCount++ & 1) == 1;
+        ReadOnlySpan<byte> text = odd ? SecondLabelText : FirstLabelText;
+        Rgba8 color = odd ? SecondColor : FirstColor;
+        float size = odd ? LabelSceneSecondFontSize : LabelSceneFontSize;
+        Rgba8 tint = odd ? SecondTint : FirstTint;
+        float4 uv = odd ? HalfUv : FullUv;
+        TextureHandle texture = odd ? scene.SecondTexture : scene.FirstTexture;
+        ImageScaleMode mode = odd ? ImageScaleMode.ScaleAndCrop : ImageScaleMode.ScaleToFit;
+        Label[] labels = scene.Labels;
+        BrutalUi.Core.Image[] images = scene.Images;
+        for (int i = 0; i < LabelSceneChangedCount; i++)
+        {
+            Label label = labels[i];
+            label.SetText(text);
+            label.Color = color;
+            label.Size = size;
+
+            BrutalUi.Core.Image image = images[i];
+            image.Tint = tint;
+            image.Uv = uv;
+            image.Texture = texture;
+            image.ScaleMode = mode;
+        }
+
+        scene.Localized.SetText(odd ? scene.SecondLocalized : scene.FirstLocalized);
+        scene.Context.Update(0.016f);
+        long after = GC.GetAllocatedBytesForCurrentThread();
+
+        imgui.BeginFrame();
+        long drawBefore = GC.GetAllocatedBytesForCurrentThread();
+        scene.Context.Draw(scene.Renderer);
+        long drawAfter = GC.GetAllocatedBytesForCurrentThread();
+        imgui.EndFrame();
+
+        return (after - before) + (drawAfter - drawBefore);
+    }
+
+    /// <summary>
+    /// Checks the elements and the layout of one label frame. The label measure ran with the new size, and the image
+    /// measure ran with the new UV span.
+    /// </summary>
+    /// <param name="scene">The scene after the frame.</param>
+    /// <param name="odd">Whether the frame took the second values.</param>
+    /// <param name="frame">The number of the measured frame, for the message.</param>
+    private static void AssertLabelFrame(LabelScene scene, bool odd, int frame)
+    {
+        Label label = scene.Labels[0];
+        float size = odd ? LabelSceneSecondFontSize : LabelSceneFontSize;
+        Assert.True(
+            label.Text.SequenceEqual(odd ? SecondLabelText : FirstLabelText),
+            "Frame " + frame + " shows the old text.");
+        Assert.Equal(odd ? SecondColor : FirstColor, label.Color);
+        Assert.Equal(size, label.Size);
+
+        // The text wraps to two lines in both sizes.
+        Assert.Equal((2 * size) + (2 * LabelScenePadding), label.Layout.Rect.W);
+
+        BrutalUi.Core.Image image = scene.Images[0];
+        Assert.Equal(odd ? SecondTint : FirstTint, image.Tint);
+        Assert.Equal((odd ? scene.SecondTexture : scene.FirstTexture).Id, image.Texture.Id);
+        Assert.Equal(odd ? ImageScaleMode.ScaleAndCrop : ImageScaleMode.ScaleToFit, image.ScaleMode);
+
+        // The image measure gives the natural height of the UV rect: 16 for the full rect, 8 for the half rect.
+        Assert.Equal(LabelSceneImageWidth, image.Layout.Rect.Z);
+        Assert.Equal(odd ? 8f : 16f, image.Layout.Rect.W);
+
+        Assert.True(scene.Localized.Text.SequenceEqual(odd ? "World"u8 : "Hello"u8));
     }
 
     private static ImGuiRenderer CreateRenderer()

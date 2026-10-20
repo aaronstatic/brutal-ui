@@ -197,11 +197,15 @@ public sealed class LayoutDifferentialTests
     }
 
     /// <summary>
-    /// Lays out a fresh copy of the tree and compares each rect with the tolerance of <see cref="LayoutFixture"/>.
+    /// Lays out a fresh copy of the tree and compares each rect and each <see cref="LayoutNode.ContentInsets"/> value
+    /// with the tolerance of <see cref="LayoutFixture"/>.
     /// </summary>
     /// <param name="root">The root of the laid-out tree.</param>
     /// <param name="viewport">The viewport size of the layout.</param>
-    /// <returns><see langword="null"/> when all rects match, else a text with the count, the first element path, and the two rects.</returns>
+    /// <returns>
+    /// <see langword="null"/> when all rects and insets match, else a text with the count, the first element path, and
+    /// the two rects or the two insets.
+    /// </returns>
     internal static string? FindDifferenceWithFreshLayout(Element root, float2 viewport)
     {
         Element fresh = Clone(root);
@@ -213,7 +217,7 @@ public sealed class LayoutDifferentialTests
         string? first = null;
         int count = 0;
         Compare(root, fresh, ref first, ref count);
-        return first is null ? null : $"{count} rects differ. The first is {first}";
+        return first is null ? null : $"{count} elements differ. The first is {first}";
     }
 
     /// <summary>Copies the tree: new elements with the same name, style, measure callback, and child order.</summary>
@@ -246,15 +250,26 @@ public sealed class LayoutDifferentialTests
         return path;
     }
 
-    /// <summary>Compares the rects of two trees with the same shape, and counts each element with a difference.</summary>
+    /// <summary>
+    /// Compares the rects and the content insets of two trees with the same shape, and counts each element with a
+    /// difference.
+    /// </summary>
     private static void Compare(Element actual, Element fresh, ref string? first, ref int count)
     {
         float4 a = actual.Layout.Rect;
         float4 f = fresh.Layout.Rect;
+        float4 ai = actual.Layout.ContentInsets;
+        float4 fi = fresh.Layout.ContentInsets;
         if (!Near(a.X, f.X) || !Near(a.Y, f.Y) || !Near(a.Z, f.Z) || !Near(a.W, f.W))
         {
             count++;
             first ??= $"'{PathOf(actual)}': incremental ({a.X}, {a.Y}, {a.Z}, {a.W}), fresh ({f.X}, {f.Y}, {f.Z}, {f.W}).";
+        }
+        else if (!Near(ai.X, fi.X) || !Near(ai.Y, fi.Y) || !Near(ai.Z, fi.Z) || !Near(ai.W, fi.W))
+        {
+            count++;
+            first ??= $"'{PathOf(actual)}': content insets incremental ({ai.X}, {ai.Y}, {ai.Z}, {ai.W}), "
+                + $"fresh ({fi.X}, {fi.Y}, {fi.Z}, {fi.W}).";
         }
 
         ReadOnlySpan<Element> actualChildren = actual.ChildStorage.AsSpan();

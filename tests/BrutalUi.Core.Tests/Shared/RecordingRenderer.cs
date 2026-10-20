@@ -125,6 +125,11 @@ internal sealed class RecordingRenderer : IUiRenderer
     /// <summary>Gets the count of <see cref="IUiRenderer.MeasureText"/> calls since the creation of the renderer.</summary>
     public int MeasureCount { get; private set; }
 
+    /// <summary>
+    /// Gets the wrap width of the last <see cref="MeasureText"/> call with a wrap width above 0, or 0 before such a call.
+    /// </summary>
+    public float LastMeasureWrapWidth { get; private set; }
+
     /// <summary>Gets the count of clip pushes with no pop.</summary>
     public int ClipDepth { get; private set; }
 
@@ -221,11 +226,67 @@ internal sealed class RecordingRenderer : IUiRenderer
     }
 
     /// <inheritdoc/>
-    /// <remarks>The call records nothing. It adds 1 to <see cref="MeasureCount"/> and gives (bytes * size * 0.5, size).</remarks>
+    /// <remarks>
+    /// <para>
+    /// The call records nothing and allocates nothing. It adds 1 to <see cref="MeasureCount"/>. Each byte is
+    /// <c>size * 0.5</c> wide. A wrap width that is 0 or less, <c>NaN</c>, or infinite gives no wrap:
+    /// (bytes * size * 0.5, size).
+    /// </para>
+    /// <para>A finite wrap width above 0 gives the wrap rule:</para>
+    /// <list type="bullet">
+    /// <item>Words split at the space byte. Two spaces in a row give an empty word with a width of 0.</item>
+    /// <item>A word goes on the current line when the line width plus one space plus the word fits at or below the
+    /// wrap width. Otherwise it starts a new line. The first word of the text starts the first line.</item>
+    /// <item>A word that is wider than the wrap width starts a new line. The rule cuts it into parts of
+    /// <c>max(1, floor(wrap / (size * 0.5)))</c> bytes, one part on each line. The next word follows the last part
+    /// when it fits.</item>
+    /// <item>The width is the widest line. The height is the line count times the size. Empty text gives
+    /// (0, size).</item>
+    /// </list>
+    /// <para>
+    /// The rule counts bytes, not glyphs. Use a size of 16 in a test: a byte is then 8 pixels wide, and no float noise
+    /// occurs.
+    /// </para>
+    /// <para>
+    /// A call with a wrap width above 0 sets <see cref="LastMeasureWrapWidth"/>, also a call with an infinite wrap
+    /// width.
+    /// </para>
+    /// </remarks>
     public float2 MeasureText(FontHandle font, float size, ReadOnlySpan<byte> utf8, float wrapWidth)
     {
         MeasureCount++;
-        return new float2(utf8.Length * size * 0.5f, size);
+        if (wrapWidth > 0f)
+        {
+            LastMeasureWrapWidth = wrapWidth;
+        }
+
+        if (!(wrapWidth > 0f) || float.IsPositiveInfinity(wrapWidth))
+        {
+            return new float2(utf8.Length * size * 0.5f, size);
+        }
+
+        if (utf8.IsEmpty)
+        {
+            return new float2(0f, size);
+        }
+
+        WrapState state = new() { LineCount = 1 };
+        int start = 0;
+        while (true)
+        {
+            ReadOnlySpan<byte> rest = utf8[start..];
+            int space = rest.IndexOf((byte)' ');
+            int wordBytes = space < 0 ? rest.Length : space;
+            PlaceWord(ref state, wordBytes, size, wrapWidth);
+            if (space < 0)
+            {
+                break;
+            }
+
+            start += space + 1;
+        }
+
+        return new float2(state.WidestBytes * size * 0.5f, state.LineCount * size);
     }
 
     /// <inheritdoc/>
@@ -337,6 +398,46 @@ internal sealed class RecordingRenderer : IUiRenderer
         return ref call;
     }
 
+    /// <summary>Puts one word on the lines of the wrap rule of <see cref="MeasureText"/>.</summary>
+    /// <param name="state">The lines so far.</param>
+    /// <param name="wordBytes">The byte count of the word. An empty word has 0 bytes.</param>
+    /// <param name="size">The font size.</param>
+    /// <param name="wrapWidth">The wrap width. It is finite and above 0.</param>
+    private static void PlaceWord(ref WrapState state, int wordBytes, float size, float wrapWidth)
+    {
+        if (wordBytes * size * 0.5f > wrapWidth)
+        {
+            // A word that is wider than the wrap width starts a new line, and the rule cuts it into parts.
+            int partBytes = Math.Max(1, (int)MathF.Floor(wrapWidth / (size * 0.5f)));
+            while (partBytes > 1 && partBytes * size * 0.5f > wrapWidth)
+            {
+                partBytes--;
+            }
+
+            int parts = (wordBytes + partBytes - 1) / partBytes;
+            state.LineCount += state.LineUsed ? parts : parts - 1;
+            state.WidestBytes = Math.Max(state.WidestBytes, partBytes);
+            state.LineBytes = wordBytes - ((parts - 1) * partBytes);
+            state.LineUsed = true;
+        }
+        else if (!state.LineUsed)
+        {
+            state.LineBytes = wordBytes;
+            state.LineUsed = true;
+        }
+        else if ((state.LineBytes + 1 + wordBytes) * size * 0.5f <= wrapWidth)
+        {
+            state.LineBytes += 1 + wordBytes;
+        }
+        else
+        {
+            state.LineCount++;
+            state.LineBytes = wordBytes;
+        }
+
+        state.WidestBytes = Math.Max(state.WidestBytes, state.LineBytes);
+    }
+
     /// <summary>Formats one float with the invariant culture.</summary>
     /// <param name="value">The value.</param>
     /// <returns>The text.</returns>
@@ -359,5 +460,21 @@ internal sealed class RecordingRenderer : IUiRenderer
     private static string FCorners(in Corners value)
     {
         return F(value.TopLeft) + "," + F(value.TopRight) + "," + F(value.BottomRight) + "," + F(value.BottomLeft);
+    }
+
+    /// <summary>The lines of one wrapped measure. The rule counts bytes, so no float noise adds up.</summary>
+    private struct WrapState
+    {
+        /// <summary>The count of the lines. The measure starts it at 1.</summary>
+        public int LineCount;
+
+        /// <summary>The byte count of the current line, with the spaces between its words.</summary>
+        public int LineBytes;
+
+        /// <summary>The byte count of the widest line.</summary>
+        public int WidestBytes;
+
+        /// <summary>The current line holds a word. An empty word counts.</summary>
+        public bool LineUsed;
     }
 }

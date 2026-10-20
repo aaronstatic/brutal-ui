@@ -1,3 +1,4 @@
+using System;
 using Brutal.Numerics;
 
 namespace BrutalUi.Core;
@@ -27,6 +28,28 @@ public struct LayoutNode
     /// holds the offset from the flex-start edge. Step 10 of the engine converts it.
     /// </remarks>
     internal float4 ComputedRect;
+
+    /// <summary>
+    /// The padding plus the border of each edge from the last layout of the element, in pixels.
+    /// X holds the left edge, Y the top edge, Z the right edge, and W the bottom edge.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The engine writes the value in the layout block of <c>LayoutEngine.LayoutInternal</c>, the block that writes
+    /// the size of <see cref="ComputedRect"/>. The block runs for a computed layout and for a layout cache hit, so a
+    /// cache hit writes the value too. A measurement does not write the value.
+    /// </para>
+    /// <para>
+    /// The engine resolves a percent padding against the owner width of the layout call: the inner width of the parent,
+    /// or the viewport width for a root. This is the width that the engine uses for the padding in the layout.
+    /// An undefined owner width gives 0 for a percent padding. A border has no percent.
+    /// </para>
+    /// <para>
+    /// A hidden element and each element of its subtree get zeros, as <see cref="ComputedRect"/> does.
+    /// Before the first layout pass, all values are 0.
+    /// </para>
+    /// </remarks>
+    internal float4 ContentInsets;
 
     /// <summary>
     /// The width of the border box from the last layout or measurement of the element, in pixels.
@@ -85,6 +108,25 @@ public struct LayoutNode
     /// Before the first layout pass, all values are 0.
     /// </remarks>
     public readonly float4 Rect => ComputedRect;
+
+    /// <summary>
+    /// Gives the content box of a border box: the border box minus <see cref="ContentInsets"/> on each edge.
+    /// </summary>
+    /// <remarks>
+    /// The width is <c>w - (left + right)</c> and the height is <c>h - (top + bottom)</c>. The sum of the two insets
+    /// comes first, in the order of the engine for the inner size. A negative width or height gives 0.
+    /// </remarks>
+    /// <param name="borderBox">The border box: X and Y are the position, Z is the width, and W is the height.</param>
+    /// <returns>The content box in the same space as <paramref name="borderBox"/>.</returns>
+    internal readonly float4 ContentBox(in float4 borderBox)
+    {
+        float4 insets = ContentInsets;
+        return new float4(
+            borderBox.X + insets.X,
+            borderBox.Y + insets.Y,
+            MathF.Max(borderBox.Z - (insets.X + insets.Z), 0f),
+            MathF.Max(borderBox.W - (insets.Y + insets.W), 0f));
+    }
 
     /// <summary>
     /// Gets or sets the measure callback of the element. The default is <see langword="null"/>.

@@ -314,6 +314,16 @@ internal static partial class LayoutEngine
         {
             layout.ComputedRect.Z = layout.MeasuredWidth;
             layout.ComputedRect.W = layout.MeasuredHeight;
+
+            // The padding plus the border of each edge, for the content box of the paint. This block runs for a
+            // computed layout and for a cache hit. Thus a measurement with another owner width between two layouts
+            // leaves no stale value. CalculateLayoutImpl resolves the padding against the same owner width.
+            ref readonly ComputedStyle insetStyle = ref node.Style;
+            layout.ContentInsets = new float4(
+                LayoutMath.LeadingPaddingAndBorder(in insetStyle, FlexDirection.Row, ownerWidth),
+                LayoutMath.LeadingPaddingAndBorder(in insetStyle, FlexDirection.Column, ownerWidth),
+                LayoutMath.TrailingPaddingAndBorder(in insetStyle, FlexDirection.Row, ownerWidth),
+                LayoutMath.TrailingPaddingAndBorder(in insetStyle, FlexDirection.Column, ownerWidth));
         }
 
         layout.Generation = generation;
@@ -1284,8 +1294,8 @@ internal static partial class LayoutEngine
     /// Sets the layout of an element and of each element of its subtree to zeros. Yoga: <c>zeroOutLayoutRecursively</c>.
     /// </summary>
     /// <remarks>
-    /// The method sets the rect, the measured size, and the flex basis to 0. It also resets the layout cache and the
-    /// generation of each element of the subtree. The engine calls it on a hidden child that holds a layout bit, and
+    /// The method sets the rect, the content insets, the measured size, and the flex basis to 0. It also resets the
+    /// layout cache and the generation of each element of the subtree. The engine calls it on a hidden child that holds a layout bit, and
     /// on a hidden child with a generation that is not 0 (Decision 9). The pass never visits a hidden child, so a
     /// generation that is not 0 shows a stale visible layout. A hidden root that moves into a tree gives this case.
     /// A clean hidden child with generation 0 got its zero-out in an earlier pass, or no pass laid it out.
@@ -1296,6 +1306,7 @@ internal static partial class LayoutEngine
     {
         ref LayoutNode layout = ref node.Layout;
         layout.ComputedRect = default;
+        layout.ContentInsets = default;
         layout.MeasuredWidth = 0f;
         layout.MeasuredHeight = 0f;
         layout.ComputedFlexBasis = 0f;

@@ -11,6 +11,7 @@ This file lists each notable change of brutal-ui. The format follows [Keep a Cha
 - The allocation gate and the benchmarks: `ThousandElementAllocationTests` asserts zero allocated bytes in the update of a 1000-element tree. `TreeLayoutBenchmark` and `PercentChainBenchmark` measure the layout. The `--facts` mode prints four facts lines (core-tree/allocation-guard).
 - The renderer interface `IUiRenderer`, the value types `Rgba8`, `Corners`, `FontHandle`, and `TextureHandle`, the paint members of `ComputedStyle` (`BackgroundColor`, `BorderColor`, `CornerRadius`, `Opacity`), `UiContext.Draw`, and the draw allocation gate (imgui-renderer/renderer-interface).
 - `ImGuiRenderer`, `ImGuiFontService`, `ImGuiTextureService`, the size of `TextureHandle`, the `wrapWidth` parameter of `IUiRenderer.Text`, and the headless test project (imgui-renderer/imgui-draw-list).
+- `Label`, `Image`, `ImageScaleMode`, the measurer slot of `UiContext` (`UiContext.CreateInfo` and `UiContext.Measurer`), `UiContext.RefreshLocalizedText`, the content insets of the layout pass, and the element allocation gate `ElementAllocationTests` (imgui-renderer/label-and-image).
 
 ### Benchmarks
 
