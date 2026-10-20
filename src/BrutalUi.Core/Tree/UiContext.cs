@@ -5,6 +5,7 @@ namespace BrutalUi.Core;
 
 /// <summary>
 /// The owner of the root elements. <see cref="Update(float)"/> runs the passes on the dirty elements in frame order.
+/// <see cref="Draw(IUiRenderer)"/> then sends the tree to a renderer.
 /// </summary>
 /// <remarks>
 /// <para>The tree is main-thread only. The context and the elements use no locks.</para>
@@ -26,6 +27,8 @@ public sealed class UiContext
 {
     private ElementStorage _roots;
     private float2 _viewportSize;
+    private PaintFrame[] _paintStack = new PaintFrame[PaintWalk.InitialStackSize];
+    private bool _drawing;
 
     /// <summary>Creates a context with no roots and a viewport size of (0, 0).</summary>
     public UiContext()
@@ -150,6 +153,55 @@ public sealed class UiContext
         {
             ClearVisitor clear = default;
             DirtyWalk.Walk(roots[i], DirtyFlags.Style | DirtyFlags.Layout | DirtyFlags.Paint, ref clear);
+        }
+    }
+
+    /// <summary>
+    /// Draws each root and its subtree with a renderer, in tree order. The roots come in the order of add.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Call <see cref="Update(float)"/> first, then <see cref="Draw(IUiRenderer)"/>. The draw reads
+    /// <see cref="LayoutNode.Rect"/> of each element, so it uses the layout of the last update.
+    /// </para>
+    /// <para>
+    /// The call is <see cref="IUiRenderer.Begin"/> with <see cref="ViewportSize"/> and a scale of 1, the calls of the
+    /// draw walk, and <see cref="IUiRenderer.End"/>. A parent draws before its children. An element with an overflow
+    /// other than <see cref="Overflow.Visible"/> clips its content and its children to its padding box and to the clip
+    /// of its parent.
+    /// </para>
+    /// <para>
+    /// The draw reads the tree only. It sets and clears no dirty bit. A renderer or a hook must not change the tree
+    /// and must not call <see cref="Draw(IUiRenderer)"/> during a draw.
+    /// </para>
+    /// <para>
+    /// After an exception from the renderer, the state of the renderer is undefined. The context stays valid, and
+    /// the next call starts a new frame.
+    /// </para>
+    /// <para>The draw allocates no managed memory after warm-up. The frame stack grows for a deeper tree and never shrinks.</para>
+    /// </remarks>
+    /// <param name="renderer">The renderer that gets the calls.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="renderer"/> is <see langword="null"/>.</exception>
+    /// <exception cref="InvalidOperationException">A draw of this context runs already.</exception>
+    public void Draw(IUiRenderer renderer)
+    {
+        ArgumentNullException.ThrowIfNull(renderer);
+
+        if (_drawing)
+        {
+            throw new InvalidOperationException("A draw of this UiContext runs already. Do not call Draw from a renderer or a hook.");
+        }
+
+        _drawing = true;
+        try
+        {
+            renderer.Begin(_viewportSize, 1f);
+            PaintWalk.Walk(_roots.AsSpan(), renderer, ref _paintStack);
+            renderer.End();
+        }
+        finally
+        {
+            _drawing = false;
         }
     }
 

@@ -1,7 +1,7 @@
 namespace BrutalUi.Core;
 
 /// <summary>
-/// The computed style of an element. The struct lives inline in the element and holds the layout inputs.
+/// The computed style of an element. The struct lives inline in the element and holds the layout inputs and the paint members.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -16,8 +16,14 @@ namespace BrutalUi.Core;
 /// <para>
 /// The members are public fields and not properties, so a nested write such as
 /// <c>element.Style.Width = 120;</c> goes to the field and compiles. A property gives a copy and error CS1612.
+/// The one exception is <see cref="Opacity"/>, which is a property because its default is 1.
 /// </para>
-/// <para>The style-system epic adds the paint fields and writes the struct from the cascade.</para>
+/// <para>
+/// The imgui-renderer epic adds the paint fields, for example <see cref="BackgroundColor"/>. Code sets them inline
+/// in this release. The style-system epic writes them from the cascade later.
+/// After a write of a paint field, call <see cref="Element.MarkDirty(DirtyFlags)"/> with <see cref="DirtyFlags.Paint"/>.
+/// The draw walk of this release draws the whole tree each frame, so the mark has no effect yet.
+/// </para>
 /// </remarks>
 public struct ComputedStyle
 {
@@ -267,7 +273,65 @@ public struct ComputedStyle
     /// <remarks>
     /// <see cref="Overflow.Visible"/> and <see cref="Overflow.Hidden"/> give the same layout.
     /// <see cref="Overflow.Scroll"/> changes the measure limits of the children and the final size of the element.
-    /// The renderer epic clips the content.
+    /// The draw walk clips the content of <see cref="Overflow.Hidden"/> and <see cref="Overflow.Scroll"/> to the padding box.
     /// </remarks>
     public Overflow Overflow;
+
+    /// <summary>
+    /// The fill color of the border box. The default is <see cref="Rgba8.Transparent"/>, which draws no fill.
+    /// </summary>
+    /// <remarks>
+    /// The value is a paint field. It has no effect on the layout. After a write, call
+    /// <see cref="Element.MarkDirty(DirtyFlags)"/> with <see cref="DirtyFlags.Paint"/>.
+    /// </remarks>
+    public Rgba8 BackgroundColor;
+
+    /// <summary>
+    /// The color of the border. The default is <see cref="Rgba8.Transparent"/>, which draws no border.
+    /// </summary>
+    /// <remarks>
+    /// The draw walk uses the left edge of <see cref="BorderWidth"/> as the width of the border (pixels only).
+    /// The value is a paint field. It has no effect on the layout. After a write, call
+    /// <see cref="Element.MarkDirty(DirtyFlags)"/> with <see cref="DirtyFlags.Paint"/>.
+    /// </remarks>
+    public Rgba8 BorderColor;
+
+    /// <summary>
+    /// The radius of each corner of the fill and the border, in pixels. The default is 0 on each corner.
+    /// </summary>
+    /// <remarks>
+    /// The value is a paint field. It has no effect on the layout. After a write, call
+    /// <see cref="Element.MarkDirty(DirtyFlags)"/> with <see cref="DirtyFlags.Paint"/>.
+    /// </remarks>
+    public Corners CornerRadius;
+
+    private float _opacity;
+    private bool _hasOpacity;
+
+    /// <summary>
+    /// The opacity of the element and its subtree, from 0 (hidden) to 1 (opaque). The default is 1.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This member is a property and not a field. A float field gives 0 for <c>default(ComputedStyle)</c>, and an
+    /// opacity of 0 hides the element. Thus a new element would draw nothing. The property keeps a flag that tells
+    /// whether code set a value. The getter gives 1 when code set no value. A set value reads back exactly.
+    /// </para>
+    /// <para>
+    /// The draw walk clamps a value below 0 to 0 and a value above 1 to 1. <c>NaN</c> counts as 1.
+    /// An opacity of 0 hides the element and its subtree: the walk draws nothing for them.
+    /// The walk multiplies the opacity down the subtree, and the product scales the alpha of each color.
+    /// The value has no effect on the layout. After a write, call <see cref="Element.MarkDirty(DirtyFlags)"/> with
+    /// <see cref="DirtyFlags.Paint"/>.
+    /// </para>
+    /// </remarks>
+    public float Opacity
+    {
+        readonly get => _hasOpacity ? _opacity : 1f;
+        set
+        {
+            _opacity = value;
+            _hasOpacity = true;
+        }
+    }
 }

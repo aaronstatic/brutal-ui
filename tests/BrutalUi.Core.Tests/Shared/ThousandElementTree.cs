@@ -21,6 +21,16 @@ namespace BrutalUi.Core.Tests;
 /// <see cref="LabelText"/> or <see cref="ParagraphText"/>.
 /// </para>
 /// <para>
+/// The build also sets the paint members, so the draw pass has work to do: a background on the root, the header, the
+/// body, each sidebar item, each grid slot, each stat row, each footer slot, the tooltip, the modal, the settings panel,
+/// and each settings row (so 1 + 1 + 1 + 50 + 120 + 40 + 10 + 1 + 1 + 1 + 73 = 299 fills). The sidebar, the grid, and
+/// the modal clip with <see cref="Overflow.Hidden"/>. The tooltip has an opacity of <see cref="TooltipOpacity"/>, and
+/// the modal has an opacity of <see cref="ModalOpacity"/>. Each footer key has a border of 1 pixel, and each grid slot
+/// has a corner radius of <see cref="SlotCornerRadius"/>. The paint members change no layout. The overflow rule
+/// <see cref="Overflow.Hidden"/> gives the same layout as <see cref="Overflow.Visible"/>, and the border is on a leaf
+/// of fixed size (12 by 12), so its rect does not change. No other element has a border.
+/// </para>
+/// <para>
 /// The benchmark project links this file, so the file uses no test framework type and no internal member of
 /// <c>BrutalUi.Core</c>.
 /// </para>
@@ -68,6 +78,34 @@ internal sealed class ThousandElementTree
 
     /// <summary>The line height of each text, in pixels.</summary>
     public const float LineHeight = 16f;
+
+    /// <summary>The opacity of the tooltip.</summary>
+    public const float TooltipOpacity = 0.5f;
+
+    /// <summary>The opacity of the modal.</summary>
+    public const float ModalOpacity = 0.9f;
+
+    /// <summary>The corner radius of each grid slot, in pixels.</summary>
+    public const float SlotCornerRadius = 4f;
+
+    /// <summary>The border width of each footer key, in pixels.</summary>
+    public const float KeyBorderWidth = 1f;
+
+    /// <summary>The number of rows in the settings panel.</summary>
+    public const int SettingsRowCount = 73;
+
+    private static readonly Rgba8 RootColor = new(18, 20, 28);
+    private static readonly Rgba8 HeaderColor = new(32, 36, 48);
+    private static readonly Rgba8 BodyColor = new(24, 27, 36);
+    private static readonly Rgba8 SidebarItemColor = new(40, 44, 58);
+    private static readonly Rgba8 SlotColor = new(52, 58, 76);
+    private static readonly Rgba8 StatRowColor = new(36, 40, 52);
+    private static readonly Rgba8 FooterSlotColor = new(44, 48, 64);
+    private static readonly Rgba8 TooltipColor = new(10, 10, 14, 230);
+    private static readonly Rgba8 ModalColor = new(30, 34, 46);
+    private static readonly Rgba8 SettingsColor = new(20, 22, 30, 240);
+    private static readonly Rgba8 SettingsRowColor = new(38, 42, 56);
+    private static readonly Rgba8 KeyBorderColor = new(220, 200, 80);
 
     /// <summary>Gets the context that holds the root. Its viewport is <see cref="ViewportWideWidth"/> by <see cref="ViewportHeight"/>.</summary>
     public required UiContext Context { get; init; }
@@ -123,6 +161,7 @@ internal sealed class ThousandElementTree
         Element root = c.Make("root");
         root.Style.FlexDirection = FlexDirection.Column;
         root.Style.Padding = LengthEdges.All(8f);
+        root.Style.BackgroundColor = RootColor;
 
         BuildHeader(c, root, labelText);
 
@@ -131,6 +170,7 @@ internal sealed class ThousandElementTree
         body.Style.FlexDirection = FlexDirection.Row;
         body.Style.FlexGrow = 1f;
         body.Style.FlexShrink = 1f;
+        body.Style.BackgroundColor = BodyColor;
 
         Element sidebar = BuildSidebar(c, body, labelText, out Element sidebarLabel);
         Element gridSlot = BuildGrid(c, body);
@@ -175,6 +215,7 @@ internal sealed class ThousandElementTree
         header.Style.Height = 48f;
         header.Style.JustifyContent = Justify.SpaceBetween;
         header.Style.AlignItems = Align.Center;
+        header.Style.BackgroundColor = HeaderColor;
 
         Element title = c.Add(header, "header-title");
         title.Style.FlexGrow = 1f;
@@ -200,6 +241,7 @@ internal sealed class ThousandElementTree
         sidebar.Style.FlexDirection = FlexDirection.Column;
         sidebar.Style.Width = Length.Percent(20f);
         sidebar.Style.Padding = LengthEdges.All(Length.Percent(1f));
+        sidebar.Style.Overflow = Overflow.Hidden;
 
         firstLabel = null!;
         for (int i = 0; i < 50; i++)
@@ -208,6 +250,7 @@ internal sealed class ThousandElementTree
             item.Style.FlexDirection = FlexDirection.Row;
             item.Style.Height = 24f;
             item.Style.AlignItems = Align.Center;
+            item.Style.BackgroundColor = SidebarItemColor;
 
             Element icon = c.Add(item, "sidebar-icon");
             icon.Style.Width = 16f;
@@ -237,6 +280,7 @@ internal sealed class ThousandElementTree
         grid.Style.FlexGrow = 1f;
         grid.Style.FlexShrink = 1f;
         grid.Style.AlignContent = Align.SpaceBetween;
+        grid.Style.Overflow = Overflow.Hidden;
 
         Element firstSlot = null!;
         for (int i = 0; i < 120; i++)
@@ -247,6 +291,8 @@ internal sealed class ThousandElementTree
             slot.Style.Margin = LengthEdges.All(2f);
             slot.Style.AlignItems = Align.Center;
             slot.Style.JustifyContent = Justify.Center;
+            slot.Style.BackgroundColor = SlotColor;
+            slot.Style.CornerRadius = Corners.All(SlotCornerRadius);
 
             Element icon = c.Add(slot, "grid-icon");
             icon.Style.Width = Length.Percent(80f);
@@ -283,6 +329,7 @@ internal sealed class ThousandElementTree
             row.Style.FlexDirection = FlexDirection.Row;
             row.Style.Height = 20f;
             row.Style.AlignItems = Align.Center;
+            row.Style.BackgroundColor = StatRowColor;
 
             Element name = c.Add(row, "stat-name");
             name.Style.FlexGrow = 1f;
@@ -324,6 +371,7 @@ internal sealed class ThousandElementTree
             Element slot = c.Add(footer, "footer-slot");
             slot.Style.Width = 56f;
             slot.Style.Height = 56f;
+            slot.Style.BackgroundColor = FooterSlotColor;
 
             Element icon = c.Add(slot, "footer-icon");
             icon.Style.FlexGrow = 1f;
@@ -334,6 +382,8 @@ internal sealed class ThousandElementTree
             key.Style.Top = 2f;
             key.Style.Width = 12f;
             key.Style.Height = 12f;
+            key.Style.BorderWidth = LengthEdges.All(KeyBorderWidth);
+            key.Style.BorderColor = KeyBorderColor;
         }
     }
 
@@ -347,6 +397,8 @@ internal sealed class ThousandElementTree
         tooltip.Style.Width = TooltipNarrowWidth;
         tooltip.Style.FlexDirection = FlexDirection.Column;
         tooltip.Style.Padding = LengthEdges.All(4f);
+        tooltip.Style.BackgroundColor = TooltipColor;
+        tooltip.Style.Opacity = TooltipOpacity;
 
         for (int i = 0; i < 6; i++)
         {
@@ -371,6 +423,9 @@ internal sealed class ThousandElementTree
         modal.Style.Top = Length.Percent(25f);
         modal.Style.FlexDirection = FlexDirection.Column;
         modal.Style.Padding = LengthEdges.All(8f);
+        modal.Style.BackgroundColor = ModalColor;
+        modal.Style.Overflow = Overflow.Hidden;
+        modal.Style.Opacity = ModalOpacity;
 
         Element titleRow = c.Add(modal, "modal-title-row");
         titleRow.Style.FlexDirection = FlexDirection.Row;
@@ -434,11 +489,13 @@ internal sealed class ThousandElementTree
         settings.Style.Width = Length.Percent(100f);
         settings.Style.Height = Length.Percent(100f);
         settings.Style.FlexDirection = FlexDirection.Column;
+        settings.Style.BackgroundColor = SettingsColor;
 
-        for (int i = 0; i < 73; i++)
+        for (int i = 0; i < SettingsRowCount; i++)
         {
             Element row = c.Add(settings, "settings-row");
             row.Style.FlexDirection = FlexDirection.Row;
+            row.Style.BackgroundColor = SettingsRowColor;
 
             Element label = c.Add(row, "settings-label");
             label.Style.FlexGrow = 1f;

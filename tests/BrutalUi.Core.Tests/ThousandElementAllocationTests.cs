@@ -6,13 +6,16 @@ namespace BrutalUi.Core.Tests;
 
 /// <summary>
 /// The release gate of the first design pillar. After warm-up, a change, a mark, and one <c>Update</c> on the
-/// 1000-element tree must allocate 0 bytes.
+/// 1000-element tree must allocate 0 bytes. The same holds for the frame: a change, a mark, one <c>Update</c>, and one
+/// <c>Draw</c> into the <see cref="RecordingRenderer"/>.
 /// </summary>
 /// <remarks>
 /// <para>
 /// The pattern is the one of <see cref="TreeAllocationTests"/> and <see cref="LayoutAllocationTests"/>: the test builds
 /// the scene, runs one <c>Update</c>, runs warm-up rounds of each kind, and then measures 100 rotating steps with
-/// <see cref="GC.GetAllocatedBytesForCurrentThread"/>.
+/// <see cref="GC.GetAllocatedBytesForCurrentThread"/>. The update gate measures the step alone. The draw gate measures
+/// the step and the <c>Draw</c> call after it. The rotation shows and hides the settings panel, so the draw walks two
+/// tree sizes, and the recording renderer reaches its peak size during the warm-up.
 /// </para>
 /// <para>
 /// The tree is <see cref="ThousandElementTree"/>. The measured body rotates through eight kinds of change. Each kind
@@ -56,13 +59,16 @@ public sealed class ThousandElementAllocationTests
     {
         public required ThousandElementTree Tree { get; init; }
 
+        /// <summary>The renderer that records the calls of <c>Draw</c>.</summary>
+        public required RecordingRenderer Renderer { get; init; }
+
         /// <summary>The number of steps that ran. The step number gives the kind and the direction of the change.</summary>
         public int StepCount { get; set; }
     }
 
     private static Scene BuildScene()
     {
-        return new Scene { Tree = ThousandElementTree.Build() };
+        return new Scene { Tree = ThousandElementTree.Build(), Renderer = new RecordingRenderer() };
     }
 
     /// <summary>
@@ -146,6 +152,21 @@ public sealed class ThousandElementAllocationTests
         }
     }
 
+    /// <summary>The measured frame: one step, then one <c>Draw</c> into the recording renderer.</summary>
+    private static void Frame(Scene scene)
+    {
+        Step(scene);
+        scene.Tree.Context.Draw(scene.Renderer);
+    }
+
+    private static void RunFrames(Scene scene, int frames)
+    {
+        for (int i = 0; i < frames; i++)
+        {
+            Frame(scene);
+        }
+    }
+
     /// <summary>Builds the scene and runs the first <c>Update</c>, which lays out the full tree.</summary>
     private static Scene BuildWarmScene()
     {
@@ -166,6 +187,25 @@ public sealed class ThousandElementAllocationTests
 
         long before = GC.GetAllocatedBytesForCurrentThread();
         Run(scene, Iterations);
+        long after = GC.GetAllocatedBytesForCurrentThread();
+
+        Assert.Equal(0L, after - before);
+    }
+
+    [Fact]
+    public void DrawAllocatesNothingAfterWarmUp()
+    {
+        Scene scene = BuildWarmScene();
+
+        // The first Draw sizes the paint stack and the arrays of the recording renderer for the hidden panel.
+        scene.Tree.Context.Draw(scene.Renderer);
+
+        // Warm-up: the rounds show and hide the settings panel, so the renderer reaches its peak size.
+        RunFrames(scene, KindCount * 2);
+        RunFrames(scene, KindCount * 2);
+
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        RunFrames(scene, Iterations);
         long after = GC.GetAllocatedBytesForCurrentThread();
 
         Assert.Equal(0L, after - before);
@@ -197,6 +237,11 @@ public sealed class ThousandElementAllocationTests
         int percents = 0;
         int hidden = 0;
         int callbacks = 0;
+        int backgrounds = 0;
+        int borders = 0;
+        int clips = 0;
+        int fades = 0;
+        int radii = 0;
         for (int i = 0; i < all.Length; i++)
         {
             Element element = all[i];
@@ -210,6 +255,11 @@ public sealed class ThousandElementAllocationTests
             percents += HasPercentSize(ref style) ? 1 : 0;
             hidden += style.Display == Display.None ? 1 : 0;
             callbacks += element.Layout.Measure is null ? 0 : 1;
+            backgrounds += style.BackgroundColor.A > 0 ? 1 : 0;
+            borders += HasVisibleBorder(ref style) ? 1 : 0;
+            clips += style.Overflow != Overflow.Visible ? 1 : 0;
+            fades += style.Opacity < 1f ? 1 : 0;
+            radii += HasCornerRadius(ref style) ? 1 : 0;
         }
 
         Assert.True(rows >= 1);
@@ -220,6 +270,11 @@ public sealed class ThousandElementAllocationTests
         Assert.True(percents >= 1);
         Assert.True(hidden >= 1);
         Assert.Equal(ThousandElementTree.TextLeafCount, callbacks);
+        Assert.True(backgrounds >= 1);
+        Assert.True(borders >= 1);
+        Assert.True(clips >= 1);
+        Assert.True(fades >= 1);
+        Assert.True(radii >= 1);
 
         // Each element is distinct, and each one except the root has a parent.
         Assert.Same(tree.Root, all[0]);
@@ -366,6 +421,101 @@ public sealed class ThousandElementAllocationTests
         }
 
         Assert.Equal(220, inside);
+    }
+
+    [Fact]
+    public void TheDrawStepEmitsEachPaintedElement()
+    {
+        Scene scene = BuildWarmScene();
+        ThousandElementTree tree = scene.Tree;
+        Element[] all = tree.All;
+
+        // The tree starts with the settings panel hidden. Draw the hidden frame without a step.
+        Assert.Equal(Display.None, tree.Settings.Style.Display);
+        tree.Context.Draw(scene.Renderer);
+        int hiddenRects = CountCalls(scene.Renderer, DrawCallKind.Rect);
+        Assert.Equal(CountPainted(all), hiddenRects);
+        Assert.Equal(CountCalls(scene.Renderer, DrawCallKind.PushClip), CountCalls(scene.Renderer, DrawCallKind.PopClip));
+        Assert.True(CountCalls(scene.Renderer, DrawCallKind.PushClip) > 0);
+
+        // Show the panel, update, and draw the visible frame.
+        tree.Settings.Style.Display = Display.Flex;
+        tree.Settings.MarkDirty(DirtyFlags.Layout);
+        tree.Context.Update(0.016f);
+        tree.Context.Draw(scene.Renderer);
+        int visibleRects = CountCalls(scene.Renderer, DrawCallKind.Rect);
+        Assert.Equal(CountPainted(all), visibleRects);
+        Assert.Equal(CountCalls(scene.Renderer, DrawCallKind.PushClip), CountCalls(scene.Renderer, DrawCallKind.PopClip));
+
+        // The settings panel and each one of its rows hold a fill.
+        Assert.Equal(1 + ThousandElementTree.SettingsRowCount, visibleRects - hiddenRects);
+        Assert.Equal(74, visibleRects - hiddenRects);
+    }
+
+    private static int CountCalls(RecordingRenderer renderer, DrawCallKind kind)
+    {
+        int count = 0;
+        ReadOnlySpan<DrawCall> calls = renderer.Calls;
+        for (int i = 0; i < calls.Length; i++)
+        {
+            count += calls[i].Kind == kind ? 1 : 0;
+        }
+
+        return count;
+    }
+
+    /// <summary>
+    /// Counts the elements that the draw walk paints with a Rect: a visible fill or a visible border, and no
+    /// <see cref="Display.None"/> and no opacity product of 0 or less on the element or an ancestor.
+    /// </summary>
+    private static int CountPainted(Element[] all)
+    {
+        int count = 0;
+        for (int i = 0; i < all.Length; i++)
+        {
+            float opacity = 1f;
+            bool hidden = false;
+            for (Element? current = all[i]; current is not null; current = current.Parent)
+            {
+                if (current.Style.Display == Display.None)
+                {
+                    hidden = true;
+                    break;
+                }
+
+                float own = current.Style.Opacity;
+                opacity *= float.IsNaN(own) ? 1f : Math.Clamp(own, 0f, 1f);
+            }
+
+            if (hidden || opacity <= 0f)
+            {
+                continue;
+            }
+
+            ref ComputedStyle style = ref all[i].Style;
+            bool fill = style.BackgroundColor.ScaleAlpha(opacity).A > 0;
+            bool border = style.BorderWidth.Left.Unit == LengthUnit.Pixel
+                && style.BorderWidth.Left.Value > 0f
+                && style.BorderColor.ScaleAlpha(opacity).A > 0;
+            count += fill || border ? 1 : 0;
+        }
+
+        return count;
+    }
+
+    private static bool HasVisibleBorder(ref ComputedStyle style)
+    {
+        return style.BorderWidth.Left.Unit == LengthUnit.Pixel
+            && style.BorderWidth.Left.Value > 0f
+            && style.BorderColor.A > 0;
+    }
+
+    private static bool HasCornerRadius(ref ComputedStyle style)
+    {
+        return style.CornerRadius.TopLeft > 0f
+            || style.CornerRadius.TopRight > 0f
+            || style.CornerRadius.BottomRight > 0f
+            || style.CornerRadius.BottomLeft > 0f;
     }
 
     private static bool HasPercentSize(ref ComputedStyle style)

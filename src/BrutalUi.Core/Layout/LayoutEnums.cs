@@ -187,7 +187,7 @@ public enum PositionType : byte
 /// </summary>
 /// <remarks>
 /// <see cref="Visible"/> is the default, as in Yoga and CSS. <see cref="Visible"/> and <see cref="Hidden"/> give the
-/// same layout. The renderer epic clips the content of <see cref="Hidden"/> and <see cref="Scroll"/>.
+/// same layout. The draw walk clips the content of <see cref="Hidden"/> and <see cref="Scroll"/> to the padding box.
 /// <see cref="Scroll"/> changes the layout: the size of the element does not grow to the size of its content, and
 /// the children get no limit on the main axis of the element.
 /// </remarks>

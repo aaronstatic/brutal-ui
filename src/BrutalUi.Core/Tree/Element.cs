@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Brutal.Numerics;
 
 namespace BrutalUi.Core;
 
@@ -202,5 +203,33 @@ public class Element
     internal void ClearDirty(DirtyFlags bits)
     {
         _dirty &= ~bits;
+    }
+
+    /// <summary>
+    /// Paints the own content of the element, for example text or an image. The base method does nothing.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The draw walk calls this method for each painted element. The call comes after the walk draws the fill and
+    /// pushes the clip, and before the walk visits the first child. Thus the clip of the element also clips its own
+    /// content, and the children paint over the content.
+    /// </para>
+    /// <para>
+    /// The walk does not call this method for a hidden element (<see cref="Display.None"/> or an opacity product of 0
+    /// or less) or for the subtree of a hidden element.
+    /// </para>
+    /// <para>
+    /// The override must follow these rules: change no part of the tree, set no dirty bit, allocate no managed memory,
+    /// and do not call <see cref="UiContext.Draw(IUiRenderer)"/>. The override sends its calls to the renderer only.
+    /// </para>
+    /// </remarks>
+    /// <param name="renderer">The renderer that gets the calls.</param>
+    /// <param name="borderBox">The border box of the element in viewport pixels: x, y, width, and height.</param>
+    /// <param name="opacity">
+    /// The product of the opacities from the root to the element, from 0 to 1. The override multiplies its own colors
+    /// by this value.
+    /// </param>
+    internal virtual void PaintContent(IUiRenderer renderer, in float4 borderBox, float opacity)
+    {
     }
 }

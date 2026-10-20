@@ -137,7 +137,7 @@ brutal-ui/
    │     └─ Layout pass: flexbox on dirty subtrees
    │
    ├─ UiContext.Draw(IUiRenderer)
-   │     └─ Tree walk ──► DrawCommand list ──► ImGuiRenderer ──► ImDrawList
+   │     └─ PaintWalk (frame stack) ──► IUiRenderer ──► ImGuiRenderer ──► ImDrawList
    │
    └─ VulkanBackend / OpenGlBackend render ImDrawData
 ```
@@ -146,7 +146,7 @@ brutal-ui/
 
 1. The game calls `GlfwBackend.NewFrame()` and `ImGui.NewFrame()` as it does today.
 2. The game calls `UiContext.Update(deltaTime)`. The framework applies pending mode changes and store notifications. The style and layout passes run on dirty subtrees.
-3. The game calls `UiContext.Draw()`. The tree walk emits draw commands into the renderer.
+3. The game calls `UiContext.Draw(IUiRenderer)`. `PaintWalk` visits the tree with an explicit frame stack and calls the renderer for each painted element. It builds no command list.
 4. The game renders the ImGui frame as it does today.
 
 ### Dirty tracking
@@ -218,6 +218,7 @@ public sealed class UiContext
     public bool RemoveRoot(Element root);
     public float2 ViewportSize { get; set; }   // available size of each root, default (0, 0)
     public void Update(float deltaTime);
+    public void Draw(IUiRenderer renderer);    // reads the tree only, call it after Update
 }
 ```
 
@@ -249,7 +250,7 @@ Flexbox layout on the element tree with the Yoga subset that games use.
 
 ### Inputs
 
-The inputs are the 25 public fields of `ComputedStyle`: `FlexDirection`, `Width`, `Height`, `Margin`, `Padding`, `BorderWidth`, `FlexGrow`, `FlexShrink`, `FlexBasis`, `MinWidth`, `MinHeight`, `MaxWidth`, `MaxHeight`, `JustifyContent`, `AlignItems`, `AlignSelf`, `FlexWrap`, `AlignContent`, `Display`, `Position`, `Left`, `Top`, `Right`, `Bottom`, and `Overflow`. The fields are public so that `element.Style.Width = 120;` compiles. A write sets no dirty bit. The caller then calls `MarkDirty(DirtyFlags.Layout)`. The enums are `FlexDirection`, `FlexWrap`, `Justify`, `Align`, `Display`, `PositionType`, and `Overflow`.
+The layout inputs are 25 public fields of `ComputedStyle`: `FlexDirection`, `Width`, `Height`, `Margin`, `Padding`, `BorderWidth`, `FlexGrow`, `FlexShrink`, `FlexBasis`, `MinWidth`, `MinHeight`, `MaxWidth`, `MaxHeight`, `JustifyContent`, `AlignItems`, `AlignSelf`, `FlexWrap`, `AlignContent`, `Display`, `Position`, `Left`, `Top`, `Right`, `Bottom`, and `Overflow`. The fields are public so that `element.Style.Width = 120;` compiles. A write sets no dirty bit. The caller then calls `MarkDirty(DirtyFlags.Layout)`. The enums are `FlexDirection`, `FlexWrap`, `Justify`, `Align`, `Display`, `PositionType`, and `Overflow`.
 
 A `Length` holds a value and a `LengthUnit`: `Undefined`, `Pixel`, `Percent`, or `Auto`. `Length.Px(10)`, `Length.Percent(50)`, and `Length.Auto` make the values. A `float` converts to pixels. A percent resolves against the size of the parent content box on the same axis. The exceptions are a margin and a padding, which resolve against the parent width on all four edges. `LengthEdges` holds a `Length` for `Left`, `Top`, `Right`, and `Bottom`. The engine has no start or end edge.
 
@@ -316,6 +317,8 @@ public struct StyleRule
 
 A `StyleSheet` is a sorted rule list. The style pass matches rules against a dirty element, merges by specificity, and writes `ComputedStyle`. Inline style on an element wins.
 
+The imgui-renderer epic adds four paint members to `ComputedStyle`: `BackgroundColor` (`Rgba8`), `BorderColor` (`Rgba8`), `CornerRadius` (`Corners`), and `Opacity` (`float`, default 1). In this epic, code writes them inline. The cascade of the style-system epic writes them later. A write sets no dirty bit. After a write, the caller calls `MarkDirty(DirtyFlags.Paint)`. The paint members change no layout.
+
 ### Transitions
 
 A property transition has a duration and an easing. The style pass writes the target value. A transition system interpolates per frame into the computed style. No allocation after the transition pool fills.
@@ -353,6 +356,33 @@ public interface IUiRenderer
 ### ImGui implementation
 
 `ImGuiRenderer` writes into a private `ImDrawList` owned by the context, or into `ImGui.GetBackgroundDrawList()` when the game asks for that. `FontHandle` maps to an `ImFontPtr`. `TextureHandle` maps to an `ImTextureRef` registered through `VulkanBackend.AddTexture` or the OpenGL equivalent.
+
+### The draw walk
+
+`UiContext.Draw(IUiRenderer)` calls `Begin(ViewportSize, 1f)`, runs `PaintWalk` on the roots in the order of add, and calls `End()`. `PaintWalk` is an internal static class with an explicit frame stack. The rules follow.
+
+**Rules of the walk**
+
+- **Rect form (Q1).** The walk passes x, y, w, h in viewport pixels to `Rect`, `Image`, and `PushClip`. The walk adds the position of each parent on the way down.
+- **Hidden (Q2).** `Display.None` or an opacity of 0 hides an element and its subtree. The walk emits no call and pushes no clip for it. A root with `Display.None` draws nothing.
+- **Opacity (Q3).** Opacity multiplies down the subtree into the alpha of every color. `Opacity` is a property with a default of 1. The walk clamps the value to 0 to 1, and `NaN` counts as 1.
+- **Clip (Q4).** `Overflow.Hidden` clips to the padding box. The walk intersects it with the parent clip. `Overflow.Scroll` also clips.
+- **Paint order (A1).** The order is tree order: the `Rect` of the parent first, then the children in child order. This epic has no z-index.
+- **Read only (A2).** `Draw` reads the tree only. It changes no dirty bit, because `Update` already clears the paint bits. A renderer or a hook must not change the tree or call `Draw` during a draw.
+- **Scale (A3).** `Draw(IUiRenderer)` calls `Begin(ViewportSize, 1f)`. A scale parameter waits for a later epic.
+- **Border (A4).** `Rect` takes one border width. The walk uses the left border width of `Style.BorderWidth` (points only). Per-side borders wait. When the border is not visible, the walk passes width 0 and a transparent border color. The walk emits a `Rect` only for a visible fill or a visible border.
+- **Padding box (A7).** The walk resolves the padding box from `Style.BorderWidth` at draw time, because `LayoutNode` stores no resolved border today.
+- **Stack (A8).** The walk uses an explicit stack, not recursion, so a deep tree does not overflow the call stack. The stack starts at 32 frames, grows by doubling, and never shrinks. The walk allocates only during warm-up.
+
+**Order per element:** the hidden check, `Rect`, `PushClip`, `PaintContent`, the children, `PopClip`.
+
+**The paint hook.** `Element.PaintContent(IUiRenderer renderer, in float4 borderBox, float opacity)` is an internal virtual method with an empty body. The walk calls it after the `Rect` and the clip push, and before the children. Thus the clip of an element also clips its own content. The border box is in viewport pixels. The `opacity` argument is the product down the tree, so an override scales its own colors with it. The hook changes no tree, sets no mark, allocates nothing, and does not call `Draw`. The label and image elements override it.
+
+**The value types.**
+
+- `Rgba8` holds four bytes: R, G, B, A (A5). Its memory layout matches `ImU32` on a little-endian CPU, so ImGui casts it at no cost.
+- `Corners` holds four floats in this order: top-left, top-right, bottom-right, bottom-left (A6).
+- `FontHandle` and `TextureHandle` hold an integer id. The id 0 of a font is the default font of the renderer. The id 0 of a texture means no texture, and `Image` draws nothing for it.
 
 ### Design Decisions
 
@@ -469,7 +499,7 @@ The Vulkan backend binds one render pass at construction. Phase 5 tests a second
 
 - **Unit tests** on the layout engine with fixtures from the Yoga test suite, ported by hand.
 - **Unit tests** on the style cascade, the XML loader, the stylesheet parser, and the framework diff.
-- **Allocation tests** that run update and draw on a warm 1000-element tree and assert zero bytes allocated. `ThousandElementAllocationTests` is the gate. In the core-tree epic, it covers the update only. The imgui-renderer epic adds the draw.
+- **Allocation tests** that run update and draw on a warm 1000-element tree and assert zero bytes allocated. `ThousandElementAllocationTests` is the gate. It covers the update and the draw. The draw test runs full frames (`Update`, then `Draw` into a `RecordingRenderer`) after a warm-up.
 - **Benchmarks** with BenchmarkDotNet for layout and draw on that tree. `TreeLayoutBenchmark` measures the full layout, a dirty subtree, and a clean update on the 1000-element tree. The settings panel is hidden, so the full layout pass lays out 780 elements and sets the 220 elements of the panel to zero. `PercentChainBenchmark` measures a leaf mark under a chain of percent sizes.
 - **Facts report.** The `--facts` mode of the benchmark project prints four `facts:` lines: the size of the tree, the callback calls of the two percent chains, and the number of levels that pass on a 1 MB stack.
 - **Sample projects** as the integration test, built in CI.
@@ -485,7 +515,7 @@ The tests assert no time. The recorded times come from one run on the machine of
 
 ### What is not tested
 
-Pixel output. The renderer tests assert the draw command list, not the image.
+Pixel output. The walk tests assert the call list of `RecordingRenderer`, not the image.
 
 ---
 

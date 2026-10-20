@@ -9,6 +9,7 @@ This file lists each notable change of brutal-ui. The format follows [Keep a Cha
 - The element tree: elements with child lists, dirty tracking, class lists, and element state (core-tree/element-tree).
 - The flexbox layout engine: a port of the Yoga algorithm with a layout cache and a measure callback (core-tree/flexbox-layout).
 - The allocation gate and the benchmarks: `ThousandElementAllocationTests` asserts zero allocated bytes in the update of a 1000-element tree. `TreeLayoutBenchmark` and `PercentChainBenchmark` measure the layout. The `--facts` mode prints four facts lines (core-tree/allocation-guard).
+- The renderer interface `IUiRenderer`, the value types `Rgba8`, `Corners`, `FontHandle`, and `TextureHandle`, the paint members of `ComputedStyle` (`BackgroundColor`, `BorderColor`, `CornerRadius`, `Opacity`), `UiContext.Draw`, and the draw allocation gate (imgui-renderer/renderer-interface).
 
 ### Benchmarks
 
