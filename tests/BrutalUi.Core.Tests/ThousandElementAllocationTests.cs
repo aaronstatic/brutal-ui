@@ -14,8 +14,9 @@ namespace BrutalUi.Core.Tests;
 /// The pattern is the one of <see cref="TreeAllocationTests"/> and <see cref="LayoutAllocationTests"/>: the test builds
 /// the scene, runs one <c>Update</c>, runs warm-up rounds of each kind, and then measures 100 rotating steps with
 /// <see cref="GC.GetAllocatedBytesForCurrentThread"/>. The update gate measures the step alone. The draw gate measures
-/// the step and the <c>Draw</c> call after it. The rotation shows and hides the settings panel, so the draw walks two
-/// tree sizes, and the recording renderer reaches its peak size during the warm-up.
+/// the step and the <c>Draw</c> call after it. Right before the measure, each gate calls
+/// <see cref="AllocationGate.ReleaseAllocationContext"/>. The rotation shows and hides the settings panel, so the draw
+/// walks two tree sizes, and the recording renderer reaches its peak size during the warm-up.
 /// </para>
 /// <para>
 /// The tree is <see cref="ThousandElementTree"/>. The measured body rotates through eight kinds of change. Each kind
@@ -185,6 +186,8 @@ public sealed class ThousandElementAllocationTests
         Run(scene, KindCount * 2);
         Run(scene, KindCount * 2);
 
+        // The release empties the allocation context, so a background GC cannot add bytes. See AllocationGate.
+        AllocationGate.ReleaseAllocationContext();
         long before = GC.GetAllocatedBytesForCurrentThread();
         Run(scene, Iterations);
         long after = GC.GetAllocatedBytesForCurrentThread();
@@ -204,6 +207,8 @@ public sealed class ThousandElementAllocationTests
         RunFrames(scene, KindCount * 2);
         RunFrames(scene, KindCount * 2);
 
+        // The release empties the allocation context, so a background GC cannot add bytes. See AllocationGate.
+        AllocationGate.ReleaseAllocationContext();
         long before = GC.GetAllocatedBytesForCurrentThread();
         RunFrames(scene, Iterations);
         long after = GC.GetAllocatedBytesForCurrentThread();

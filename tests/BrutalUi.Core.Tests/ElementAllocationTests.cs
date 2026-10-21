@@ -19,6 +19,11 @@ namespace BrutalUi.Core.Tests;
 /// the differences.
 /// </para>
 /// <para>
+/// Right before the measure, each gate calls <see cref="AllocationGate.ReleaseAllocationContext"/>. A blocking GC
+/// empties the allocation context of the thread, so a background GC cannot add its free part to the counter. The
+/// helper gives the cause. The release does not hide an allocation in a measured frame.
+/// </para>
+/// <para>
 /// The scene: a <see cref="RecordingRenderer"/> is the measurer and the renderer. A root column holds
 /// <see cref="LabelCount"/> labels, <see cref="ImageCount"/> images, and one label with an <see cref="LString"/>. Each
 /// label has a padding of 4 and a width of 120, so its text wraps in a content box of 112 pixels (14 bytes at size 16,
@@ -130,6 +135,7 @@ public sealed class ElementAllocationTests
 
         int measuresBefore = scene.Renderer.MeasureCount;
         long bytes = 0;
+        AllocationGate.ReleaseAllocationContext();
         for (int i = 0; i < MeasuredFrames; i++)
         {
             bytes += MeasureFrame(scene);
@@ -157,6 +163,7 @@ public sealed class ElementAllocationTests
 
         int measuresBefore = scene.Renderer.MeasureCount;
         long bytes = 0;
+        AllocationGate.ReleaseAllocationContext();
         for (int i = 0; i < MeasuredFrames; i++)
         {
             bytes += MeasureStringFrame(scene, first, second);
@@ -376,9 +383,14 @@ public sealed class ElementAllocationTests
     /// Changes the locale string of the <see cref="LString"/> outside the measured region, then runs one
     /// <see cref="UiContext.RefreshLocalizedText"/>. It gives the managed bytes of the refresh.
     /// </summary>
+    /// <remarks>
+    /// The test allocates between two refreshes (the messages of the asserts), so each refresh releases the
+    /// allocation context again.
+    /// </remarks>
     private static long MeasureLocaleChange(Scene scene, string localized)
     {
         scene.LocalizedText.Localize(localized);
+        AllocationGate.ReleaseAllocationContext();
         long before = GC.GetAllocatedBytesForCurrentThread();
         scene.Context.RefreshLocalizedText();
         long after = GC.GetAllocatedBytesForCurrentThread();

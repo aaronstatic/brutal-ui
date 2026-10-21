@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
+using Brutal;
 using Brutal.GlfwApi;
 using Brutal.Numerics;
 using Brutal.VulkanApi;
@@ -18,6 +19,7 @@ namespace HelloPanel;
 /// <see cref="Program"/>. The window has a fixed size, so this class does not re-create the swapchain.
 /// The BRUTAL wrappers throw <see cref="VkResultError"/> on <c>VK_ERROR_OUT_OF_DATE_KHR</c>, so an
 /// out-of-date swapchain stops the sample with exit code 1.
+/// The context also uploads a sampled texture before the first frame (<see cref="CreateTexture"/>).
 /// </remarks>
 internal sealed unsafe class VulkanContext : IDisposable
 {
@@ -42,6 +44,9 @@ internal sealed unsafe class VulkanContext : IDisposable
 
     /// <summary>The value of <c>currentExtent.width</c> when the window sets the swapchain size.</summary>
     private const int ExtentFromSwapchain = -1;
+
+    /// <summary>The number of bytes of one RGBA texel with 8 bits for each channel.</summary>
+    private const int BytesPerTexel = 4;
 
     private readonly Instance _instance;
     private readonly VkSurfaceKHR _surface;
@@ -247,6 +252,153 @@ internal sealed unsafe class VulkanContext : IDisposable
     public void WaitIdle()
     {
         _device.WaitIdle();
+    }
+
+    /// <summary>
+    /// Creates a texture that a fragment shader samples, and uploads the pixels into it through a staging buffer.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The steps: (1) create a host-visible, host-coherent staging buffer and write the pixels into it. (2) Create the
+    /// image in device-local memory. (3) Allocate a one-time command buffer from the pool of the context. (4) Record a
+    /// change from <see cref="VkImageLayout.Undefined"/> to <see cref="VkImageLayout.TransferDstOptimal"/>, the copy,
+    /// and a change to <see cref="VkImageLayout.ShaderReadOnlyOptimal"/>. (5) Submit the command buffer to
+    /// <see cref="GraphicsQueue"/> and wait for the queue. (6) Free the command buffer and the staging buffer.
+    /// (7) Create the image view and the sampler.
+    /// </para>
+    /// <para>
+    /// The method blocks until the GPU completes the copy. Call it before the first frame, or outside of
+    /// <see cref="BeginFrame"/> and <see cref="EndFrame"/>. On a failure, the method frees each object that it created.
+    /// The caller owns the result and disposes it before this context.
+    /// </para>
+    /// </remarks>
+    /// <param name="rgba">The pixels: <c>size.X * size.Y</c> texels of 4 bytes (R, G, B, A), row by row from the top.</param>
+    /// <param name="size">The size of the texture in texels.</param>
+    /// <returns>The texture in <see cref="VkImageLayout.ShaderReadOnlyOptimal"/>, with its view and its sampler.</returns>
+    /// <exception cref="ObjectDisposedException">The context is disposed.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// A component of <paramref name="size"/> is 0 or less, or above the 2D image limit of the device.
+    /// </exception>
+    /// <exception cref="ArgumentException">The length of <paramref name="rgba"/> is not <c>size.X * size.Y * 4</c>.</exception>
+    /// <exception cref="VkResultError">A Vulkan call fails.</exception>
+    public SampledTexture CreateTexture(ReadOnlySpan<byte> rgba, int2 size)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        if (size.X <= 0 || size.Y <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(size), size, "Each component of the size must be 1 or more.");
+        }
+
+        // A larger image breaks a valid usage rule of vkCreateImage, and the driver need not report an error.
+        int maxDimension = _physicalDevice.GetProperties().Limits.MaxImageDimension2D;
+        if (size.X > maxDimension || size.Y > maxDimension)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(size), size, $"Each component of the size must be {maxDimension} or less on this device.");
+        }
+
+        // The limit check above keeps each component at or below MaxImageDimension2D, so the product fits in 64 bits.
+        long byteCount = (long)size.X * size.Y * BytesPerTexel;
+        if (rgba.Length != byteCount)
+        {
+            throw new ArgumentException(
+                $"The pixel data has {rgba.Length} bytes. A texture of {size.X} x {size.Y} needs {byteCount} bytes.",
+                nameof(rgba));
+        }
+
+        SampledTexture? texture = null;
+        try
+        {
+            VkBuffer staging = default;
+            VkDeviceMemory stagingMemory = default;
+            CommandBuffer commandBuffer = default;
+            bool hasCommandBuffer = false;
+            bool submitted = false;
+            bool copyComplete = false;
+            try
+            {
+                // Step 1: the staging buffer. The memory is host-coherent, so the write needs no flush.
+                // The queue submit makes the host write visible to the device.
+                staging = _device.CreateBuffer(
+                    new VkBufferCreateInfo
+                    {
+                        Size = new ByteSize64((ulong)byteCount),
+                        Usage = VkBufferUsageFlags.TransferSrcBit,
+                        SharingMode = VkSharingMode.Exclusive,
+                    },
+                    null);
+                stagingMemory = _device.AllocateMemory(
+                    _physicalDevice,
+                    staging,
+                    VkMemoryPropertyFlags.HostVisibleBit | VkMemoryPropertyFlags.HostCoherentBit,
+                    null);
+                _device.BindBufferMemory(staging, stagingMemory, new ByteSize64(0));
+                _device.WriteMemory(rgba, stagingMemory);
+
+                // Step 2: the image in device-local memory.
+                texture = new SampledTexture(_device, size);
+
+                // Step 3: one primary command buffer for one submit.
+                commandBuffer = _device.AllocateCommandBuffer(new VkCommandBufferAllocateInfo
+                {
+                    CommandPool = _commandPool,
+                    Level = VkCommandBufferLevel.Primary,
+                });
+                hasCommandBuffer = true;
+                commandBuffer.Begin(VkCommandBufferUsageFlags.OneTimeSubmitBit);
+
+                // Step 4: the layout changes and the copy.
+                RecordUpload(commandBuffer, staging, texture.Image, size);
+
+                // Step 5: submit and wait. The upload runs before the first frame, so a queue wait is enough.
+                commandBuffer.End();
+                GraphicsQueue.Submit([], [], new Span<CommandBuffer>(ref commandBuffer), [], default);
+                submitted = true;
+                GraphicsQueue.WaitIdle();
+                copyComplete = true;
+            }
+            finally
+            {
+                // Step 6: free the upload objects. On the normal path, the copy is complete.
+                // When a step before the submit throws, the GPU has no work that uses the objects.
+                // When the queue wait throws after the submit, the copy can still be pending.
+                // Then wait for the device first. The empty catch keeps the original exception for the caller.
+                if (submitted && !copyComplete)
+                {
+                    try
+                    {
+                        _device.WaitIdle();
+                    }
+                    catch
+                    {
+                    }
+                }
+
+                if (hasCommandBuffer)
+                {
+                    _device.FreeCommandBuffers(_commandPool, new ReadOnlySpan<CommandBuffer>(in commandBuffer));
+                }
+
+                if (!staging.IsNull())
+                {
+                    _device.DestroyBuffer(staging, null);
+                }
+
+                if (!stagingMemory.IsNull())
+                {
+                    _device.FreeMemory(stagingMemory, null);
+                }
+            }
+
+            // Step 7: the view and the sampler.
+            texture.CreateViewAndSampler();
+            return texture;
+        }
+        catch
+        {
+            texture?.Dispose();
+            throw;
+        }
     }
 
     /// <summary>
@@ -564,6 +716,72 @@ internal sealed unsafe class VulkanContext : IDisposable
         {
             throw new InvalidOperationException($"{call} returns {result}.");
         }
+    }
+
+    /// <summary>
+    /// Records the upload of a full image: a change to <see cref="VkImageLayout.TransferDstOptimal"/>, the copy from
+    /// the staging buffer, and a change to <see cref="VkImageLayout.ShaderReadOnlyOptimal"/>.
+    /// </summary>
+    /// <param name="commandBuffer">The command buffer in the recording state.</param>
+    /// <param name="staging">The staging buffer. Its texels are tightly packed, row by row.</param>
+    /// <param name="image">The image. Its layout is <see cref="VkImageLayout.Undefined"/>.</param>
+    /// <param name="size">The size of the image in texels.</param>
+    private static void RecordUpload(CommandBuffer commandBuffer, VkBuffer staging, VkImage image, int2 size)
+    {
+        VkImageSubresourceRange range = Subresources.Single(VkImageAspectFlags.ColorBit);
+
+        // The old content has no value, so the first change waits for nothing and discards it.
+        VkImageMemoryBarrier toTransfer = new()
+        {
+            SrcAccessMask = VkAccessFlags.None,
+            DstAccessMask = VkAccessFlags.TransferWriteBit,
+            OldLayout = VkImageLayout.Undefined,
+            NewLayout = VkImageLayout.TransferDstOptimal,
+            SrcQueueFamilyIndex = VK.QUEUE_FAMILY_IGNORED,
+            DstQueueFamilyIndex = VK.QUEUE_FAMILY_IGNORED,
+            Image = image,
+            SubresourceRange = range,
+        };
+        commandBuffer.PipelineBarrier(
+            VkPipelineStageFlags.TopOfPipeBit,
+            VkPipelineStageFlags.TransferBit,
+            VkDependencyFlags.None,
+            [],
+            [],
+            new ReadOnlySpan<VkImageMemoryBarrier>(in toTransfer));
+
+        // A row length and an image height of 0 mean that the buffer texels are tightly packed.
+        VkBufferImageCopy region = new()
+        {
+            BufferOffset = new ByteSize64(0),
+            BufferRowLength = 0,
+            BufferImageHeight = 0,
+            ImageSubresource = range.ToLayers(),
+            ImageOffset = new VkOffset3D(0, 0, 0),
+            ImageExtent = new VkExtent3D(size.X, size.Y, 1),
+        };
+        commandBuffer.CopyBufferToImage(
+            staging, image, VkImageLayout.TransferDstOptimal, new ReadOnlySpan<VkBufferImageCopy>(in region));
+
+        // The fragment shader reads the image only after the copy writes it.
+        VkImageMemoryBarrier toShader = new()
+        {
+            SrcAccessMask = VkAccessFlags.TransferWriteBit,
+            DstAccessMask = VkAccessFlags.ShaderReadBit,
+            OldLayout = VkImageLayout.TransferDstOptimal,
+            NewLayout = VkImageLayout.ShaderReadOnlyOptimal,
+            SrcQueueFamilyIndex = VK.QUEUE_FAMILY_IGNORED,
+            DstQueueFamilyIndex = VK.QUEUE_FAMILY_IGNORED,
+            Image = image,
+            SubresourceRange = range,
+        };
+        commandBuffer.PipelineBarrier(
+            VkPipelineStageFlags.TransferBit,
+            VkPipelineStageFlags.FragmentShaderBit,
+            VkDependencyFlags.None,
+            [],
+            [],
+            new ReadOnlySpan<VkImageMemoryBarrier>(in toShader));
     }
 
     /// <summary>Creates the swapchain with the FIFO present mode, which every Vulkan driver supports.</summary>

@@ -286,6 +286,8 @@ public sealed class LayoutAllocationTests
         Run(scene, KindCount * 2);
         Run(scene, KindCount * 2);
 
+        // The release empties the allocation context, so a background GC cannot add bytes. See AllocationGate.
+        AllocationGate.ReleaseAllocationContext();
         long before = GC.GetAllocatedBytesForCurrentThread();
         Run(scene, Iterations);
         long after = GC.GetAllocatedBytesForCurrentThread();

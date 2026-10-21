@@ -147,6 +147,8 @@ public sealed class TreeAllocationTests
         Run(scene, 1);
         Run(scene, 1);
 
+        // The release empties the allocation context, so a background GC cannot add bytes. See AllocationGate.
+        AllocationGate.ReleaseAllocationContext();
         long before = GC.GetAllocatedBytesForCurrentThread();
         Run(scene, Iterations);
         long after = GC.GetAllocatedBytesForCurrentThread();

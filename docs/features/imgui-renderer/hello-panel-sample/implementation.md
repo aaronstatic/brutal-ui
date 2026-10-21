@@ -1,10 +1,10 @@
 # Hello Panel Sample - Implementation Plan
 
 **Epic:** imgui-renderer (feature 4 of 4)
-**Status:** Planning
-**Started:** 2026-10-20
+**Status:** In Progress
+**Started:** 2026-10-21
 **Target Completion:** TBD
-**Last Updated:** 2026-10-20 21:40
+**Last Updated:** 2026-10-21 00:55
 
 ---
 
@@ -485,6 +485,8 @@ No feature interview ran for this draft. The epic interview confirmed these item
 ## Notes
 
 ### Open Scope Questions
+
+**Answered 2026-10-21 by the user in `/autorun-epic`:** each of the four questions takes its recommended option. Question 1: the `scripts/test-linux.sh` smoke log demo. Question 2: only the UI region fails the run on an allocation. Question 3: `TreeDrawBenchmark` with `RecordingRenderer`. Question 4: the texture upload stays in the sample. The plan follows each answer.
 
 **Question 1: What is the demo of phase 1? (rule 12)**
 - **Recommended:** `**Demo:** the developer runs scripts/test-linux.sh and reads the PASS line. Then the developer runs cat artifacts/test-linux/smoke.log and reads HelloPanel: 120 frames rendered. and HelloPanel: last frame: draw commands 1, vertices <V>. with a value of V above 0.` Reason: a command checks the GPU path, and no person must look at a window.
