@@ -1,9 +1,9 @@
 {
   "schema": 1,
-  "beastModeVersion": "6.1.0",
+  "beastModeVersion": "6.1.1",
   "harness": "claude",
   "harnessRoot": ".claude",
-  "generated": "2026-10-16T09:02:43.895Z",
+  "generated": "2026-10-21T06:48:14.587Z",
   "files": [
     {
       "destination": ".claude/skills/audit-feature/SKILL.md",
@@ -14,7 +14,7 @@
     {
       "destination": ".claude/skills/autorun-epic/SKILL.md",
       "source": "templates/skills/autorun-epic/SKILL.md",
-      "sha256": "e4e0047b3dafdf8b6a62e18a5955394aa74cf8a1c0ee7b5625a84049c74567be",
+      "sha256": "8603e2a5164f14fc92941e85f7b0b29954ef5b4a778d0a8c66c08fdbd29b223a",
       "owned": true
     },
     {
@@ -176,7 +176,7 @@
     {
       "destination": ".claude/agents/feature-orchestrator.md",
       "source": "templates/agents/feature-orchestrator.md",
-      "sha256": "78d64c2c91fb10decf802979f67bf2697b2a80112dbd5fb32656844aa4460fdf",
+      "sha256": "13bd75cb6dd1351ea3dd89151b1a5f73b95563fb40641b9eb2fe053fe23ccc83",
       "owned": true
     },
     {
@@ -254,7 +254,7 @@
     {
       "destination": ".beast-mode/phase-handoff.md",
       "source": "templates/formats/phase-handoff.md",
-      "sha256": "5e13a5f94c42408a3052bcb0589c1915f8482be298d4bcd3c72dbb597b303fba",
+      "sha256": "c2d02e4acbae10a40eaa2b0a36b77893cd2136a45316f79fab4686ac4512d6f0",
       "owned": true
     },
     {
@@ -272,7 +272,7 @@
     {
       "destination": ".beast-mode/tool-rules.md",
       "source": "templates/formats/tool-rules.md",
-      "sha256": "07b08227f71ecbd10211cea9b5675d1b1199ed54b43b51b1014c976c28eddfda",
+      "sha256": "d5b9c3b32040bf7254d4a3009ff28197890b165dd0ea22a4014b3048361b7611",
       "owned": true
     }
   ]

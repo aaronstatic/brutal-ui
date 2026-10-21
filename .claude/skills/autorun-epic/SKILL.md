@@ -179,9 +179,9 @@ Read `Feature` and `Phases` for the state of the run. Keep the count of `Finding
 **5a. Blockers.** A `Blockers` section that does not read `none` stops the loop.
 
 1. Show the ask to the user, in the words of the report. Ask the user to choose: fix it and retry the feature, or end the run.
-2. Wait for the answer. On a retry, delegate the same feature to a **fresh** `feature-orchestrator` agent, from Step 4b.
+2. Wait for the answer. On a retry, first wait until no child agent of the last orchestrator runs. Then delegate the same feature to a **fresh** `feature-orchestrator` agent, from Step 4b.
 3. Make no commit and no merge for a blocked feature. Never go to the next feature with an open blocker.
-4. A blocker can name a medium or a large change from the inbox. Run this item for that blocker, in place of items 1 and 2. For a medium change, run section 12 rule 9 of `.beast-mode/phase-handoff.md` on the plan and `tasks.md` of the feature. Rule 9 asks the scope question of the blocker and marks the line done. Then delegate the feature to a **fresh** `feature-orchestrator` agent, from Step 4b. For a large change, run section 12 rule 10, then end the run. The user may stop the run at the question.
+4. A blocker can name a medium or a large change from the inbox. Run this item for that blocker, in place of items 1 and 2. For a medium change, run section 12 rule 9 of `.beast-mode/phase-handoff.md` on the plan and `tasks.md` of the feature. Rule 9 asks the scope question of the blocker and marks the line done. Wait until no child agent of the last orchestrator runs. Then delegate the feature to a **fresh** `feature-orchestrator` agent, from Step 4b. For a large change, run section 12 rule 10, then end the run. The user may stop the run at the question.
 
 **5b. Needs human verification.** Append each item to `docs/features/<epic>/human-testing.md`. Create the file from the template at `.beast-mode/templates/human-testing.md` when it does not exist. Add one `## <feature>` section per feature, with one `- [ ] <item>` line per item. The orchestrator already appended one `Phase <n> demo:` line per slice, per section 10 of `.beast-mode/phase-handoff.md`.
 

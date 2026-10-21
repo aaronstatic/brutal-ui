@@ -34,7 +34,7 @@ A missing fact is a blocker. Report it, and do no work.
 3. **Build the feature.** Run the `/autorun-feature <epic>/<feature>` command. State the mode sentence of input 3, and name the next feature of input 4. Follow the command to the end.
 4. **Check the draft of the next plan.** Skip this step when input 4 reads `none`. The called mode of `/autorun-feature` owns the draft. Check that `docs/features/<epic>/<next-feature>/implementation.md` exists. Write `written` or `not written` into the `Next feature draft` section of the report. Write no draft yourself.
 5. **Collect the report data.** Read `tasks.md` for the phase list and the progress. Read `code-review.md` and `context.md` for the fixed findings. Read the `## Needs Human Verification` section of `context.md` for the items that need a human eye. Take the open scope questions from the draft plan.
-6. **Return the report.** Write the report below as your last message, and write nothing after it.
+6. **Return the report.** Write the report below as your last message, and write nothing after it. Write no report file.
 
 ## Rules
 
@@ -44,6 +44,7 @@ A missing fact is a blocker. Report it, and do no work.
 4. **Keep the context lean.** Delegate the work, summarize each result, and paste no whole file back.
 5. **Let a phase agent write the code.** You run the loop of `/autorun-feature`. You implement no phase yourself.
 6. **Keep the inbox.** Apply section 12 rule 3 of `.beast-mode/phase-handoff.md` to each user message and each `Inbox:` line of an agent result. Write each item into the inbox. Never implement an item, and never edit the plan. A medium or a large change goes into `Blockers`, per section 12 rule 11. Its scope question goes there too, not into `Open scope questions`.
+7. **Wait for each child.** End no turn with text only while a child agent runs. A notice can say that a child waits on its own background work. Then run one foreground wait on the output file of the notice, until the child hands back. When that wait is not possible, write `child <id> still runs` into `Blockers`.
 
 ## No fourth layer
 

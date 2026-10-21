@@ -1,13 +1,13 @@
 {
   "schema": 1,
-  "beastModeVersion": "6.1.0",
-  "generated": "2026-10-16T09:02:43.897Z",
+  "beastModeVersion": "6.1.1",
+  "generated": "2026-10-21T06:48:14.588Z",
   "harnesses": {
     "claude": {
       "harnessRoot": ".claude",
-      "version": "6.1.0",
+      "version": "6.1.1",
       "installed": "2026-10-16T09:02:43.897Z",
-      "updated": "2026-10-16T09:02:43.897Z"
+      "updated": "2026-10-21T06:48:14.588Z"
     }
   }
 }

@@ -126,7 +126,7 @@ The parent context is the most expensive context of a run. Every step of the par
 3. A failed gate goes to a fix subagent. The fix brief holds the error text, word for word. The parent does not search for the cause itself.
 4. The parent updates `tasks.md` and `context.md` with the edit tool. It writes no whole file that exists.
 5. The parent keeps the summary of an agent result, and it pastes no whole file and no whole log into its context.
-6. The parent waits for an agent result with the blocking form of the delegation tool of the harness. It runs no sleep and no poll loop, because every poll step resends the whole parent context.
+6. The parent waits for an agent result with the blocking form of the delegation tool of the harness. It runs no sleep and no poll loop, because every poll step resends the whole parent context. A notice can say that a child waits on its own background work. The child then still runs. End no turn with text only. Run one foreground wait on the output file of the notice, until the child hands back.
 
 A shell command of the parent serves the orchestration only: the git state, the branch, a file list, or a line count.
 
