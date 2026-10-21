@@ -56,14 +56,14 @@ public sealed class TypeSelectorTests
     }
 
     [Fact]
-    public void TheSpecificityIsOneTenOrEleven()
+    public void TheSpecificityPutsEachTierInItsOwnByte()
     {
-        ClassId id = ClassName.Intern(nameof(TheSpecificityIsOneTenOrEleven) + ".a");
+        ClassId id = ClassName.Intern(nameof(TheSpecificityPutsEachTierInItsOwnByte) + ".a");
         ElementTypeId type = LabelType();
 
         Assert.Equal(1, Selector.ForType(type).Specificity);
-        Assert.Equal(10, Selector.ForClass(id).Specificity);
-        Assert.Equal(11, Selector.ForTypeAndClass(type, id).Specificity);
+        Assert.Equal(256, Selector.ForClass(id).Specificity);
+        Assert.Equal(257, Selector.ForTypeAndClass(type, id).Specificity);
         Assert.Equal(0, default(Selector).Specificity);
         Assert.Equal(type, Selector.ForTypeAndClass(type, id).Type);
         Assert.Equal(id, Selector.ForTypeAndClass(type, id).Class);
@@ -106,8 +106,8 @@ public sealed class TypeSelectorTests
         Assert.Equal(3, sheet.Rules.Length);
         Assert.Equal(1, sheet.Rules[0].Specificity);
         Assert.Equal(type, sheet.Rules[0].Selector.Type);
-        Assert.Equal(10, sheet.Rules[1].Specificity);
-        Assert.Equal(11, sheet.Rules[2].Specificity);
+        Assert.Equal(256, sheet.Rules[1].Specificity);
+        Assert.Equal(257, sheet.Rules[2].Specificity);
     }
 
     [Fact]
@@ -193,7 +193,7 @@ public sealed class TypeSelectorTests
         Selector classOnly = Selector.ForTypeAndClass(ElementTypeId.None, id);
         Selector typeOnly = Selector.ForTypeAndClass(type, ClassId.None);
 
-        Assert.Equal(10, classOnly.Specificity);
+        Assert.Equal(256, classOnly.Specificity);
         Assert.Equal(id, classOnly.Class);
         Assert.Equal(ElementTypeId.None, classOnly.Type);
         Assert.Equal(1, typeOnly.Specificity);

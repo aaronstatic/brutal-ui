@@ -34,8 +34,10 @@ namespace BrutalUi.Core;
 /// <see cref="Label"/> also gives <see cref="DirtyFlags.Layout"/>, because the label measures its text with them.
 /// </para>
 /// <para>
-/// A rule matches by the type id of the element, by a class, or by both (phase 9). The pass reads
-/// <see cref="Element.TypeId"/> one time for each restyled element.
+/// A rule matches through <see cref="Selector"/>. The subject compound tests the pseudo-states, the type id, one
+/// class, and the name of the element. A child chain then tests the parent, and a descendant chain tests the parent
+/// and then the grandparent. The pass reads <see cref="Element.TypeId"/> one time for each restyled element and passes
+/// it to each rule. The match reads the tree, not the computed style, so the order of the visit does not change it.
 /// </para>
 /// </remarks>
 internal static class StylePass

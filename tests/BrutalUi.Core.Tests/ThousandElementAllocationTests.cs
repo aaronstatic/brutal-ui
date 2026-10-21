@@ -24,10 +24,16 @@ namespace BrutalUi.Core.Tests;
 /// pass runs that part and does not hit the cache: the width of a percent leaf, the width of a wrap item, the width of
 /// an absolute element, the <see cref="Display"/> of the hidden settings panel, a mark on three text leaves, a reorder
 /// of the sidebar, the viewport size, and a mark on each element. The ninth kind, the style kind, toggles the class
-/// <c>selected</c> on grid slot 0 and the class <c>muted</c> on the sidebar, and then marks
-/// <see cref="DirtyFlags.Style"/> on each element. Thus the style pass restyles all 1000 elements against all rules,
-/// which is the worst case of the pass. The kinds run in a fixed order, and the second round of a kind reverses the
-/// first.
+/// <c>selected</c> on grid slot 0 and the class <c>muted</c> on the sidebar. It also toggles the state
+/// <see cref="PseudoStates.Hover"/> on grid slot 0 and on stat row 0, so the subtree mark of the
+/// <see cref="Element.States"/> setter runs in the measured body. It also sets the name of the header to
+/// <see cref="ThousandElementTree.OtherHeaderName"/> and back to <see cref="ThousandElementTree.HeaderName"/>, so the
+/// <see cref="Element.Name"/> setter and its subtree mark run in the measured body. Both names are constants, so the
+/// step creates no string. Then it marks <see cref="DirtyFlags.Style"/> on each element. Thus the style pass restyles
+/// all 1000 elements against all rules, which is the worst case of the pass. The state rule, the child rule, and the
+/// descendant rule of the sheet match in the first round and miss in the second round. The name rule misses in the
+/// first round and matches in the second round. The kinds run in a fixed order, and the second round of a kind
+/// reverses the first.
 /// </para>
 /// </remarks>
 public sealed class ThousandElementAllocationTests
@@ -61,7 +67,8 @@ public sealed class ThousandElementAllocationTests
     // | ReorderKind  | a move of the first sidebar item to the end, and back                  |
     // | ViewportKind | the viewport width                                                     |
     // | FullKind     | a layout mark on each element                                          |
-    // | StyleKind    | the classes selected and muted, and a style mark on each element       |
+    // | StyleKind    | the classes selected and muted, the hover of grid slot 0 and stat row  |
+    // |              | 0, the name of the header, and a style mark on each element            |
     private const int LeafKind = 0;
     private const int WrapKind = 1;
     private const int AbsoluteKind = 2;
@@ -154,17 +161,24 @@ public sealed class ThousandElementAllocationTests
 
                 break;
             case StyleKind:
-                // The class changes mark the slot and the sidebar. The loop then marks each element, so the style
-                // pass restyles the full tree against each rule of the sheet.
+                // The class changes, the state changes, and the name change mark the subtree of the slot, the
+                // sidebar, the row, and the header. The loop then marks each element, so the style pass restyles the
+                // full tree against each rule of the sheet. The two names are constants, so the step creates no string.
                 if (second)
                 {
                     tree.GridSlot.Classes.Add(tree.SelectedClass);
                     tree.Sidebar.Classes.Add(tree.MutedClass);
+                    tree.GridSlot.States = PseudoStates.Hover;
+                    tree.StatRow.States = PseudoStates.Hover;
+                    tree.Header.Name = ThousandElementTree.OtherHeaderName;
                 }
                 else
                 {
                     tree.GridSlot.Classes.Remove(tree.SelectedClass);
                     tree.Sidebar.Classes.Remove(tree.MutedClass);
+                    tree.GridSlot.States = PseudoStates.None;
+                    tree.StatRow.States = PseudoStates.None;
+                    tree.Header.Name = ThousandElementTree.HeaderName;
                 }
 
                 Element[] styled = tree.All;
@@ -333,6 +347,7 @@ public sealed class ThousandElementAllocationTests
         Assert.Equal(ThousandElementTree.ElementCount, CountSubtree(tree.Root));
 
         // The context holds the sheet: a second add of the same sheet throws, and the throw changes nothing.
+        Assert.Equal(16, ThousandElementTree.RuleCount);
         Assert.Equal(ThousandElementTree.RuleCount, tree.Sheet.Rules.Length);
         Assert.Throws<InvalidOperationException>(() => tree.Context.AddSheet(tree.Sheet));
         Assert.False(tree.SelectedClass.IsNone);
@@ -348,7 +363,125 @@ public sealed class ThousandElementAllocationTests
         {
             Assert.False(all[i].Classes.Contains(tree.SelectedClass));
             Assert.False(all[i].Classes.Contains(tree.MutedClass));
+            Assert.Equal(PseudoStates.None, all[i].States);
         }
+
+        // Each new rule form is in the sheet. Only the header has the name of the name rule.
+        Assert.Equal(1, CountForm(tree.Sheet, SelectorCombinator.Child));
+        Assert.Equal(1, CountForm(tree.Sheet, SelectorCombinator.Descendant));
+        int names = 0;
+        int states = 0;
+        ReadOnlySpan<StyleRule> rules = tree.Sheet.Rules;
+        for (int i = 0; i < rules.Length; i++)
+        {
+            names += rules[i].Selector.Subject.Name is null ? 0 : 1;
+            states += rules[i].Selector.Subject.States == PseudoStates.None ? 0 : 1;
+        }
+
+        Assert.Equal(1, names);
+        Assert.Equal(1, states);
+        // The two names of the header are different, and no element has the second name after the build.
+        Assert.False(string.Equals(
+            ThousandElementTree.HeaderName, ThousandElementTree.OtherHeaderName, StringComparison.Ordinal));
+        int named = 0;
+        int renamed = 0;
+        for (int i = 0; i < all.Length; i++)
+        {
+            named += all[i].Name == ThousandElementTree.HeaderName ? 1 : 0;
+            renamed += all[i].Name == ThousandElementTree.OtherHeaderName ? 1 : 0;
+        }
+
+        Assert.Equal(1, named);
+        Assert.Equal(0, renamed);
+        Assert.Equal(ThousandElementTree.HeaderName, tree.Header.Name);
+        Assert.Same(tree.Header, tree.Root.Children[0]);
+        Assert.Same(tree.GridSlot, tree.GridIcon.Parent);
+        Assert.Same(tree.StatRow, tree.StatValueLeaf.Parent);
+        Assert.Same(tree.StatRow, tree.StatFill.Parent!.Parent);
+    }
+
+    [Fact]
+    public void TheStyleStepMatchesEachSelectorForm()
+    {
+        Scene scene = BuildWarmScene();
+        ThousandElementTree tree = scene.Tree;
+        Element slot = tree.GridSlot;
+        Element icon = tree.GridIcon;
+        Element name = tree.StatName;
+        Element fill = tree.StatFill;
+        Element row = tree.StatRow;
+        Element header = tree.Header;
+        Element otherRow = row.Parent!.Children[1];
+        Element otherName = otherRow.Children[0];
+
+        // The values before the first style step. No rule of a new form matches yet, except the name rule.
+        Assert.Equal(ThousandElementTree.HeaderName, header.Name);
+        Rgba8 slotBorder = slot.Style.BorderColor;
+        Rgba8 iconBorder = icon.Style.BorderColor;
+        Rgba8 nameBorder = name.Style.BorderColor;
+        Rgba8 fillBorder = fill.Style.BorderColor;
+        Rgba8 rowBorder = row.Style.BorderColor;
+        Rgba8 otherNameBorder = otherName.Style.BorderColor;
+        Assert.NotEqual(ThousandElementTree.SlotHoverBorderColor, slotBorder);
+        Assert.NotEqual(ThousandElementTree.SlotChildBorderColor, iconBorder);
+        Assert.NotEqual(ThousandElementTree.RowDescendantBorderColor, nameBorder);
+        Assert.NotEqual(ThousandElementTree.RowDescendantBorderColor, fillBorder);
+        Assert.Equal(ThousandElementTree.HeaderBorderColor, header.Style.BorderColor);
+        float4 slotRect = slot.Layout.Rect;
+        float4 iconRect = icon.Layout.Rect;
+        float4 nameRect = name.Layout.Rect;
+        float4 fillRect = fill.Layout.Rect;
+        float4 headerRect = header.Layout.Rect;
+        tree.Context.Draw(scene.Renderer);
+        int rectsBefore = CountCalls(scene.Renderer, DrawCallKind.Rect);
+
+        // The first style step hovers the slot and the row, and it renames the header. The state rule, the child
+        // rule, and the descendant rule match. The descendant rule matches the name leaf at the parent and the fill
+        // leaf at the grandparent. The name rule misses, so the header loses its border color.
+        scene.StepCount = StyleKind;
+        Run(scene, 1);
+        Assert.Equal(PseudoStates.Hover, slot.States);
+        Assert.Equal(PseudoStates.Hover, row.States);
+        Assert.Equal(ThousandElementTree.OtherHeaderName, header.Name);
+        Assert.Equal(ThousandElementTree.SlotHoverBorderColor, slot.Style.BorderColor);
+        Assert.Equal(ThousandElementTree.SlotChildBorderColor, icon.Style.BorderColor);
+        Assert.Equal(ThousandElementTree.RowDescendantBorderColor, name.Style.BorderColor);
+        Assert.Equal(ThousandElementTree.RowDescendantBorderColor, fill.Style.BorderColor);
+        Assert.NotEqual(ThousandElementTree.HeaderBorderColor, header.Style.BorderColor);
+
+        // An element is not its own ancestor, and a row that is not in the state gives no descendant value.
+        Assert.Equal(rowBorder, row.Style.BorderColor);
+        Assert.Equal(otherNameBorder, otherName.Style.BorderColor);
+
+        // The values change no rect and no draw call.
+        AssertSameRect(slotRect, slot.Layout.Rect);
+        AssertSameRect(iconRect, icon.Layout.Rect);
+        AssertSameRect(nameRect, name.Layout.Rect);
+        AssertSameRect(fillRect, fill.Layout.Rect);
+        AssertSameRect(headerRect, header.Layout.Rect);
+        tree.Context.Draw(scene.Renderer);
+        Assert.Equal(rectsBefore, CountCalls(scene.Renderer, DrawCallKind.Rect));
+
+        // The next style step ends the hover, gives the header its first name, and gives the old values back. The
+        // name rule matches again.
+        scene.StepCount = KindCount + StyleKind;
+        Run(scene, 1);
+        Assert.Equal(PseudoStates.None, slot.States);
+        Assert.Equal(PseudoStates.None, row.States);
+        Assert.Equal(ThousandElementTree.HeaderName, header.Name);
+        Assert.Equal(slotBorder, slot.Style.BorderColor);
+        Assert.Equal(iconBorder, icon.Style.BorderColor);
+        Assert.Equal(nameBorder, name.Style.BorderColor);
+        Assert.Equal(fillBorder, fill.Style.BorderColor);
+        Assert.Equal(ThousandElementTree.HeaderBorderColor, header.Style.BorderColor);
+        AssertSameRect(slotRect, slot.Layout.Rect);
+        AssertSameRect(iconRect, icon.Layout.Rect);
+        AssertSameRect(nameRect, name.Layout.Rect);
+        AssertSameRect(fillRect, fill.Layout.Rect);
+        AssertSameRect(headerRect, header.Layout.Rect);
+        tree.Context.Draw(scene.Renderer);
+        Assert.Equal(rectsBefore, CountCalls(scene.Renderer, DrawCallKind.Rect));
+        Assert.Equal(DirtyFlags.None, tree.Root.Dirty);
     }
 
     [Fact]
@@ -604,6 +737,26 @@ public sealed class ThousandElementAllocationTests
         }
 
         return count;
+    }
+
+    private static int CountForm(StyleSheet sheet, SelectorCombinator combinator)
+    {
+        int count = 0;
+        ReadOnlySpan<StyleRule> rules = sheet.Rules;
+        for (int i = 0; i < rules.Length; i++)
+        {
+            count += rules[i].Selector.Combinator == combinator ? 1 : 0;
+        }
+
+        return count;
+    }
+
+    private static void AssertSameRect(float4 expected, float4 actual)
+    {
+        Assert.Equal(expected.X, actual.X, Tolerance);
+        Assert.Equal(expected.Y, actual.Y, Tolerance);
+        Assert.Equal(expected.Z, actual.Z, Tolerance);
+        Assert.Equal(expected.W, actual.W, Tolerance);
     }
 
     private static bool HasVisibleBorder(in ComputedStyle style)

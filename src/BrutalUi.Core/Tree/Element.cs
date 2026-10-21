@@ -29,6 +29,7 @@ public class Element
     private readonly InlineStyle _inlineView;
     private LayoutNode _layout;
     private PseudoStates _states;
+    private string? _name;
 
     private static readonly ElementTypeId s_typeId = ElementType.Intern("Element");
 
@@ -49,8 +50,33 @@ public class Element
     /// </remarks>
     public virtual ElementTypeId TypeId => s_typeId;
 
-    /// <summary>Gets or sets the name of the element. A change of the name sets no dirty bit.</summary>
-    public string? Name { get; set; }
+    /// <summary>Gets or sets the name of the element. A name selector of a style rule matches it.</summary>
+    /// <remarks>
+    /// <para>
+    /// A set to a new name marks the element and its full subtree for <see cref="DirtyFlags.Style"/>, because a name
+    /// rule of the element, or a chain rule of a descendant, can read the name. The mark is the same as the mark of
+    /// <see cref="States"/>. The mark reads no sheet and allocates nothing.
+    /// </para>
+    /// <para>
+    /// The setter compares the old name and the new name with an ordinal compare, so <c>Title</c> and <c>title</c> are
+    /// two names. A set to the same name marks nothing. A new element holds <see cref="DirtyFlags.Style"/> already
+    /// and has no child, so a name in an object initializer costs one flag write.
+    /// </para>
+    /// </remarks>
+    public string? Name
+    {
+        get => _name;
+        set
+        {
+            if (string.Equals(_name, value, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            _name = value;
+            MarkSubtreeStyle();
+        }
+    }
 
     /// <summary>Gets the parent of the element, or <see langword="null"/> when the element has no parent.</summary>
     public Element? Parent => _parent;
@@ -77,8 +103,16 @@ public class Element
     /// Gets or sets the pseudo-states of the element.
     /// </summary>
     /// <remarks>
-    /// A set to a new value marks the element for <see cref="DirtyFlags.Style"/>.
-    /// A set to the same value marks nothing.
+    /// <para>
+    /// A set to a new value marks the element and its full subtree for <see cref="DirtyFlags.Style"/>, because a chain
+    /// rule of a descendant can read the states of this element. Each element of the subtree with a child also gets
+    /// <see cref="DirtyFlags.DescendantStyle"/>, and each ancestor gets <see cref="DirtyFlags.DescendantStyle"/>.
+    /// The mark reads no sheet. A set to the same value marks nothing.
+    /// </para>
+    /// <para>
+    /// A state change on a high ancestor restyles a large subtree on the next <see cref="UiContext.Update(float)"/>.
+    /// The mark allocates nothing.
+    /// </para>
     /// </remarks>
     public PseudoStates States
     {
@@ -91,7 +125,7 @@ public class Element
             }
 
             _states = value;
-            MarkDirty(DirtyFlags.Style);
+            MarkSubtreeStyle();
         }
     }
 
@@ -227,7 +261,8 @@ public class Element
     /// chain from this element. Thus the dirty-bit invariant holds after the call.
     /// </para>
     /// <para>
-    /// A sheet change calls this method on each root. The recursion depth is the depth of the subtree.
+    /// A sheet change calls this method on each root. A change of <see cref="States"/>, a change of
+    /// <see cref="Name"/>, and a change of the <see cref="Classes"/> call it on the changed element. The recursion depth is the depth of the subtree.
     /// The method allocates nothing.
     /// </para>
     /// </remarks>

@@ -40,7 +40,7 @@ public sealed class StyleSheet
         private readonly List<StyleRule> _rules = [];
 
         /// <summary>Adds a rule at the end of the sheet.</summary>
-        /// <param name="selector">The selector that picks the elements. Create it with <see cref="Selector.ForClass(ClassId)"/>, <see cref="Selector.ForType(ElementTypeId)"/>, or <see cref="Selector.ForTypeAndClass(ElementTypeId, ClassId)"/>.</param>
+        /// <param name="selector">The selector that picks the elements. Create it with <see cref="Selector.For(in CompoundSelector)"/>, <see cref="Selector.Child(in CompoundSelector, in CompoundSelector)"/>, or <see cref="Selector.Descendant(in CompoundSelector, in CompoundSelector)"/>, or with one of the shortcuts <see cref="Selector.ForClass(ClassId)"/>, <see cref="Selector.ForName(string)"/>, <see cref="Selector.ForType(ElementTypeId)"/>, and <see cref="Selector.ForTypeAndClass(ElementTypeId, ClassId)"/>.</param>
         /// <param name="properties">The values that the rule sets. The builder keeps a copy.</param>
         /// <returns>The builder, so calls can follow in a chain.</returns>
         /// <exception cref="ArgumentException"><paramref name="selector"/> is <c>default(Selector)</c>.</exception>
@@ -49,7 +49,7 @@ public sealed class StyleSheet
             if (selector.IsEmpty)
             {
                 throw new ArgumentException(
-                    "The selector is default(Selector), which matches no element. Create it with Selector.ForClass, Selector.ForType, or Selector.ForTypeAndClass.",
+                    "The selector is default(Selector), which matches no element. Create it with Selector.For, Selector.Child, Selector.Descendant, Selector.ForClass, Selector.ForName, Selector.ForType, or Selector.ForTypeAndClass.",
                     nameof(selector));
             }
 

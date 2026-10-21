@@ -32,14 +32,24 @@ namespace BrutalUi.Core.Tests;
 /// </para>
 /// <para>
 /// The build adds <see cref="Sheet"/> to the context. The sheet holds <see cref="RuleCount"/> rules: type rules,
-/// class rules, and class-on-type rules. The root has the class <c>root</c>, each sidebar item has <c>item</c>, each
-/// stat row and each settings row has <c>row</c>, and each grid slot has <c>slot</c>. The fill of each grid slot comes
-/// from the <c>slot</c> rule, not from the inline set, so the <see cref="SelectedClass"/> rule can change it. The
-/// always-on rules set only a fill that the inline set had before, a border color with no border width, and text
-/// values (<see cref="ComputedStyle.Color"/>, <see cref="ComputedStyle.FontSize"/>). The tree holds no label, so a
-/// text value changes no rect and no draw call. Only the <see cref="SelectedClass"/> rule sets layout values, and the
-/// build puts no element in that class. The <see cref="MutedClass"/> rule sets a text color. No always-on rule sets a
-/// text color on the sidebar or on an element below it, so the sidebar labels inherit the color of the sidebar.
+/// class rules, class-on-type rules, a state rule, a child rule, a descendant rule, and a name rule. The root has the
+/// class <c>root</c>, each sidebar item has <c>item</c>, each stat row and each settings row has <c>row</c>, and each
+/// grid slot has <c>slot</c>. The fill of each grid slot comes from the <c>slot</c> rule, not from the inline set, so
+/// the <see cref="SelectedClass"/> rule can change it. The always-on rules set only a fill that the inline set had
+/// before, a border color with no border width, and text values (<see cref="ComputedStyle.Color"/>,
+/// <see cref="ComputedStyle.FontSize"/>). The tree holds no label, so a text value changes no rect and no draw call.
+/// Only the <see cref="SelectedClass"/> rule sets layout values, and the build puts no element in that class. The
+/// <see cref="MutedClass"/> rule sets a text color. No always-on rule sets a text color on the sidebar or on an element
+/// below it, so the sidebar labels inherit the color of the sidebar.
+/// </para>
+/// <para>
+/// The last 4 rules use each selector form of the selector-matching feature. Each one sets only a border color on an
+/// element with no border width, so it changes no rect and no draw call. The state rule <c>.slot:hover</c> and the
+/// child rule <c>.slot:hover &gt; Element</c> match when <see cref="GridSlot"/> is in the state
+/// <see cref="PseudoStates.Hover"/>. The descendant rule <c>.row:hover Element</c> matches when <see cref="StatRow"/> is
+/// in that state. The name rule <c>#header</c> matches <see cref="Header"/> when its name is <see cref="HeaderName"/>.
+/// The build gives the header that name, and no element gets the name <see cref="OtherHeaderName"/>. The build puts no
+/// element in a state.
 /// </para>
 /// <para>
 /// The benchmark project links this file, so the file uses no test framework type and no internal member of
@@ -124,7 +134,17 @@ internal sealed class ThousandElementTree
     private static readonly Rgba8 SelectedLabelColor = new(255, 220, 120);
 
     /// <summary>The number of rules in <see cref="Sheet"/>.</summary>
-    public const int RuleCount = 12;
+    public const int RuleCount = 16;
+
+    /// <summary>The name of <see cref="Header"/>. The name rule of <see cref="Sheet"/> selects it.</summary>
+    public const string HeaderName = "header";
+
+    /// <summary>
+    /// The second name of <see cref="Header"/>. The name rule of <see cref="Sheet"/> does not select it. The build gives
+    /// no element this name.
+    /// </summary>
+    /// <remarks>It is a constant, so a change of the header name creates no string.</remarks>
+    public const string OtherHeaderName = "header-renamed";
 
     /// <summary>The font size that the type rule of <see cref="Element"/> sets on each element.</summary>
     public const float ElementFontSize = 14f;
@@ -145,6 +165,26 @@ internal sealed class ThousandElementTree
     /// <summary>The text color that the <see cref="MutedClass"/> rule sets.</summary>
     public static readonly Rgba8 MutedTextColor = new(120, 124, 136);
 
+    /// <summary>
+    /// The border color that the state rule <c>.slot:hover</c> sets on a hovered grid slot. The slot has no border width.
+    /// </summary>
+    public static readonly Rgba8 SlotHoverBorderColor = new(140, 170, 240);
+
+    /// <summary>
+    /// The border color that the child rule <c>.slot:hover &gt; Element</c> sets on each child of a hovered grid slot.
+    /// No child has a border width.
+    /// </summary>
+    public static readonly Rgba8 SlotChildBorderColor = new(110, 150, 230);
+
+    /// <summary>
+    /// The border color that the descendant rule <c>.row:hover Element</c> sets on each child and each grandchild of a
+    /// hovered row. No element in a row has a border width.
+    /// </summary>
+    public static readonly Rgba8 RowDescendantBorderColor = new(230, 180, 90);
+
+    /// <summary>The border color that the name rule <c>#header</c> sets on <see cref="Header"/>. The header has no border width.</summary>
+    public static readonly Rgba8 HeaderBorderColor = new(96, 104, 132);
+
     /// <summary>Gets the context that holds the root. Its viewport is <see cref="ViewportWideWidth"/> by <see cref="ViewportHeight"/>.</summary>
     public required UiContext Context { get; init; }
 
@@ -157,8 +197,28 @@ internal sealed class ThousandElementTree
     /// <summary>Gets the value leaf of stat row 0. Its width is a percent of the row.</summary>
     public required Element StatValueLeaf { get; init; }
 
+    /// <summary>
+    /// Gets stat row 0. The descendant rule <c>.row:hover Element</c> reads its state at the parent and at the
+    /// grandparent of an element.
+    /// </summary>
+    public required Element StatRow { get; init; }
+
+    /// <summary>
+    /// Gets the fill leaf of stat row 0. Its grandparent is <see cref="StatRow"/>, so the descendant rule matches it at
+    /// the grandparent.
+    /// </summary>
+    public required Element StatFill { get; init; }
+
     /// <summary>Gets slot 0 of the wrapped grid.</summary>
     public required Element GridSlot { get; init; }
+
+    /// <summary>Gets the icon of grid slot 0. It is a child of <see cref="GridSlot"/>.</summary>
+    public required Element GridIcon { get; init; }
+
+    /// <summary>
+    /// Gets the header. After the build, its name is <see cref="HeaderName"/>, and no other element has that name.
+    /// </summary>
+    public required Element Header { get; init; }
 
     /// <summary>Gets the absolute tooltip.</summary>
     public required Element Tooltip { get; init; }
@@ -218,7 +278,7 @@ internal sealed class ThousandElementTree
         root.Inline.BackgroundColor = RootColor;
         root.Classes.Add(ClassName.Intern("root"));
 
-        BuildHeader(c, root, labelText);
+        Element header = BuildHeader(c, root, labelText);
 
         // 3. The body: a row that takes the free height. It can shrink, so it fits between the header and the footer.
         Element body = c.Add(root, "body");
@@ -229,7 +289,7 @@ internal sealed class ThousandElementTree
 
         Element sidebar = BuildSidebar(c, body, labelText, out Element sidebarLabel);
         Element gridSlot = BuildGrid(c, body);
-        Element statValueLeaf = BuildStats(c, body, labelText, out Element statName);
+        Element statValueLeaf = BuildStats(c, body, labelText, out Element statName, out Element statFill);
         BuildFooter(c, root);
         Element tooltip = BuildTooltip(c, root, labelText);
         Element paragraph = BuildModal(c, root, labelText, paragraphText);
@@ -255,7 +315,11 @@ internal sealed class ThousandElementTree
             Root = root,
             All = c.All,
             StatValueLeaf = statValueLeaf,
+            StatRow = statValueLeaf.Parent!,
+            StatFill = statFill,
             GridSlot = gridSlot,
+            GridIcon = gridSlot.Children[0],
+            Header = header,
             Tooltip = tooltip,
             Settings = settings,
             Sidebar = sidebar,
@@ -271,7 +335,8 @@ internal sealed class ThousandElementTree
     }
 
     /// <summary>
-    /// Builds the sheet of <see cref="RuleCount"/> rules: 2 type rules, 6 class rules, and 4 class-on-type rules.
+    /// Builds the sheet of <see cref="RuleCount"/> rules: 2 type rules, 6 class rules, 4 class-on-type rules, 1 state
+    /// rule, 1 child rule, 1 descendant rule, and 1 name rule.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -282,6 +347,13 @@ internal sealed class ThousandElementTree
     /// </para>
     /// <para>
     /// The two rules of the type <c>Label</c> match no element of this tree. They add work to the match loop only.
+    /// </para>
+    /// <para>
+    /// Rules 13 to 16 set only a border color, and no element that they match has a border width. The state rule
+    /// <c>.slot:hover</c> (specificity 512) wins over the border color of rule 11 (257). The subject of the child rule and
+    /// of the descendant rule is the type <c>Element</c>, so each element of the tree tests the parent part, and the
+    /// descendant rule also tests the grandparent part when the parent part misses. The name rule selects
+    /// <see cref="Header"/>, which has no other border color rule.
     /// </para>
     /// </remarks>
     private static StyleSheet BuildSheet(ClassId selected, ClassId muted)
@@ -358,13 +430,37 @@ internal sealed class ThousandElementTree
         properties.Color = SelectedLabelColor;
         builder.Add(Selector.ForTypeAndClass(labelType, selected), in properties);
 
+        // 13. A hovered grid slot: a border color with no border width. The state rule wins over rule 11.
+        CompoundSelector hoveredSlot = new() { Class = slotClass, States = PseudoStates.Hover };
+        properties = default;
+        properties.BorderColor = SlotHoverBorderColor;
+        builder.Add(Selector.For(in hoveredSlot), in properties);
+
+        // 14. Each child of a hovered grid slot: a border color. The icon and the badge have no border width.
+        CompoundSelector anyElement = new() { Type = elementType };
+        properties = default;
+        properties.BorderColor = SlotChildBorderColor;
+        builder.Add(Selector.Child(in hoveredSlot, in anyElement), in properties);
+
+        // 15. Each child and each grandchild of a hovered row: a border color. No element in a row has a border width.
+        CompoundSelector hoveredRow = new() { Class = rowClass, States = PseudoStates.Hover };
+        properties = default;
+        properties.BorderColor = RowDescendantBorderColor;
+        builder.Add(Selector.Descendant(in hoveredRow, in anyElement), in properties);
+
+        // 16. The header by its name: a border color with no border width.
+        properties = default;
+        properties.BorderColor = HeaderBorderColor;
+        builder.Add(Selector.ForName(HeaderName), in properties);
+
         return builder.Build();
     }
 
     /// <summary>2. The header: a row of height 48 with a title and 6 buttons. 14 elements.</summary>
-    private static void BuildHeader(Collector c, Element root, TextMeasure labelText)
+    /// <returns>The header. Its name is <see cref="HeaderName"/>.</returns>
+    private static Element BuildHeader(Collector c, Element root, TextMeasure labelText)
     {
-        Element header = c.Add(root, "header");
+        Element header = c.Add(root, HeaderName);
         header.Inline.FlexDirection = FlexDirection.Row;
         header.Inline.Height = 48f;
         header.Inline.JustifyContent = Justify.SpaceBetween;
@@ -386,6 +482,8 @@ internal sealed class ThousandElementTree
             Element label = c.Add(button, "header-button-label");
             label.Layout.Measure = labelText.Callback;
         }
+
+        return header;
     }
 
     /// <summary>4. The sidebar: a column of 20 percent with 50 items. 151 elements.</summary>
@@ -472,7 +570,13 @@ internal sealed class ThousandElementTree
     }
 
     /// <summary>6. The stats panel: a column of 25 percent with 40 rows. 201 elements.</summary>
-    private static Element BuildStats(Collector c, Element body, TextMeasure labelText, out Element firstName)
+    /// <returns>The value leaf of stat row 0.</returns>
+    private static Element BuildStats(
+        Collector c,
+        Element body,
+        TextMeasure labelText,
+        out Element firstName,
+        out Element firstFill)
     {
         Element stats = c.Add(body, "stats");
         stats.Inline.FlexDirection = FlexDirection.Column;
@@ -481,6 +585,7 @@ internal sealed class ThousandElementTree
 
         ClassId rowClass = ClassName.Intern("row");
         firstName = null!;
+        firstFill = null!;
         Element firstValue = null!;
         for (int i = 0; i < 40; i++)
         {
@@ -510,6 +615,7 @@ internal sealed class ThousandElementTree
             if (i == 0)
             {
                 firstName = name;
+                firstFill = fill;
                 firstValue = value;
             }
         }

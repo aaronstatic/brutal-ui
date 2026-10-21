@@ -7,9 +7,14 @@ namespace BrutalUi.Core;
 /// </summary>
 /// <remarks>
 /// <para>
-/// A change that alters the set marks the owner with <see cref="DirtyFlags.Style"/>.
-/// A duplicate add and a remove of an absent id mark nothing.
-/// The list allocates nothing after warm-up.
+/// A change that alters the set marks the owner and its full subtree with <see cref="DirtyFlags.Style"/>, because a
+/// chain rule of a descendant can read the classes of the owner. Each element of the subtree with a child also gets
+/// <see cref="DirtyFlags.DescendantStyle"/>, and each ancestor of the owner gets <see cref="DirtyFlags.DescendantStyle"/>.
+/// The mark reads no sheet. A duplicate add and a remove of an absent id mark nothing.
+/// </para>
+/// <para>
+/// A class change on a high ancestor restyles a large subtree on the next <see cref="UiContext.Update(float)"/>.
+/// The list and the mark allocate nothing after warm-up.
 /// </para>
 /// <para>
 /// Get a list from <see cref="Element.Classes"/>. A default instance has no owner. A call on it throws.
@@ -50,7 +55,7 @@ public readonly struct ClassList
             return false;
         }
 
-        _owner.MarkDirty(DirtyFlags.Style);
+        _owner.MarkSubtreeStyle();
         return true;
     }
 
@@ -64,7 +69,7 @@ public readonly struct ClassList
             return false;
         }
 
-        _owner.MarkDirty(DirtyFlags.Style);
+        _owner.MarkSubtreeStyle();
         return true;
     }
 

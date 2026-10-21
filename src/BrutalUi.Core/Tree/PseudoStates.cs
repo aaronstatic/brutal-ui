@@ -6,8 +6,10 @@ namespace BrutalUi.Core;
 /// The pseudo-states of an element. A style rule can match a state.
 /// </summary>
 /// <remarks>
-/// The input layer sets the states. A change of the states marks the element for
-/// <see cref="DirtyFlags.Style"/>, because the cascade can give a new result.
+/// The input layer sets the states. A change of the states marks the element and its full subtree for
+/// <see cref="DirtyFlags.Style"/>, because the cascade of the element and of each descendant can give a new result.
+/// Each ancestor gets <see cref="DirtyFlags.DescendantStyle"/>. The mark reads no sheet.
+/// A set to the same value marks nothing.
 /// </remarks>
 [Flags]
 public enum PseudoStates

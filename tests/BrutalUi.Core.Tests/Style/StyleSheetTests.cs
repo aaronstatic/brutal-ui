@@ -14,14 +14,14 @@ namespace BrutalUi.Core.Tests;
 public sealed class StyleSheetTests
 {
     [Fact]
-    public void ForClassGivesTheClassAndASpecificityOfTen()
+    public void ForClassGivesTheClassAndTheSpecificityOfOneClass()
     {
-        ClassId id = ClassName.Intern(nameof(ForClassGivesTheClassAndASpecificityOfTen) + ".a");
+        ClassId id = ClassName.Intern(nameof(ForClassGivesTheClassAndTheSpecificityOfOneClass) + ".a");
 
         Selector selector = Selector.ForClass(id);
 
         Assert.Equal(id, selector.Class);
-        Assert.Equal(10, selector.Specificity);
+        Assert.Equal(256, selector.Specificity);
         Assert.False(selector.IsEmpty);
     }
 
@@ -83,7 +83,7 @@ public sealed class StyleSheetTests
         StyleRule rule = new(in selector, in properties);
 
         Assert.Equal(selector, rule.Selector);
-        Assert.Equal(10, rule.Specificity);
+        Assert.Equal(256, rule.Specificity);
         Assert.Equal(Length.Px(12), rule.Properties.Width);
         Assert.Equal(properties.SetMask, rule.Properties.SetMask);
     }

@@ -68,7 +68,7 @@ BRUTAL ships the hard low-level parts. The single most important factor is that 
 
 - **Immediate mode for the player UI.** ImGui rebuilds the UI each frame from code. Game UI needs persistent state, transitions, and data binding. A retained tree is the right model.
 - **A native layout library.** Yoga through `Brutal.Interop` is possible. A C# flexbox keeps the allocation rule in our hands and avoids a native binary for each platform.
-- **Full CSS.** The style system supports class, name, and pseudo-state selectors only. No descendant selectors in the first release.
+- **Full CSS.** The style system supports type, class, name, and pseudo-state selectors only. A selector holds one compound, or a child chain (`.a > .b`) or a descendant chain (`.a .b`) of depth 2. A descendant chain reads the parent and the grandparent only. No sibling, attribute, universal, or `:not` selectors in the first release.
 - **ScriptableObjects.** mosaic-ui used them for definitions. brutal-ui uses plain C# records and an optional file loader.
 
 ### BRUTAL constraints
@@ -154,7 +154,7 @@ brutal-ui/
 
 ### Dirty tracking
 
-Each element carries dirty flags for style, layout, and paint. A change marks the element and its ancestors. The passes visit dirty subtrees only. A static screen costs one tree walk for the draw.
+Each element carries dirty flags for style, layout, and paint. A change marks the element and its ancestors. A class, state, or name change, an attach, and a sheet change also mark the full subtree of the element with `Style` (section 7). The passes visit dirty subtrees only. A static screen costs one tree walk for the draw.
 
 ---
 
@@ -170,11 +170,11 @@ The retained tree that every other layer reads and writes.
 public class Element
 {
     public Element();
-    public string? Name { get; set; }
+    public string? Name { get; set; }          // a new name (ordinal) marks the subtree Style
     public Element? Parent { get; }
     public ElementList Children { get; }       // view on a pooled array, no allocation
     public ClassList Classes { get; }          // view on an inline set of 8, then a pooled array
-    public PseudoStates States { get; set; }   // Hover, Active, Focus, Disabled, Checked
+    public PseudoStates States { get; set; }   // Hover, Active, Focus, Disabled, Checked. A new value marks the subtree Style
     public bool IsPickable { get; set; }       // default true
     public virtual ElementTypeId TypeId { get; }  // the type id that a type selector matches
     public ref readonly ComputedStyle Style { get; }  // resolved style, written by the style pass only
@@ -202,8 +202,8 @@ public readonly struct ClassList               // view on the classes of one ele
 {
     public int Count { get; }
     public ClassId this[int index] { get; }
-    public bool Add(ClassId id);               // false for a duplicate
-    public bool Remove(ClassId id);            // false when absent
+    public bool Add(ClassId id);               // false for a duplicate. A new class marks the subtree Style
+    public bool Remove(ClassId id);            // false when absent. A removal marks the subtree Style
     public bool Contains(ClassId id);
 }
 
@@ -286,6 +286,8 @@ public sealed class Image : Element
 `DirtyFlags` has the kinds `Style`, `Layout`, and `Paint`, and one descendant bit for each kind. `ElementBuilder` adds the extension methods `Class(string)`, `Class(ClassId)`, and `Child(Element)` for a fluent build.
 
 **The style members.** `Element.Style` is a `ref readonly` to the computed style. Only the style pass writes it, so game code cannot write a computed value by mistake. Before the first `Update`, it holds the defaults. The game writes `Element.Inline`: `panel.Inline.Width = 200;`. A set to a new value marks `Style`, and the next `Update` writes the result to `Style`. A set to the same value marks nothing. `Inline` is `public ref readonly InlineStyle`, not a property that returns the struct by value. C# accepts a property set on a variable only, and a `ref` return is a variable. A by-value return gives error CS1612 on `el.Inline.Width = 200`. The element creates the view one time in its constructor, so it costs 8 bytes and allocates nothing. A nested write such as `el.Inline.Margin.Top = 12` also gives CS1612. Write the whole value: `el.Inline.Margin = el.Inline.Margin with { Top = 12 };`. `InlineStyle` has one property for each member of `ComputedStyle` (32 members), `IsSet(StyleProperty)`, and `Clear(StyleProperty)`.
+
+**The name, the states, and the classes.** A chain rule of a descendant can read the name, the states, and the classes of an element. Thus each of these changes marks the element and its full subtree with `Style`: a new `Name` (ordinal compare), a new `States` value, and a `ClassList.Add` or `ClassList.Remove` that changes the list. Each element of the subtree with a child also gets `DescendantStyle`, and each ancestor gets `DescendantStyle`. A set to the same value, a duplicate add, and the removal of an absent class mark nothing. The mark reads no sheet and allocates nothing. A state change on a high ancestor restyles a large subtree on the next `Update` (section 7).
 
 **The type id.** `Element.TypeId` is virtual. `Element` returns the id of the name `Element`. `Label` and `Image` override it with their own ids. A subclass with no override has the id of its base class, and a type rule for the base class matches it. A type rule does not match a subclass with its own id. The id comes from `ElementType.Intern(name)`. The type table and the class table are separate.
 
@@ -389,12 +391,29 @@ Classes, pseudo-states, and a cascade on the element tree.
 ### Model
 
 ```csharp
+public readonly struct CompoundSelector         // one compound, as Label.title:hover is in CSS
+{
+    public ElementTypeId Type { get; init; }    // none, or the type id that the element must have
+    public ClassId Class { get; init; }         // none, or the one class that the element must hold
+    public PseudoStates States { get; init; }   // none, or each state that the element must hold
+    public string? Name { get; init; }          // null, or the name that the element must have (ordinal)
+}
+
+public enum SelectorCombinator : byte { None = 0, Child = 1, Descendant = 2 }
+
 public readonly struct Selector
 {
-    public ClassId Class { get; }               // none, or the class that the element must hold
-    public ElementTypeId Type { get; }          // none, or the type id that the element must have
-    public int Specificity { get; }             // class 10, type 1, both 11
+    public CompoundSelector Subject { get; }    // the compound that the element itself must match
+    public CompoundSelector Ancestor { get; }   // default when Combinator is None
+    public SelectorCombinator Combinator { get; }
+    public ClassId Class { get; }               // the class of Subject
+    public ElementTypeId Type { get; }          // the type of Subject
+    public int Specificity { get; }             // (names << 16) | ((classes + states) << 8) | types
+    public static Selector For(in CompoundSelector subject);
+    public static Selector Child(in CompoundSelector parent, in CompoundSelector subject);           // .a > .b
+    public static Selector Descendant(in CompoundSelector ancestor, in CompoundSelector subject);    // .a .b
     public static Selector ForClass(ClassId id);
+    public static Selector ForName(string name);
     public static Selector ForType(ElementTypeId type);
     public static Selector ForTypeAndClass(ElementTypeId type, ClassId id);
 }
@@ -442,11 +461,35 @@ A `StyleSheet` is an immutable, sorted rule list. `StyleSheet.Builder` copies ea
 
 **The cascade order.** The style pass builds the style of a dirty element from `default(ComputedStyle)` in these steps:
 
-1. The pass applies each matching rule in the order of the cascade. The order is the specificity (10 for each class, 1 for each type), then the order of `AddSheet`, then the rule order in the sheet. A later rule wins. The decimal sum keeps the CSS order only while each tier count stays below 10. The selector-matching feature must replace the weights with bit fields, or cap the counts, before it adds the name and the pseudo-states, because one selector can hold 12 units of the class tier.
+1. The pass applies each matching rule in the order of the cascade. The order is the specificity (see the tiers below), then the order of `AddSheet`, then the rule order in the sheet. A later rule wins.
 2. The pass applies the inline set last. An inline member always wins over a rule.
 3. A text member that no rule and no inline value sets takes the value of the parent. A root takes the text default of the context.
 
-A type rule matches an element when the type id of the selector equals `Element.TypeId`. A class rule matches when the element holds the class. A rule with both parts needs both. A `default(Selector)` matches nothing, and the builder rejects it.
+**The selectors.** A selector holds a subject compound. A chain also holds an ancestor compound and a combinator. Set the parts of a compound with an object initializer, and give the compound to `Selector.For`, `Selector.Child`, or `Selector.Descendant`. The shortcuts `ForClass`, `ForName`, `ForType`, and `ForTypeAndClass` create a selector with one compound. Each factory throws `ArgumentException` for a wrong compound. A wrong compound holds no part, an empty name, or a state bit that is not a member of `PseudoStates`. `Child` and `Descendant` check the ancestor slot first, and the parameter name of the exception tells the slot. A `default(Selector)` matches nothing, and the builder rejects it.
+
+**The specificity tiers.** `Selector.Specificity` is the one place that holds the weights. Each tier holds one byte of the value: `(names << 16) | ((classes + states) << 8) | types`. The name tier counts each compound with a name. The class tier counts each class and each pseudo-state. The type tier counts each compound with a type. The value is the sum over the subject and the ancestor. A count of a higher tier wins over each count of a lower tier while each count stays below 256. The largest selector of the grammar holds 2 names, 12 units of the class tier, and 2 types. Thus no count comes near 256.
+
+| Selector | Specificity |
+|----------|-------------|
+| `Label` | 1 |
+| `.a` or `:hover` | 256 |
+| `Label.a` | 257 |
+| `.a:hover` or `.a > .b` | 512 |
+| `.a:hover:active:focus:disabled:checked .b:hover:active:focus:disabled:checked` | 3072 |
+| `#title` | 65536 |
+
+The stylesheet-model feature used the weights class 10 and type 1. The byte tiers change each number: 10 becomes 256, and 11 becomes 257. The order of each pair of the old rules does not change. `StyleRule` stores the value at creation.
+
+**The match.** A compound matches an element when the element holds each part of the compound:
+
+- The states: the element holds each state bit of the compound (`(element.States & States) == States`). The element can hold more bits. A compound with only states, as `:hover` is, matches each element in the state.
+- The type: the id of `Element.TypeId` equals the type of the compound. The comparison is exact (see section 5 for a subclass).
+- The class: the element holds the one class of the compound. A compound holds at most one class.
+- The name: `Element.Name` equals the name of the compound with an ordinal, case-sensitive compare. An element with a `null` name matches no name part.
+
+The match tests the parts in this order, the cheapest part first. A chain tests the subject first, because most rules miss there. A child chain then reads the parent only. A descendant chain reads the parent and then the grandparent, and the walk stops there. Thus each chain rule reads at most two ancestors, and its cost stays constant. This bound differs from CSS: in CSS, `.a .b` also matches when `.a` is above the grandparent. A root has no parent, so it matches no chain, and an element is not its own ancestor. A chain reads the tree: the type, the class, the name, and the states of the ancestor. It does not read the computed style of the ancestor. Thus the order of the style pass does not change the result. The match allocates nothing.
+
+**The dirty rule for a class, a state, and a name.** A chain rule of a descendant can read the class, the states, and the name of an element. Thus each of these changes marks the element and its full subtree with `Style`: `ClassList.Add`, `ClassList.Remove`, a new `Element.States` value, and a new `Element.Name` (ordinal). Each element of the subtree with a child also gets `DescendantStyle`, and each ancestor gets `DescendantStyle`. A change to the same value marks nothing. The mark reads no sheet. With the walk bound, only the children and the grandchildren can change their match. Thus a deeper mark costs a restyle with no change of the result. A hover on a high ancestor restyles the full subtree on the next `Update`. An attach marks the full subtree also.
 
 **The inheritance.** `Color`, `Font`, and `FontSize` inherit. The other members do not. When a text member of an element changes, the pass marks each child with `Style` during the visit, and the visit reads the bits again after the restyle. Thus a new value flows to the descendants in the same `Update`. A child with its own value for a member keeps it. A child that sets only `Color` still inherits `Font` and `FontSize`. A move to a new parent marks the full subtree of the moved element with `Style`, so a move into another context restyles each descendant with the sheets of that context. `AddRoot` marks the full subtree of the new root.
 
@@ -467,7 +510,7 @@ A type rule matches an element when the type id of the selector equals `Element.
 
 **The sheets of a context.** `AddSheet` and `RemoveSheet` build the cascade again and mark each element of each root with `Style`. Both allocate, so call them in load code. `AddSheet` throws `InvalidOperationException` for a sheet that the context holds already. `RemoveSheet` returns `false` for an absent sheet. A sheet can be shared between contexts.
 
-**The cost.** The inline set lives in each element, also when empty. It adds about 250 bytes to each element (`StyleProperties`) and 8 bytes for the view. The `--facts` line shows 1041.5 bytes for each element in the 1000-element tree with its 12-rule sheet. `StylePassTests.TheStylePassAllocatesNothingAfterWarmUp` and the style step of `ThousandElementAllocationTests` guard the pass (section 14). The rules have no index yet, so each restyled element scans all rules of the cascade. A rule index waits for a benchmark.
+**The cost.** The inline set lives in each element, also when empty. It adds about 250 bytes to each element (`StyleProperties`) and 8 bytes for the view. The `--facts` line shows 1046.6 bytes for each element in the 1000-element tree with its 16-rule sheet. The sheet holds a state rule, a child rule, a descendant rule, and a name rule. The style step of the allocation gate sets and clears a hover state. `StylePassTests.TheStylePassAllocatesNothingAfterWarmUp` and the style step of `ThousandElementAllocationTests` guard the pass (section 14). The rules have no index yet, so each restyled element scans all rules of the cascade. A rule index waits for a benchmark.
 
 ### Transitions
 
@@ -475,8 +518,14 @@ A property transition has a duration and an easing. The style pass writes the ta
 
 ### Design Decisions
 
-- Pseudo-states: `:hover`, `:active`, `:focus`, `:disabled`, `:checked`. The selector-matching feature adds them. The stylesheet-model feature matches a type and a class only.
-- Selector depth 2 (`.a > .b` and `.a .b`) in the first release. Depth is a constant, not a list. The selector-matching feature adds it.
+- Pseudo-states: `:hover`, `:active`, `:focus`, `:disabled`, `:checked`. A compound holds them as the bits of `PseudoStates`, and the match is bit math.
+- Selector depth 2 (`.a > .b` and `.a .b`) in the first release. Depth is a constant, not a list. A selector holds one subject compound and one ancestor compound by value. Its only heap reference is the name string of a compound.
+- A descendant chain walks to the grandparent only. Each chain rule has a constant cost, and the result differs from CSS for a deeper ancestor.
+- One class for each compound. `.a.b` is not in the first release. The byte tiers already hold a larger count.
+- A name rule compares `Element.Name` with an ordinal compare. No intern table and no name id: the compare allocates nothing, and a name set takes no lock.
+- One byte for each specificity tier. The CSS order holds for each count below 256, with no proof that depends on the grammar.
+- A class change, a state change, and a name change mark the full subtree, with no check of the sheets. The mark is simple and correct. A sheet-aware mark waits for a benchmark.
+- `CompoundSelector` has no equality members. The default `ValueType.Equals` uses reflection for the `string?` name, so do not compare selectors in the hot path. The hot path compares no selector.
 - The style pass has its own recursion and not `DirtyWalk`, because it marks children during the visit.
 - `StyleRule` stores the specificity at creation, so a change of the weights touches `Selector.Specificity` only.
 - Theme variables (`--name`) resolve at parse time per stylesheet, not at runtime.
@@ -705,9 +754,9 @@ The Vulkan backend binds one render pass at construction. Phase 5 tests a second
 
 - **Unit tests** on the layout engine with fixtures from the Yoga test suite, ported by hand.
 - **Unit tests** on the XML loader, the stylesheet parser, and the framework diff.
-- **Style tests** in `BrutalUi.Core.Tests/Style/`. `StylePropertiesTests` checks the sparse set, the masks, and the throw for a value that is not a member. `StyleSheetTests` checks the builder, the sort, and the rule copy. `StylePassTests` checks the cascade, the compare of each member (a theory over all 32 members gives the kind of bit for each), and the dirty rule table of section 7. `InlineStyleTests` checks the view: a theory over all members checks that each set writes its own bit, that the same value marks nothing, and that a clear gives the default back. `TextInheritanceTests` checks the inheritance, the child marks, and the context defaults. `TypeSelectorTests` and `ElementTypeTests` check the type id and the type match. `MultiSheetTests` checks the merge of more than one sheet, `RemoveSheet`, and the mark of `AddRoot`. The layout tests and the Yoga fixtures write through `Inline`, and no expected rect changed. `LayoutDifferentialTests` compares 200 random trees with a fresh layout.
+- **Style tests** in `BrutalUi.Core.Tests/Style/`. `StylePropertiesTests` checks the sparse set, the masks, and the throw for a value that is not a member. `StyleSheetTests` checks the builder, the sort, and the rule copy. `StylePassTests` checks the cascade, the compare of each member (a theory over all 32 members gives the kind of bit for each), and the dirty rule table of section 7. `InlineStyleTests` checks the view: a theory over all members checks that each set writes its own bit, that the same value marks nothing, and that a clear gives the default back. `TextInheritanceTests` checks the inheritance, the child marks, and the context defaults. `TypeSelectorTests` and `ElementTypeTests` check the type id and the type match. `MultiSheetTests` checks the merge of more than one sheet, `RemoveSheet`, and the mark of `AddRoot`. `PseudoStateSelectorTests`, `ChainSelectorTests`, and `NameSelectorTests` check each part of a compound, each chain form, the walk bound, the tiers, and the factory checks. `SubtreeMarkTests` checks the subtree mark of a class, state, and name change. The layout tests and the Yoga fixtures write through `Inline`, and no expected rect changed. `LayoutDifferentialTests` compares 200 random trees with a fresh layout.
 - **Allocation tests** that run update and draw on a warm 1000-element tree and assert zero bytes allocated. `ThousandElementAllocationTests` is the gate. It covers the update and the draw, and it holds a style step (see below). The draw test runs full frames (`Update`, then `Draw` into a `RecordingRenderer`) after a warm-up. Each zero-byte gate of `BrutalUi.Core.Tests` calls `AllocationGate.ReleaseAllocationContext()` right before its measured region. A background GC can add the free part of the allocation context to the counter, and the release stops this. `BrutalUi.ImGui.Tests` runs no tests in parallel, so its gates do not call the helper.
-- **The style step of the allocation gate.** The 1000-element tree holds a sheet of 12 rules, added with `AddSheet`: type rules, class rules, and rules with a type and a class. The frame body adds and removes two classes (`selected` on a grid slot and `muted` on the sidebar), and it marks `Style` on each element. Each round then runs a full restyle of 1000 elements, with a merge of the rules and the inheritance. The gate asserts zero allocated bytes. `TheStyleStepRestylesTheTree` checks that the step changes the slot fill, the label color, and the inherited values. `StylePassTests.TheStylePassAllocatesNothingAfterWarmUp` is a smaller gate on 50 elements and 4 rules. A planted `GC.KeepAlive(new object())` in `Restyle` fails 7 gates: both gates of `ThousandElementAllocationTests` and one gate in each of 5 other classes. The class has 9 tests.
+- **The style step of the allocation gate.** The 1000-element tree holds a sheet of 16 rules, added with `AddSheet`: type rules, class rules, and rules with a type and a class. Four rules use the forms of selector-matching: a state rule (`.slot:hover`), a child rule (`.slot:hover > Element`), a descendant rule (`.row:hover Element`), and a name rule (`#header`). The frame body adds and removes two classes (`selected` on a grid slot and `muted` on the sidebar). It sets and clears `Hover` on a grid slot and on a stat row, and it changes the name of the header between two constant strings. It then marks `Style` on each element. Each round runs a full restyle of 1000 elements, with a match of the 16 rules, a merge, and the inheritance. The gate asserts zero allocated bytes. `TheStyleStepRestylesTheTree` checks that the step changes the slot fill, the label color, and the inherited values. `TheStyleStepMatchesEachSelectorForm` checks that each of the four new forms changes the value of its target, and that a miss keeps the old value. `StylePassTests.TheStylePassAllocatesNothingAfterWarmUp` is a smaller gate on 50 elements and 4 rules. `SubtreeMarkTests.AChainMatchAndAStateChangeAllocateNothing` is a gate on a chain scene. The class `ThousandElementAllocationTests` has 10 tests. Three plants show which gates guard the loops. A planted `GC.KeepAlive(new object())` in `Restyle` failed 7 gates in stylesheet-model: both gates of `ThousandElementAllocationTests` and one gate in each of 5 other classes. The same plant in `Selector.Matches` fails 4 Core gates: `StylePassTests.TheStylePassAllocatesNothingAfterWarmUp`, `SubtreeMarkTests.AChainMatchAndAStateChangeAllocateNothing`, and both gates of `ThousandElementAllocationTests`. It fails no ImGui gate, because the ImGui gates measure `Draw` only, the match runs in `Update`, and the ImGui label scene adds no sheet. The same plant in the `Name` setter fails the two gates of `ThousandElementAllocationTests`, because only the 1000-element step changes a name.
 - **Headless ImGui tests** in `BrutalUi.ImGui.Tests`. A harness creates an ImGui context with no window and no GPU, runs frames, and reads the background draw list as text lines (clip, texture, element count, vertex bounds, colors). The tests need no `VulkanBackend`. `dotnet test` loads the native ImGui library of the pinned `Ahwoo.BRUTAL.ImGui` package.
 - **A second allocation gate.** `ImGuiRendererAllocationTests` runs full frames through `ImGuiRenderer` on the 1000-element tree and through the direct calls (rounded rect with a border, square and rounded image, wrapped text, and a measure outside a frame). It asserts zero allocated bytes after warm-up. A test also checks that the measured draw does real work, so a draw that does nothing cannot pass.
 - **Element tests** in `BrutalUi.Core.Tests/Elements/`: `LabelTests`, `LabelWrapTests`, `LabelTextTests`, `ImageTests`, and `ContentBoxTests`. `ContentInsetsTests` in `Layout/` checks the insets of the engine. `RecordingRenderer` is the measurer and the renderer. Its wrap rule counts bytes, and each byte is `size * 0.5` pixels wide. It breaks a line at a blank and cuts a word that is wider than the wrap width. The tests check the measure, draw, snap, and dirty rules. They also check the locale refresh, the scale modes, and the content box. A theory checks each width from 8 to 200, and from 20 to 400 with a percent padding. At each width, the text at the draw wrap width has the height of the measured box.
