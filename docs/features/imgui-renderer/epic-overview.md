@@ -1,8 +1,8 @@
 # ImGui Renderer - Epic Overview
 
 **Epic:** imgui-renderer
-**Status:** Planned
-**Last Updated:** 2026-10-20 10:00
+**Status:** Complete
+**Last Updated:** 2026-10-21 04:30
 
 > **This file is the epic marker.** Its presence in `docs/features/imgui-renderer/` tells every Beast Mode command that this folder is an **epic**, not a plain feature. Keep it present and keep the required sections filled in. The master `docs/overview.md` tracks this epic as a **single row**. The per-feature detail lives **here**.
 
@@ -22,10 +22,10 @@ The constituent features of this epic, in build order. Each feature is a subfold
 
 | # | Feature | Status | Tasks | Description |
 |---|---------|--------|-------|-------------|
-| 1 | renderer-interface | Planned | - | `IUiRenderer`, the handle and color structs, the paint fields on `ComputedStyle`, and `UiContext.Draw` with the clip and rect walk, tested with a recording renderer. |
-| 2 | imgui-draw-list | Planned | - | `ImGuiRenderer` on the background `ImDrawList`, the font service on the ImGui default loader, and the texture service on the Vulkan backend. |
-| 3 | label-and-image | Planned | - | The `Label` and `Image` elements, the measure callback caller, word wrap, and the `LString` hook. |
-| 4 | hello-panel-sample | Planned | - | The HelloPanel sample as a static brutal-ui screen with a procedural texture, the draw allocation test, and the test script check. |
+| 1 | renderer-interface | Complete | 32/32 (100%) | `IUiRenderer`, the handle and color structs, the paint fields on `ComputedStyle`, and `UiContext.Draw` with the clip and rect walk, tested with a recording renderer. |
+| 2 | imgui-draw-list | Complete | 40/40 (100%) | `ImGuiRenderer` on the background `ImDrawList`, the font service on the ImGui default loader, and the texture service on the Vulkan backend. |
+| 3 | label-and-image | Complete | 42/42 (100%) | The `Label` and `Image` elements, the measure callback caller, word wrap, and the `LString` hook. |
+| 4 | hello-panel-sample | Complete | 27/27 (100%) | The HelloPanel sample as a static brutal-ui screen with a procedural texture, the draw allocation test, and the test script check. |
 
 > Reference any feature with the slash form `imgui-renderer/<feature-name>`. Task counts come from each feature's own `tasks.md` and `/update-epic` refreshes them.
 
@@ -64,6 +64,8 @@ The constituent features of this epic, in build order. Each feature is a subfold
   - The ImGui default font loader. No FreeType pin (Q3).
   - The texture service registers with the Vulkan backend only (Q6).
   - No managed allocation in `UiContext.Draw` after warm-up. The allocation test guards it.
+  - Decisions of the run: `TextureHandle` carries an `int2 Size`. `IUiRenderer.Text` takes a `wrapWidth`, so the draw and the measure break lines the same way. A measurer slot on `UiContext` (`UiContext.CreateInfo`) reaches the `Label` measure callback through a thread-static scope. `LayoutNode.ContentInsets` gives the content box to the paint hook. `UiContext.RefreshLocalizedText()` re-measures each `LString` label after a locale change.
+  - Each zero-byte gate calls `AllocationGate.ReleaseAllocationContext()` before its measure, so a background GC does not fail it. The HelloPanel sample uses the same release rule.
 
 ---
 
@@ -75,8 +77,8 @@ The constituent features of this epic, in build order. Each feature is a subfold
 
 ## Master Overview Rollup
 
-- **Rollup status:** Planned (0/4 features)
-- **One-line summary for master:** `IUiRenderer`, `UiContext.Draw`, the ImGui renderer, `Label`, `Image`, and the HelloPanel static screen. Closes Phase 1.
+- **Rollup status:** Complete (4/4 features, 141/141 tasks)
+- **One-line summary for master:** `IUiRenderer`, `UiContext.Draw`, `ImGuiRenderer`, `Label`, `Image`, and the HelloPanel static screen on Vulkan. Draw allocates 0 bytes. 1013 tests pass. Closes Phase 1.
 
 ---
 
