@@ -93,21 +93,21 @@ public sealed class LayoutAllocationTests
         MeasureStub secondStub = new(MeasureStub.WrappingText);
 
         Element root = Make(ref count, "root");
-        root.Style.FlexDirection = FlexDirection.Column;
-        root.Style.Padding = LengthEdges.All(4f);
+        root.Inline.FlexDirection = FlexDirection.Column;
+        root.Inline.Padding = LengthEdges.All(4f);
 
         // A row with a grow child, a leaf that changes its width, a percent child, and a leaf with a callback.
         Element row = Make(ref count, "row");
-        row.Style.FlexDirection = FlexDirection.Row;
-        row.Style.Height = 40f;
-        row.Style.JustifyContent = Justify.SpaceBetween;
+        row.Inline.FlexDirection = FlexDirection.Row;
+        row.Inline.Height = 40f;
+        row.Inline.JustifyContent = Justify.SpaceBetween;
         Element growChild = Make(ref count, "grow");
-        growChild.Style.FlexGrow = 1f;
+        growChild.Inline.FlexGrow = 1f;
         Element leaf = Make(ref count, "leaf");
-        leaf.Style.Width = NarrowWidth;
+        leaf.Inline.Width = NarrowWidth;
         Element percentChild = Make(ref count, "percent");
-        percentChild.Style.Width = Length.Percent(25f);
-        percentChild.Style.Height = Length.Percent(50f);
+        percentChild.Inline.Width = Length.Percent(25f);
+        percentChild.Inline.Height = Length.Percent(50f);
         Element stubLeaf = Make(ref count, "stub-leaf");
         stubLeaf.Layout.Measure = firstStub.Callback;
         row.Children.Add(growChild);
@@ -118,14 +118,14 @@ public sealed class LayoutAllocationTests
 
         // A column that grows. Each child has a height and a margin.
         Element column = Make(ref count, "column");
-        column.Style.FlexGrow = 1f;
-        column.Style.AlignItems = Align.Center;
+        column.Inline.FlexGrow = 1f;
+        column.Inline.AlignItems = Align.Center;
         for (int i = 0; i < 8; i++)
         {
             Element item = Make(ref count, "column-item");
-            item.Style.Width = 30f + i;
-            item.Style.Height = 10f;
-            item.Style.Margin = LengthEdges.All(1f);
+            item.Inline.Width = 30f + i;
+            item.Inline.Height = 10f;
+            item.Inline.Margin = LengthEdges.All(1f);
             column.Children.Add(item);
         }
 
@@ -133,16 +133,16 @@ public sealed class LayoutAllocationTests
 
         // A wrapped row. The twelve items need three lines.
         Element wrap = Make(ref count, "wrap");
-        wrap.Style.FlexDirection = FlexDirection.Row;
-        wrap.Style.FlexWrap = FlexWrap.Wrap;
-        wrap.Style.Width = 200f;
-        wrap.Style.AlignContent = Align.SpaceBetween;
+        wrap.Inline.FlexDirection = FlexDirection.Row;
+        wrap.Inline.FlexWrap = FlexWrap.Wrap;
+        wrap.Inline.Width = 200f;
+        wrap.Inline.AlignContent = Align.SpaceBetween;
         Element wrapItem = null!;
         for (int i = 0; i < 12; i++)
         {
             Element item = Make(ref count, "wrap-item");
-            item.Style.Width = WrapNarrow;
-            item.Style.Height = 20f;
+            item.Inline.Width = WrapNarrow;
+            item.Inline.Height = 20f;
             wrap.Children.Add(item);
             if (i == 0)
             {
@@ -154,15 +154,15 @@ public sealed class LayoutAllocationTests
 
         // An absolute child with two children.
         Element absolute = Make(ref count, "absolute");
-        absolute.Style.Position = PositionType.Absolute;
-        absolute.Style.Right = 5f;
-        absolute.Style.Top = 5f;
-        absolute.Style.Width = AbsoluteSmall;
-        absolute.Style.Height = AbsoluteSmall;
+        absolute.Inline.Position = PositionType.Absolute;
+        absolute.Inline.Right = 5f;
+        absolute.Inline.Top = 5f;
+        absolute.Inline.Width = AbsoluteSmall;
+        absolute.Inline.Height = AbsoluteSmall;
         for (int i = 0; i < 2; i++)
         {
             Element inner = Make(ref count, "absolute-item");
-            inner.Style.FlexGrow = 1f;
+            inner.Inline.FlexGrow = 1f;
             absolute.Children.Add(inner);
         }
 
@@ -170,7 +170,7 @@ public sealed class LayoutAllocationTests
 
         // A hidden element with three children.
         Element hidden = Make(ref count, "hidden");
-        hidden.Style.Display = Display.None;
+        hidden.Inline.Display = Display.None;
         for (int i = 0; i < 3; i++)
         {
             hidden.Children.Add(Make(ref count, "hidden-item"));
@@ -181,16 +181,16 @@ public sealed class LayoutAllocationTests
         // A section of twelve cells. Each cell holds one child. One child is a leaf with a callback.
         Element secondStubLeaf = null!;
         Element section = Make(ref count, "section");
-        section.Style.FlexDirection = FlexDirection.RowReverse;
-        section.Style.Height = Length.Percent(10f);
+        section.Inline.FlexDirection = FlexDirection.RowReverse;
+        section.Inline.Height = Length.Percent(10f);
         for (int i = 0; i < 12; i++)
         {
             Element cell = Make(ref count, "cell");
-            cell.Style.FlexGrow = 1f;
-            cell.Style.FlexBasis = Length.Percent(5f);
-            cell.Style.Padding = LengthEdges.All(Length.Percent(1f));
+            cell.Inline.FlexGrow = 1f;
+            cell.Inline.FlexBasis = Length.Percent(5f);
+            cell.Inline.Padding = LengthEdges.All(Length.Percent(1f));
             Element content = Make(ref count, "cell-content");
-            content.Style.MinWidth = 2f;
+            content.Inline.MinWidth = 2f;
             if (i == 5)
             {
                 content.Layout.Measure = secondStub.Callback;
@@ -240,20 +240,20 @@ public sealed class LayoutAllocationTests
         switch (kind)
         {
             case LeafKind:
-                scene.Leaf.Style.Width = second ? WideWidth : NarrowWidth;
+                scene.Leaf.Inline.Width = second ? WideWidth : NarrowWidth;
                 scene.Leaf.MarkDirty(DirtyFlags.Layout);
                 break;
             case WrapKind:
-                scene.WrapItem.Style.Width = second ? WrapWide : WrapNarrow;
+                scene.WrapItem.Inline.Width = second ? WrapWide : WrapNarrow;
                 scene.WrapItem.MarkDirty(DirtyFlags.Layout);
                 break;
             case HiddenKind:
-                scene.Hidden.Style.Display = second ? Display.Flex : Display.None;
+                scene.Hidden.Inline.Display = second ? Display.Flex : Display.None;
                 scene.Hidden.MarkDirty(DirtyFlags.Layout);
                 break;
             case AbsoluteKind:
-                scene.Absolute.Style.Width = second ? AbsoluteLarge : AbsoluteSmall;
-                scene.Absolute.Style.Height = second ? AbsoluteLarge : AbsoluteSmall;
+                scene.Absolute.Inline.Width = second ? AbsoluteLarge : AbsoluteSmall;
+                scene.Absolute.Inline.Height = second ? AbsoluteLarge : AbsoluteSmall;
                 scene.Absolute.MarkDirty(DirtyFlags.Layout);
                 break;
             case StubKind:
@@ -307,7 +307,7 @@ public sealed class LayoutAllocationTests
         Run(scene, KindCount);
         Assert.Equal(WideWidth, scene.Leaf.Layout.Rect.Z, 0.001f);
         Assert.Equal(WrapWide, scene.WrapItem.Layout.Rect.Z, 0.001f);
-        Assert.Equal(Display.Flex, scene.Hidden.Style.Display);
+        Assert.Equal(Display.Flex, scene.Hidden.Inline.Display);
         Assert.Equal(AbsoluteLarge, scene.Absolute.Layout.Rect.Z, 0.001f);
         Assert.Equal(ViewportSmallWidth, scene.Root.Layout.Rect.Z, 0.001f);
         float growWide = scene.GrowChild.Layout.Rect.Z;
@@ -316,7 +316,7 @@ public sealed class LayoutAllocationTests
         Run(scene, KindCount);
         Assert.Equal(NarrowWidth, scene.Leaf.Layout.Rect.Z, 0.001f);
         Assert.Equal(WrapNarrow, scene.WrapItem.Layout.Rect.Z, 0.001f);
-        Assert.Equal(Display.None, scene.Hidden.Style.Display);
+        Assert.Equal(Display.None, scene.Hidden.Inline.Display);
         Assert.Equal(AbsoluteSmall, scene.Absolute.Layout.Rect.Z, 0.001f);
         Assert.Equal(ViewportLargeWidth, scene.Root.Layout.Rect.Z, 0.001f);
 
@@ -335,10 +335,10 @@ public sealed class LayoutAllocationTests
 
         // The first round shows the element. The second round hides it again.
         Run(scene, KindCount);
-        Assert.Equal(Display.Flex, scene.Hidden.Style.Display);
+        Assert.Equal(Display.Flex, scene.Hidden.Inline.Display);
         Assert.True(scene.Hidden.Layout.Rect.Z > 0f);
         Run(scene, KindCount);
-        Assert.Equal(Display.None, scene.Hidden.Style.Display);
+        Assert.Equal(Display.None, scene.Hidden.Inline.Display);
         Assert.Equal(0f, scene.Hidden.Layout.Rect.Z);
         Assert.Equal(0f, scene.Hidden.Layout.Rect.W);
     }

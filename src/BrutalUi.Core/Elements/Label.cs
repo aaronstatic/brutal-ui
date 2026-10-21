@@ -39,17 +39,27 @@ namespace BrutalUi.Core;
 /// width. The draw wraps at the box width and can use fewer lines.
 /// </para>
 /// <para>
-/// <see cref="Font"/> is an id of the renderer. The measurer and the renderer of <see cref="UiContext.Draw(IUiRenderer)"/>
-/// must use the same font ids. The id 0 is the default font of the renderer.
+/// The label has no text values of its own. It reads <see cref="ComputedStyle.Color"/>, <see cref="ComputedStyle.Font"/>,
+/// and <see cref="ComputedStyle.FontSize"/> of <see cref="Element.Style"/>. The text values come from a rule, the inline
+/// set (<see cref="Element.Inline"/>), or the parent. A root takes the text defaults of its context. Write
+/// <c>label.Inline.Color</c>, <c>label.Inline.Font</c>, or <c>label.Inline.FontSize</c> to set a value on one label.
+/// </para>
+/// <para>
+/// A change of the font or of the font size marks <see cref="DirtyFlags.Layout"/> and <see cref="DirtyFlags.Paint"/>
+/// in the style pass, so the label measures its text again. A change of the color marks
+/// <see cref="DirtyFlags.Paint"/> only.
+/// </para>
+/// <para>
+/// <see cref="ComputedStyle.Font"/> is an id of the renderer. The measurer and the renderer of
+/// <see cref="UiContext.Draw(IUiRenderer)"/> must use the same font ids. The id 0 is the default font of the renderer.
 /// </para>
 /// <para>
 /// The label draws its text at the top-left corner of its content box: the border box minus the padding and the
 /// border. The text wraps at the width of the content box.
 /// </para>
 /// <para>
-/// Each setter and each <c>SetText</c> overload compares the old value first. A change marks the dirty bits that the
-/// change needs. A set to the same value marks nothing. Do not call <see cref="Element.MarkDirty(DirtyFlags)"/> for a
-/// label property.
+/// Each <c>SetText</c> overload compares the old text first. A change marks the dirty bits that the change needs. A
+/// set to the same text marks nothing. Do not call <see cref="Element.MarkDirty(DirtyFlags)"/> for a label text.
 /// </para>
 /// <para>
 /// A label with a <see cref="LocalizedText"/> reads <see cref="LString.Localized"/> at creation, at
@@ -71,6 +81,9 @@ public sealed class Label : Element
     /// <summary>The measure callback of each label. The constructor sets it one time, so the layout pass allocates nothing.</summary>
     private static readonly MeasureCallback s_measure = MeasureLabel;
 
+    /// <summary>The type id of each label.</summary>
+    private static readonly ElementTypeId s_typeId = ElementType.Intern("Label");
+
     /// <summary>The owned UTF-8 text. The buffer grows by doubling and never shrinks.</summary>
     private byte[] _utf8 = new byte[InitialTextCapacity];
 
@@ -89,11 +102,7 @@ public sealed class Label : Element
     /// <summary>The value of <see cref="LString.Localized"/> that the label encoded last.</summary>
     private string? _lastLocalized;
 
-    private FontHandle _font;
-    private float _size;
-    private Rgba8 _color;
-
-    /// <summary>Creates a label with the text, the font, the size, and the color of the create-info.</summary>
+    /// <summary>Creates a label with the text of the create-info.</summary>
     /// <remarks>
     /// The constructor encodes <see cref="CreateInfo.Text"/>, or <see cref="LString.Localized"/> of
     /// <see cref="CreateInfo.LocalizedText"/>, to UTF-8 one time. No text gives an empty label.
@@ -109,9 +118,6 @@ public sealed class Label : Element
                 nameof(info));
         }
 
-        _font = info.Font;
-        _size = info.Size;
-        _color = info.Color;
         if (info.LocalizedText is not null)
         {
             _localized = info.LocalizedText;
@@ -126,6 +132,9 @@ public sealed class Label : Element
         Layout.Measure = s_measure;
     }
 
+    /// <summary>Gets the type id of the label: <c>Label</c>.</summary>
+    public override ElementTypeId TypeId => s_typeId;
+
     /// <summary>Gets the owned UTF-8 text.</summary>
     /// <remarks>The span is valid until the next change of the text.</remarks>
     public ReadOnlySpan<byte> Text => _utf8.AsSpan(0, _length);
@@ -138,63 +147,6 @@ public sealed class Label : Element
     /// <see cref="SetText(ReadOnlySpan{byte})"/> and <see cref="SetText(string?)"/> clear it.
     /// </remarks>
     public LString? LocalizedText => _localized;
-
-    /// <summary>Gets or sets the font. The id 0 is the default font of the renderer.</summary>
-    /// <remarks>
-    /// A set to a new value marks <see cref="DirtyFlags.Layout"/> and <see cref="DirtyFlags.Paint"/>. A set to the
-    /// same id marks nothing.
-    /// </remarks>
-    public FontHandle Font
-    {
-        get => _font;
-        set
-        {
-            if (_font == value)
-            {
-                return;
-            }
-
-            _font = value;
-            MarkDirty(DirtyFlags.Layout | DirtyFlags.Paint);
-        }
-    }
-
-    /// <summary>Gets or sets the font size in pixels. A size of 0 means the default size of the font.</summary>
-    /// <remarks>
-    /// A set to a new value marks <see cref="DirtyFlags.Layout"/> and <see cref="DirtyFlags.Paint"/>. The setter
-    /// compares with <see cref="float.Equals(float)"/>, so a set of <c>NaN</c> to <c>NaN</c> marks nothing.
-    /// </remarks>
-    public float Size
-    {
-        get => _size;
-        set
-        {
-            if (_size.Equals(value))
-            {
-                return;
-            }
-
-            _size = value;
-            MarkDirty(DirtyFlags.Layout | DirtyFlags.Paint);
-        }
-    }
-
-    /// <summary>Gets or sets the text color. <see cref="Rgba8.Transparent"/> draws nothing.</summary>
-    /// <remarks>A set to a new value marks <see cref="DirtyFlags.Paint"/>. The color does not change the size.</remarks>
-    public Rgba8 Color
-    {
-        get => _color;
-        set
-        {
-            if (_color == value)
-            {
-                return;
-            }
-
-            _color = value;
-            MarkDirty(DirtyFlags.Paint);
-        }
-    }
 
     /// <summary>Copies a UTF-8 text into the owned buffer and clears <see cref="LocalizedText"/>.</summary>
     /// <remarks>
@@ -302,6 +254,10 @@ public sealed class Label : Element
     /// is <see cref="DrawWrapWidth(float, float)"/> of the content box and the border box.
     /// </summary>
     /// <remarks>
+    /// <para>
+    /// The draw reads <see cref="ComputedStyle.Color"/>, <see cref="ComputedStyle.Font"/>, and
+    /// <see cref="ComputedStyle.FontSize"/> of <see cref="Element.Style"/>.
+    /// </para>
     /// <para>An empty text or a color with an alpha of 0 after the scale draws nothing.</para>
     /// <para>
     /// The content box is the border box minus the padding and the border of each edge
@@ -315,8 +271,9 @@ public sealed class Label : Element
     /// <param name="opacity">The product of the opacities from the root to the label, from 0 to 1.</param>
     internal override void PaintContent(IUiRenderer renderer, in float4 borderBox, float opacity)
     {
+        ref readonly ComputedStyle style = ref Style;
         float4 content = Layout.ContentBox(in borderBox);
-        Rgba8 color = Color.ScaleAlpha(opacity);
+        Rgba8 color = style.Color.ScaleAlpha(opacity);
         ReadOnlySpan<byte> text = Text;
         if (text.IsEmpty || color.A == 0)
         {
@@ -324,7 +281,7 @@ public sealed class Label : Element
         }
 
         float2 position = new(content.X, content.Y);
-        renderer.Text(in position, Font, Size, in color, text, DrawWrapWidth(content.Z, borderBox.Z));
+        renderer.Text(in position, style.Font, style.FontSize, in color, text, DrawWrapWidth(content.Z, borderBox.Z));
     }
 
     /// <summary>
@@ -445,7 +402,8 @@ public sealed class Label : Element
                 "A Label needs a UiContext with a measurer. Create the context with UiContext.CreateInfo.");
 
         Label label = (Label)element;
-        float2 free = FiniteSize(measurer.MeasureText(label.Font, label.Size, label.Text, 0f));
+        ref readonly ComputedStyle style = ref label.Style;
+        float2 free = FiniteSize(measurer.MeasureText(style.Font, style.FontSize, label.Text, 0f));
         if (widthMode == MeasureMode.Undefined)
         {
             return free;
@@ -457,7 +415,7 @@ public sealed class Label : Element
             return free;
         }
 
-        return FiniteSize(measurer.MeasureText(label.Font, label.Size, label.Text, limit));
+        return FiniteSize(measurer.MeasureText(style.Font, style.FontSize, label.Text, limit));
     }
 
     /// <summary>
@@ -591,17 +549,12 @@ public sealed class Label : Element
     }
 
     /// <summary>The create-info of a <see cref="Label"/>.</summary>
+    /// <remarks>
+    /// The create-info has no required member: each member has a safe default. It has no text values. Set the color,
+    /// the font, and the font size with a rule, with <see cref="Element.Inline"/>, or on the parent.
+    /// </remarks>
     public struct CreateInfo
     {
-        /// <summary>The text color. It has no safe default: <see cref="Rgba8.Transparent"/> draws nothing.</summary>
-        public required Rgba8 Color;
-
-        /// <summary>The font. The default is the id 0, the default font of the renderer.</summary>
-        public FontHandle Font;
-
-        /// <summary>The font size in pixels. The default is 0, the default size of the font.</summary>
-        public float Size;
-
         /// <summary>The text. The label encodes it to UTF-8 one time. <see langword="null"/> gives an empty text.</summary>
         /// <remarks>Set <see cref="Text"/> or <see cref="LocalizedText"/>, not both.</remarks>
         public string? Text;

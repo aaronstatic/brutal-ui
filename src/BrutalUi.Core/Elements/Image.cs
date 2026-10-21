@@ -40,6 +40,9 @@ public sealed class Image : Element
     /// <summary>The measure callback of each image. The constructor sets it one time, so the layout pass allocates nothing.</summary>
     private static readonly MeasureCallback s_measure = MeasureImage;
 
+    /// <summary>The type id of each image.</summary>
+    private static readonly ElementTypeId s_typeId = ElementType.Intern("Image");
+
     /// <summary>The texture.</summary>
     private TextureHandle _texture;
 
@@ -62,6 +65,9 @@ public sealed class Image : Element
         _scaleMode = info.ScaleMode;
         Layout.Measure = s_measure;
     }
+
+    /// <summary>Gets the type id of the image: <c>Image</c>.</summary>
+    public override ElementTypeId TypeId => s_typeId;
 
     /// <summary>Gets or sets the texture. The none handle is valid: the image then takes no space and draws nothing.</summary>
     /// <remarks>

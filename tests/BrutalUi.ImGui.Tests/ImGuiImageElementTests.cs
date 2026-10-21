@@ -36,7 +36,7 @@ public sealed class ImGuiImageElementTests
 
         UiContext context = new(new UiContext.CreateInfo { Measurer = renderer }) { ViewportSize = new float2(400, 300) };
         Element root = new();
-        root.Style.AlignItems = Align.FlexStart;
+        root.Inline.AlignItems = Align.FlexStart;
         context.AddRoot(root);
         BrutalUi.Core.Image image = new(new BrutalUi.Core.Image.CreateInfo { Texture = texture });
         root.Children.Add(image);

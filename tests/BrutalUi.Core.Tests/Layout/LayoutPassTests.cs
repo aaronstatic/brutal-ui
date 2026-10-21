@@ -25,7 +25,7 @@ public sealed class LayoutPassTests
         UiContext context = new() { ViewportSize = new float2(800, 600) };
         Element root = new() { Name = "root" };
         Element child = AddChild(root, "child");
-        child.Style.Height = 40;
+        child.Inline.Height = 40;
         context.AddRoot(root);
 
         context.Update(0f);
@@ -40,8 +40,8 @@ public sealed class LayoutPassTests
     {
         UiContext context = new() { ViewportSize = new float2(800, 600) };
         Element root = new() { Name = "root" };
-        root.Style.Width = 200;
-        root.Style.Height = 100;
+        root.Inline.Width = 200;
+        root.Inline.Height = 100;
         context.AddRoot(root);
 
         context.Update(0f);
@@ -56,7 +56,7 @@ public sealed class LayoutPassTests
         UiContext context = new() { ViewportSize = new float2(300, 200) };
         Element first = new() { Name = "first" };
         Element second = new() { Name = "second" };
-        second.Style.Width = 50;
+        second.Inline.Width = 50;
         context.AddRoot(first);
         context.AddRoot(second);
 
@@ -73,12 +73,12 @@ public sealed class LayoutPassTests
     {
         UiContext context = new() { ViewportSize = new float2(800, 600) };
         Element root = new() { Name = "root" };
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
         Element child0 = AddChild(root, "child0");
-        child0.Style.Height = 10;
+        child0.Inline.Height = 10;
         Element child1 = AddChild(root, "child1");
-        child1.Style.Height = 20;
+        child1.Inline.Height = 20;
         context.AddRoot(root);
 
         context.Update(0f);
@@ -86,7 +86,7 @@ public sealed class LayoutPassTests
         LayoutFixture.AssertRect(child1, 0, 10, 100, 20);
         LayoutFixture.AssertNoLayoutBits(root);
 
-        child0.Style.Height = 30;
+        child0.Inline.Height = 30;
         child0.MarkDirty(DirtyFlags.Layout);
 
         // The CR-1 case: the parent of the changed child holds only the descendant bit.
@@ -110,8 +110,8 @@ public sealed class LayoutPassTests
         Element depth2 = AddChild(depth1, "depth2");
         Element depth3 = AddChild(depth2, "depth3");
         Element leaf = AddChild(depth3, "leaf");
-        leaf.Style.Width = 20;
-        leaf.Style.Height = 10;
+        leaf.Inline.Width = 20;
+        leaf.Inline.Height = 10;
         context.AddRoot(root);
 
         context.Update(0f);
@@ -124,8 +124,8 @@ public sealed class LayoutPassTests
 
         LayoutFixture.AssertNoLayoutBits(root);
 
-        leaf.Style.Width = 40;
-        leaf.Style.Height = 50;
+        leaf.Inline.Width = 40;
+        leaf.Inline.Height = 50;
         leaf.MarkDirty(DirtyFlags.Layout);
 
         context.Update(0f);
@@ -169,7 +169,7 @@ public sealed class LayoutPassTests
         UiContext context = new() { ViewportSize = new float2(800, 600) };
         Element root = new() { Name = "root" };
         Element child = AddChild(root, "child");
-        child.Style.Height = 40;
+        child.Inline.Height = 40;
         context.AddRoot(root);
 
         context.Update(0f);
@@ -195,7 +195,7 @@ public sealed class LayoutPassTests
         UiContext context = new() { ViewportSize = new float2(300, float.NaN) };
         Element root = new() { Name = "root" };
         Element child = AddChild(root, "child");
-        child.Style.Height = 25;
+        child.Inline.Height = 25;
         context.AddRoot(root);
 
         context.Update(0f);
@@ -234,17 +234,17 @@ public sealed class LayoutPassTests
     {
         UiContext context = new() { ViewportSize = new float2(800, 600) };
         Element root = new() { Name = "root" };
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
         Element hidden = AddChild(root, "hidden");
-        hidden.Style.Display = Display.None;
-        hidden.Style.Height = 30;
+        hidden.Inline.Display = Display.None;
+        hidden.Inline.Height = 30;
         Element inner = AddChild(hidden, "inner");
         Element leaf = AddChild(inner, "leaf");
-        leaf.Style.Width = 20;
-        leaf.Style.Height = 10;
+        leaf.Inline.Width = 20;
+        leaf.Inline.Height = 10;
         Element visible = AddChild(root, "visible");
-        visible.Style.Height = 10;
+        visible.Inline.Height = 10;
         context.AddRoot(root);
 
         context.Update(0f);
@@ -258,7 +258,7 @@ public sealed class LayoutPassTests
 
         // A rect set by hand shows that the zero-out runs again on the marked subtree.
         leaf.Layout.ComputedRect = new float4(1, 2, 3, 4);
-        leaf.Style.Width = 40;
+        leaf.Inline.Width = 40;
         leaf.MarkDirty(DirtyFlags.Layout);
 
         Assert.Equal(DirtyFlags.DescendantLayout, hidden.Dirty & (DirtyFlags.Layout | DirtyFlags.DescendantLayout));
@@ -278,18 +278,18 @@ public sealed class LayoutPassTests
     {
         UiContext context = new() { ViewportSize = new float2(800, 600) };
         Element root = new() { Name = "root" };
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
         Element first = AddChild(root, "first");
-        first.Style.Height = 10;
+        first.Inline.Height = 10;
         Element hidden = AddChild(root, "hidden");
-        hidden.Style.Display = Display.None;
-        hidden.Style.FlexDirection = FlexDirection.Row;
-        hidden.Style.Height = 30;
+        hidden.Inline.Display = Display.None;
+        hidden.Inline.FlexDirection = FlexDirection.Row;
+        hidden.Inline.Height = 30;
         Element leaf = AddChild(hidden, "leaf");
-        leaf.Style.Width = 20;
+        leaf.Inline.Width = 20;
         Element last = AddChild(root, "last");
-        last.Style.Height = 10;
+        last.Inline.Height = 10;
         context.AddRoot(root);
 
         context.Update(0f);
@@ -300,7 +300,7 @@ public sealed class LayoutPassTests
         LayoutFixture.AssertRect(last, 0, 10, 100, 10);
         LayoutFixture.AssertNoLayoutBits(root);
 
-        hidden.Style.Display = Display.Flex;
+        hidden.Inline.Display = Display.Flex;
         hidden.MarkDirty(DirtyFlags.Layout);
 
         context.Update(0f);
@@ -319,15 +319,15 @@ public sealed class LayoutPassTests
     {
         UiContext context = new() { ViewportSize = new float2(800, 600) };
         Element root = new() { Name = "root" };
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
         Element hidden = AddChild(root, "hidden");
-        hidden.Style.Display = Display.None;
+        hidden.Inline.Display = Display.None;
         Element leaf = AddChild(hidden, "leaf");
-        leaf.Style.Width = 20;
-        leaf.Style.Height = 10;
+        leaf.Inline.Width = 20;
+        leaf.Inline.Height = 10;
         Element visible = AddChild(root, "visible");
-        visible.Style.Height = 10;
+        visible.Inline.Height = 10;
         context.AddRoot(root);
 
         context.Update(0f);
@@ -340,7 +340,7 @@ public sealed class LayoutPassTests
         // generation to 0, so the engine does not enter the subtree. A zero-out would clear these rects.
         hidden.Layout.ComputedRect = new float4(5, 6, 7, 8);
         leaf.Layout.ComputedRect = new float4(1, 2, 3, 4);
-        visible.Style.Height = 20;
+        visible.Inline.Height = 20;
         visible.MarkDirty(DirtyFlags.Layout);
 
         context.Update(0f);
@@ -356,14 +356,14 @@ public sealed class LayoutPassTests
     {
         UiContext context = new() { ViewportSize = new float2(300, 200) };
         Element panel = new() { Name = "panel" };
-        panel.Style.Display = Display.None;
+        panel.Inline.Display = Display.None;
         Element panelChild = AddChild(panel, "panel_child");
-        panelChild.Style.Height = 20;
+        panelChild.Inline.Height = 20;
         Element host = new() { Name = "host" };
-        host.Style.Width = 300;
-        host.Style.Height = 200;
+        host.Inline.Width = 300;
+        host.Inline.Height = 200;
         Element visible = AddChild(host, "visible");
-        visible.Style.Height = 10;
+        visible.Inline.Height = 10;
         context.AddRoot(panel);
         context.AddRoot(host);
 
@@ -392,12 +392,12 @@ public sealed class LayoutPassTests
         // A fresh layout of the same tree gives the same rects.
         UiContext freshContext = new() { ViewportSize = new float2(300, 200) };
         Element freshHost = new() { Name = "host" };
-        freshHost.Style.Width = 300;
-        freshHost.Style.Height = 200;
-        AddChild(freshHost, "visible").Style.Height = 10;
+        freshHost.Inline.Width = 300;
+        freshHost.Inline.Height = 200;
+        AddChild(freshHost, "visible").Inline.Height = 10;
         Element freshPanel = AddChild(freshHost, "panel");
-        freshPanel.Style.Display = Display.None;
-        AddChild(freshPanel, "panel_child").Style.Height = 20;
+        freshPanel.Inline.Display = Display.None;
+        AddChild(freshPanel, "panel_child").Inline.Height = 20;
         freshContext.AddRoot(freshHost);
 
         freshContext.Update(0f);
@@ -410,7 +410,7 @@ public sealed class LayoutPassTests
     {
         UiContext context = new() { ViewportSize = new float2(800, 600) };
         Element root = BuildOffsetTree(FlexDirection.Row, out Element first, out Element second);
-        second.Style.Left = 10;
+        second.Inline.Left = 10;
         context.AddRoot(root);
 
         context.Update(0f);
@@ -426,7 +426,7 @@ public sealed class LayoutPassTests
     {
         UiContext context = new() { ViewportSize = new float2(800, 600) };
         Element root = BuildOffsetTree(FlexDirection.RowReverse, out Element first, out Element second);
-        second.Style.Left = 10;
+        second.Inline.Left = 10;
         context.AddRoot(root);
 
         context.Update(0f);
@@ -443,7 +443,7 @@ public sealed class LayoutPassTests
     {
         UiContext context = new() { ViewportSize = new float2(800, 600) };
         Element root = BuildOffsetTree(FlexDirection.RowReverse, out Element first, out Element second);
-        second.Style.Right = 10;
+        second.Inline.Right = 10;
         context.AddRoot(root);
 
         context.Update(0f);
@@ -460,8 +460,8 @@ public sealed class LayoutPassTests
     {
         UiContext context = new() { ViewportSize = new float2(800, 600) };
         Element root = BuildOffsetTree(FlexDirection.RowReverse, out _, out Element second);
-        second.Style.Left = 10;
-        second.Style.Right = 25;
+        second.Inline.Left = 10;
+        second.Inline.Right = 25;
         context.AddRoot(root);
 
         context.Update(0f);
@@ -476,7 +476,7 @@ public sealed class LayoutPassTests
     {
         UiContext context = new() { ViewportSize = new float2(800, 600) };
         Element root = BuildOffsetTree(FlexDirection.RowReverse, out _, out Element second);
-        second.Style.Top = 5;
+        second.Inline.Top = 5;
         context.AddRoot(root);
 
         context.Update(0f);
@@ -492,7 +492,7 @@ public sealed class LayoutPassTests
     {
         UiContext context = new() { ViewportSize = new float2(800, 600) };
         Element root = BuildOffsetTree(FlexDirection.ColumnReverse, out Element first, out Element second);
-        second.Style.Top = 10;
+        second.Inline.Top = 10;
         context.AddRoot(root);
 
         context.Update(0f);
@@ -509,7 +509,7 @@ public sealed class LayoutPassTests
     {
         UiContext context = new() { ViewportSize = new float2(800, 600) };
         Element root = BuildOffsetTree(FlexDirection.ColumnReverse, out Element first, out Element second);
-        second.Style.Bottom = 10;
+        second.Inline.Bottom = 10;
         context.AddRoot(root);
 
         context.Update(0f);
@@ -526,7 +526,7 @@ public sealed class LayoutPassTests
     {
         UiContext context = new() { ViewportSize = new float2(800, 600) };
         Element root = BuildOffsetTree(FlexDirection.RowReverse, out _, out Element second);
-        second.Style.Left = 10;
+        second.Inline.Left = 10;
         context.AddRoot(root);
 
         context.Update(0f);
@@ -569,7 +569,7 @@ public sealed class LayoutPassTests
             out Element first,
             out _,
             out Element third);
-        third.Style.Top = 10;
+        third.Inline.Top = 10;
         context.AddRoot(root);
 
         context.Update(0f);
@@ -591,7 +591,7 @@ public sealed class LayoutPassTests
             out Element first,
             out _,
             out Element third);
-        third.Style.Bottom = 10;
+        third.Inline.Bottom = 10;
         context.AddRoot(root);
 
         context.Update(0f);
@@ -613,7 +613,7 @@ public sealed class LayoutPassTests
             out Element first,
             out Element second,
             out Element third);
-        third.Style.Left = 10;
+        third.Inline.Left = 10;
         context.AddRoot(root);
 
         context.Update(0f);
@@ -637,9 +637,9 @@ public sealed class LayoutPassTests
             out Element first,
             out Element second,
             out Element third);
-        second.Style.Height = Length.Auto;
-        second.Style.Top = 10;
-        third.Style.Top = 10;
+        second.Inline.Height = Length.Auto;
+        second.Inline.Top = 10;
+        third.Inline.Top = 10;
         context.AddRoot(root);
 
         context.Update(0f);
@@ -669,19 +669,17 @@ public sealed class LayoutPassTests
     {
         UiContext context = new() { ViewportSize = new float2(800, 600) };
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.FlexWrap = FlexWrap.WrapReverse;
-        root.Style.AlignContent = Align.FlexStart;
-        root.Style.AlignItems = Align.FlexStart;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
-        root.Style.Padding.Top = paddingTop;
-        root.Style.Padding.Bottom = paddingBottom;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.FlexWrap = FlexWrap.WrapReverse;
+        root.Inline.AlignContent = Align.FlexStart;
+        root.Inline.AlignItems = Align.FlexStart;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
+        root.Inline.Padding = root.Inline.Padding with { Top = paddingTop, Bottom = paddingBottom };
         Element item = AddChild(root, "item");
-        item.Style.Width = 20;
-        item.Style.Height = 20;
-        item.Style.Margin.Top = marginTop;
-        item.Style.Margin.Bottom = marginBottom;
+        item.Inline.Width = 20;
+        item.Inline.Height = 20;
+        item.Inline.Margin = item.Inline.Margin with { Top = marginTop, Bottom = marginBottom };
         context.AddRoot(root);
 
         context.Update(0f);
@@ -699,17 +697,17 @@ public sealed class LayoutPassTests
     {
         UiContext context = new() { ViewportSize = new float2(800, 600) };
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Column;
-        root.Style.FlexWrap = FlexWrap.WrapReverse;
-        root.Style.AlignContent = Align.FlexStart;
-        root.Style.AlignItems = Align.FlexStart;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
-        root.Style.Padding.Left = 10;
+        root.Inline.FlexDirection = FlexDirection.Column;
+        root.Inline.FlexWrap = FlexWrap.WrapReverse;
+        root.Inline.AlignContent = Align.FlexStart;
+        root.Inline.AlignItems = Align.FlexStart;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
+        root.Inline.Padding = root.Inline.Padding with { Left = 10 };
         Element item = AddChild(root, "item");
-        item.Style.Width = 20;
-        item.Style.Height = 20;
-        item.Style.Margin.Right = 5;
+        item.Inline.Width = 20;
+        item.Inline.Height = 20;
+        item.Inline.Margin = item.Inline.Margin with { Right = 5 };
         context.AddRoot(root);
 
         context.Update(0f);
@@ -729,26 +727,24 @@ public sealed class LayoutPassTests
     {
         UiContext context = new() { ViewportSize = new float2(800, 600) };
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.FlexWrap = FlexWrap.WrapReverse;
-        root.Style.AlignContent = Align.FlexStart;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
-        root.Style.Padding.Top = 10;
-        root.Style.Padding.Bottom = 4;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.FlexWrap = FlexWrap.WrapReverse;
+        root.Inline.AlignContent = Align.FlexStart;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
+        root.Inline.Padding = root.Inline.Padding with { Top = 10, Bottom = 4 };
         Element item = AddChild(root, "item");
-        item.Style.AlignSelf = alignSelf;
-        item.Style.Width = 20;
+        item.Inline.AlignSelf = alignSelf;
+        item.Inline.Width = 20;
         if (alignSelf != Align.Stretch)
         {
-            item.Style.Height = 20;
+            item.Inline.Height = 20;
         }
 
-        item.Style.Margin.Top = 3;
-        item.Style.Margin.Bottom = 5;
+        item.Inline.Margin = item.Inline.Margin with { Top = 3, Bottom = 5 };
         Element tall = AddChild(root, "tall");
-        tall.Style.Width = 20;
-        tall.Style.Height = 40;
+        tall.Inline.Width = 20;
+        tall.Inline.Height = 40;
         context.AddRoot(root);
 
         context.Update(0f);
@@ -775,9 +771,8 @@ public sealed class LayoutPassTests
             out Element first,
             out Element second,
             out Element third);
-        root.Style.Padding.Top = 10;
-        root.Style.Padding.Bottom = 4;
-        third.Style.Top = 10;
+        root.Inline.Padding = root.Inline.Padding with { Top = 10, Bottom = 4 };
+        third.Inline.Top = 10;
         context.AddRoot(root);
 
         context.Update(0f);
@@ -812,21 +807,21 @@ public sealed class LayoutPassTests
     private static Element BuildOffsetTree(FlexDirection direction, out Element first, out Element second)
     {
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = direction;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.FlexDirection = direction;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
         first = AddChild(root, "first");
         second = AddChild(root, "second");
 
         if (direction is FlexDirection.Row or FlexDirection.RowReverse)
         {
-            first.Style.Width = 20;
-            second.Style.Width = 30;
+            first.Inline.Width = 20;
+            second.Inline.Width = 30;
         }
         else
         {
-            first.Style.Height = 20;
-            second.Style.Height = 30;
+            first.Inline.Height = 20;
+            second.Inline.Height = 30;
         }
 
         return root;
@@ -851,11 +846,11 @@ public sealed class LayoutPassTests
         out Element third)
     {
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = direction;
-        root.Style.FlexWrap = wrap;
-        root.Style.AlignContent = Align.FlexStart;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.FlexDirection = direction;
+        root.Inline.FlexWrap = wrap;
+        root.Inline.AlignContent = Align.FlexStart;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
         first = AddChild(root, "first");
         second = AddChild(root, "second");
         third = AddChild(root, "third");
@@ -863,8 +858,8 @@ public sealed class LayoutPassTests
         bool isRow = direction is FlexDirection.Row or FlexDirection.RowReverse;
         foreach (Element child in root.Children)
         {
-            child.Style.Width = isRow ? 50 : 20;
-            child.Style.Height = isRow ? 20 : 50;
+            child.Inline.Width = isRow ? 50 : 20;
+            child.Inline.Height = isRow ? 20 : 50;
         }
 
         return root;
@@ -877,16 +872,16 @@ public sealed class LayoutPassTests
         Element root = new() { Name = "root" };
 
         Element row = AddChild(root, "row");
-        row.Style.FlexDirection = FlexDirection.Row;
-        row.Style.Height = 50;
-        AddChild(row, "row_child0").Style.Width = 30;
-        AddChild(row, "row_child1").Style.Width = Length.Percent(25);
+        row.Inline.FlexDirection = FlexDirection.Row;
+        row.Inline.Height = 50;
+        AddChild(row, "row_child0").Inline.Width = 30;
+        AddChild(row, "row_child1").Inline.Width = Length.Percent(25);
 
         Element reverse = AddChild(root, "reverse");
-        reverse.Style.FlexDirection = FlexDirection.ColumnReverse;
-        reverse.Style.Width = 200;
-        AddChild(reverse, "reverse_child0").Style.Height = 15;
-        AddChild(reverse, "reverse_child1").Style.Height = 25;
+        reverse.Inline.FlexDirection = FlexDirection.ColumnReverse;
+        reverse.Inline.Width = 200;
+        AddChild(reverse, "reverse_child0").Inline.Height = 15;
+        AddChild(reverse, "reverse_child1").Inline.Height = 25;
 
         return root;
     }

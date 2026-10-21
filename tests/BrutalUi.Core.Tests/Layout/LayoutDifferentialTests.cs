@@ -13,7 +13,7 @@ namespace BrutalUi.Core.Tests;
 /// </summary>
 /// <remarks>
 /// <para>
-/// A fresh copy is a new tree of new <see cref="Element"/> objects with the same <see cref="Element.Style"/>, the same
+/// A fresh copy is a new tree of new <see cref="Element"/> objects with the same <see cref="Element.Inline"/> set, the same
 /// <see cref="LayoutNode.Measure"/>, and the same child order. A new <see cref="UiContext"/> with the same
 /// <see cref="UiContext.ViewportSize"/> lays it out. Its elements have an empty cache, so the fresh rects are the
 /// reference. A difference is a stale cache entry or a stale dirty bit.
@@ -220,13 +220,13 @@ public sealed class LayoutDifferentialTests
         return first is null ? null : $"{count} elements differ. The first is {first}";
     }
 
-    /// <summary>Copies the tree: new elements with the same name, style, measure callback, and child order.</summary>
-    /// <param name="source">The root of the tree to copy.</param>
+    /// <summary>Copies the tree: new elements with the same name, inline set, measure callback, and child order.</summary>
+    /// <param name="source">The root of the tree to copy. Each element writes its style through <see cref="Element.Inline"/>.</param>
     /// <returns>The root of the copy. It holds the start dirty bits of a new element and an empty cache.</returns>
     internal static Element Clone(Element source)
     {
         Element copy = new() { Name = source.Name };
-        copy.Style = source.Style;
+        CopyInline(copy, source.InlineStorage);
         copy.Layout.Measure = source.Layout.Measure;
         foreach (Element child in source.Children)
         {
@@ -234,6 +234,19 @@ public sealed class LayoutDifferentialTests
         }
 
         return copy;
+    }
+
+    /// <summary>Replaces the whole inline set of an element with a copy, and marks the element for a restyle.</summary>
+    /// <remarks>
+    /// A copy through <c>Element.InlineStorage</c> sets no dirty bit, so the helper marks the element. The copy
+    /// replaces the full mask, so the inline set equals <paramref name="source"/>.
+    /// </remarks>
+    /// <param name="element">The element that gets the copy.</param>
+    /// <param name="source">The inline set to copy.</param>
+    private static void CopyInline(Element element, in StyleProperties source)
+    {
+        element.InlineStorage = source;
+        element.MarkDirty(DirtyFlags.Style);
     }
 
     /// <summary>Gives the path of the names from the root to the element, for example <c>n0/n4/n9</c>.</summary>
@@ -364,8 +377,8 @@ public sealed class LayoutDifferentialTests
     /// </summary>
     private static void ShapePercentRoot(Random random, Element root)
     {
-        ref ComputedStyle style = ref root.Style;
-        RemovePercents(ref style);
+        InlineStyle style = root.Inline;
+        RemovePercents(style);
         style.Display = Display.Flex;
         style.Width = Length.Px(random.Next(40, 301));
         style.Height = Length.Px(random.Next(40, 301));
@@ -399,19 +412,26 @@ public sealed class LayoutDifferentialTests
 
                 foreach (Element child in root.Children)
                 {
-                    RemovePercents(ref child.Style);
+                    RemovePercents(child.Inline);
                 }
 
                 break;
 
             case 1:
-                style.Padding.Left = Length.Percent(random.Next(1, 31));
-                style.Padding.Top = Length.Percent(random.Next(1, 31));
+                // The initializer runs in text order, so the random calls keep the order of the two edge writes.
+                style.Padding = style.Padding with
+                {
+                    Left = Length.Percent(random.Next(1, 31)),
+                    Top = Length.Percent(random.Next(1, 31)),
+                };
                 break;
 
             default:
-                style.Margin.Left = Length.Percent(random.Next(1, 31));
-                style.Margin.Top = Length.Percent(random.Next(1, 31));
+                style.Margin = style.Margin with
+                {
+                    Left = Length.Percent(random.Next(1, 31)),
+                    Top = Length.Percent(random.Next(1, 31)),
+                };
                 break;
         }
     }
@@ -422,7 +442,7 @@ public sealed class LayoutDifferentialTests
     /// </summary>
     private static void ShapeMarginLeaves(Random random, Element element)
     {
-        ref ComputedStyle style = ref element.Style;
+        InlineStyle style = element.Inline;
         if (element.Children.Count > 0)
         {
             style.Width = random.Next(3) == 0 ? Length.Undefined : Length.Px(random.Next(20, 121));
@@ -469,7 +489,7 @@ public sealed class LayoutDifferentialTests
     /// </summary>
     private static void ShapeLimitedLeaves(Random random, Element element)
     {
-        ref ComputedStyle style = ref element.Style;
+        InlineStyle style = element.Inline;
         if (element.Children.Count > 0)
         {
             // A width below the natural text width makes the text wrap.
@@ -532,7 +552,7 @@ public sealed class LayoutDifferentialTests
     private static void ShapeNoiseInnerSize(Random random, List<Element> elements, ref int nextName)
     {
         // The root takes the viewport width, so a new viewport gives a new owner width to each noise container.
-        ref ComputedStyle rootStyle = ref elements[0].Style;
+        InlineStyle rootStyle = elements[0].Inline;
         rootStyle.Display = Display.Flex;
         rootStyle.Width = random.Next(2) == 0 ? Length.Undefined : Length.Percent(random.Next(40, 101));
         rootStyle.MinWidth = Length.Undefined;
@@ -561,8 +581,8 @@ public sealed class LayoutDifferentialTests
 
             // The only percents are the width and the two side paddings, so the inner height of the container does
             // not change with the owner width.
-            ref ComputedStyle style = ref element.Style;
-            RemovePercents(ref style);
+            InlineStyle style = element.Inline;
+            RemovePercents(style);
             int left = random.Next(1, 100);
             style.Display = Display.Flex;
             style.FlexDirection = (FlexDirection)random.Next(4);
@@ -571,12 +591,9 @@ public sealed class LayoutDifferentialTests
             style.Height = Length.Px(random.Next(20, 201));
             style.MinWidth = Length.Undefined;
             style.MaxWidth = Length.Undefined;
-            style.Padding.Left = Length.Percent(left);
-            style.Padding.Right = Length.Percent(100 - left);
-            style.BorderWidth.Left = Length.Undefined;
-            style.BorderWidth.Right = Length.Undefined;
-            style.Margin.Left = Length.Undefined;
-            style.Margin.Right = Length.Undefined;
+            style.Padding = style.Padding with { Left = Length.Percent(left), Right = Length.Percent(100 - left) };
+            style.BorderWidth = style.BorderWidth with { Left = Length.Undefined, Right = Length.Undefined };
+            style.Margin = style.Margin with { Left = Length.Undefined, Right = Length.Undefined };
             noisy.Add(element);
         }
 
@@ -592,13 +609,13 @@ public sealed class LayoutDifferentialTests
                 // With no width and no shrink, the child gets the inner width of the container as a limit, and its
                 // content keeps its size. The child and its children hold no percent, so a new owner width does not
                 // reset the cache of the child.
-                ref ComputedStyle childStyle = ref child.Style;
-                RemovePercents(ref childStyle);
+                InlineStyle childStyle = child.Inline;
+                RemovePercents(childStyle);
                 foreach (Element grandchild in child.Children)
                 {
                     if (!noisy.Contains(grandchild))
                     {
-                        RemovePercents(ref grandchild.Style);
+                        RemovePercents(grandchild.Inline);
                     }
                 }
 
@@ -607,8 +624,8 @@ public sealed class LayoutDifferentialTests
                 if (child.Children.Count == 0 && child.Layout.Measure is null)
                 {
                     Element content = new() { Name = "n" + nextName++ };
-                    content.Style.Width = Length.Px(random.Next(10, 61));
-                    content.Style.Height = Length.Px(random.Next(10, 41));
+                    content.Inline.Width = Length.Px(random.Next(10, 61));
+                    content.Inline.Height = Length.Px(random.Next(10, 41));
                     child.Children.Add(content);
                 }
 
@@ -627,8 +644,8 @@ public sealed class LayoutDifferentialTests
         }
     }
 
-    /// <summary>Replaces each percent length of a style with an undefined length.</summary>
-    private static void RemovePercents(ref ComputedStyle style)
+    /// <summary>Replaces each percent length of an inline set with an undefined length.</summary>
+    private static void RemovePercents(InlineStyle style)
     {
         style.Width = WithoutPercent(style.Width);
         style.Height = WithoutPercent(style.Height);
@@ -641,17 +658,18 @@ public sealed class LayoutDifferentialTests
         style.Top = WithoutPercent(style.Top);
         style.Right = WithoutPercent(style.Right);
         style.Bottom = WithoutPercent(style.Bottom);
-        RemovePercents(ref style.Margin);
-        RemovePercents(ref style.Padding);
+        style.Margin = WithoutPercent(style.Margin);
+        style.Padding = WithoutPercent(style.Padding);
     }
 
-    /// <summary>Replaces each percent length of four edges with an undefined length.</summary>
-    private static void RemovePercents(ref LengthEdges edges)
+    /// <summary>Gives four edges with an undefined length in place of each percent length.</summary>
+    private static LengthEdges WithoutPercent(LengthEdges edges)
     {
-        edges.Left = WithoutPercent(edges.Left);
-        edges.Top = WithoutPercent(edges.Top);
-        edges.Right = WithoutPercent(edges.Right);
-        edges.Bottom = WithoutPercent(edges.Bottom);
+        return new LengthEdges(
+            WithoutPercent(edges.Left),
+            WithoutPercent(edges.Top),
+            WithoutPercent(edges.Right),
+            WithoutPercent(edges.Bottom));
     }
 
     /// <summary>Gives an undefined length for a percent length, else the same length.</summary>
@@ -664,7 +682,7 @@ public sealed class LayoutDifferentialTests
     private static Element NewElement(Random random, ref int nextName)
     {
         Element element = new() { Name = "n" + nextName++ };
-        element.Style = RandomStyle(random);
+        CopyInline(element, RandomStyle(random));
         return element;
     }
 
@@ -805,7 +823,7 @@ public sealed class LayoutDifferentialTests
 
             default:
             {
-                string field = ChangeOneField(random, ref target.Style);
+                string field = ChangeOneField(random, target);
                 target.MarkDirty(DirtyFlags.Layout);
                 return $"field {field} of '{PathOf(target)}'";
             }
@@ -861,9 +879,9 @@ public sealed class LayoutDifferentialTests
         string oldPath = PathOf(child);
         child.Parent!.Children.Remove(child);
         context.AddRoot(child);
-        if (random.Next(3) == 0 && child.Style.Display != Display.None)
+        if (random.Next(3) == 0 && child.Inline.Display != Display.None)
         {
-            child.Style.Display = Display.None;
+            child.Inline.Display = Display.None;
             child.MarkDirty(DirtyFlags.Layout);
             return $"promote '{oldPath}' to root {context.Roots.Length - 1}, and hide it";
         }
@@ -890,7 +908,7 @@ public sealed class LayoutDifferentialTests
             return $"no change (demote of root {rootIndex} with no other tree)";
         }
 
-        bool isHidden = root.Style.Display == Display.None;
+        bool isHidden = root.Inline.Display == Display.None;
         context.RemoveRoot(root);
         int index = random.Next(newParent.Children.Count + 1);
         newParent.Children.Insert(index, root);
@@ -969,7 +987,7 @@ public sealed class LayoutDifferentialTests
     private static string ChangeContainer(Random random, TreeKind kind, Element target)
     {
         Element container = target.Children.Count > 0 || target.Parent is null ? target : target.Parent;
-        ref ComputedStyle style = ref container.Style;
+        InlineStyle style = container.Inline;
         int what = kind == TreeKind.LimitedLeaves ? random.Next(4) : 0;
         if (what is 1 or 3)
         {
@@ -998,10 +1016,10 @@ public sealed class LayoutDifferentialTests
     /// <returns>A text that names the change.</returns>
     private static string NudgeSize(Random random, Element container)
     {
-        ref ComputedStyle style = ref container.Style;
+        InlineStyle style = container.Inline;
         bool isWidth = random.Next(2) == 0;
-        ref Length length = ref isWidth ? ref style.Width : ref style.Height;
-        Length old = length;
+        Length old = isWidth ? style.Width : style.Height;
+        Length length;
         if (old.Unit == LengthUnit.Pixel)
         {
             int step = random.Next(1, 9);
@@ -1012,15 +1030,30 @@ public sealed class LayoutDifferentialTests
             length = Length.Px(random.Next(20, 121));
         }
 
+        if (isWidth)
+        {
+            style.Width = length;
+        }
+        else
+        {
+            style.Height = length;
+        }
+
+        // A nudge of a width of 0 down gives the same value, and the set then marks nothing. The mark keeps the step.
         container.MarkDirty(DirtyFlags.Layout);
         return $"{(isWidth ? "Width" : "Height")} of '{PathOf(container)}' from {old} to {length}";
     }
 
-    /// <summary>Copies one field from a new random style into <paramref name="style"/>.</summary>
+    /// <summary>Copies one field from a new random style into the inline set of <paramref name="target"/>.</summary>
+    /// <remarks>
+    /// The method takes the element, not an <see cref="InlineStyle"/>, because the last case copies the whole set
+    /// through <see cref="CopyInline"/>, and a view gives no access to its element.
+    /// </remarks>
     /// <returns>A text that names the field and the new value.</returns>
-    private static string ChangeOneField(Random random, ref ComputedStyle style)
+    private static string ChangeOneField(Random random, Element target)
     {
-        ComputedStyle source = RandomStyle(random);
+        InlineStyle style = target.Inline;
+        StyleProperties source = RandomStyle(random);
         switch (random.Next(30))
         {
             case 0: style.FlexDirection = source.FlexDirection; return $"FlexDirection = {style.FlexDirection}";
@@ -1041,10 +1074,10 @@ public sealed class LayoutDifferentialTests
             case 15: style.FlexBasis = source.FlexBasis; return $"FlexBasis = {style.FlexBasis}";
             case 16: style.FlexGrow = source.FlexGrow; return $"FlexGrow = {style.FlexGrow}";
             case 17: style.FlexShrink = source.FlexShrink; return $"FlexShrink = {style.FlexShrink}";
-            case 18: style.Margin.Left = RandomMargin(random); return $"Margin.Left = {style.Margin.Left}";
-            case 19: style.Margin.Top = RandomMargin(random); return $"Margin.Top = {style.Margin.Top}";
-            case 20: style.Margin.Right = RandomMargin(random); return $"Margin.Right = {style.Margin.Right}";
-            case 21: style.Margin.Bottom = RandomMargin(random); return $"Margin.Bottom = {style.Margin.Bottom}";
+            case 18: style.Margin = style.Margin with { Left = RandomMargin(random) }; return $"Margin.Left = {style.Margin.Left}";
+            case 19: style.Margin = style.Margin with { Top = RandomMargin(random) }; return $"Margin.Top = {style.Margin.Top}";
+            case 20: style.Margin = style.Margin with { Right = RandomMargin(random) }; return $"Margin.Right = {style.Margin.Right}";
+            case 21: style.Margin = style.Margin with { Bottom = RandomMargin(random) }; return $"Margin.Bottom = {style.Margin.Bottom}";
             case 22: style.Padding = source.Padding; return $"Padding = {Describe(style.Padding)}";
             case 23: style.BorderWidth = source.BorderWidth; return $"BorderWidth = {Describe(style.BorderWidth)}";
             case 24: style.Left = source.Left; return $"Left = {style.Left}";
@@ -1052,7 +1085,7 @@ public sealed class LayoutDifferentialTests
             case 26: style.Right = source.Right; return $"Right = {style.Right}";
             case 27: style.Bottom = source.Bottom; return $"Bottom = {style.Bottom}";
             case 28: style.Margin = source.Margin; return $"Margin = {Describe(style.Margin)}";
-            default: style = source; return "the whole style";
+            default: CopyInline(target, source); return "the whole style";
         }
     }
 
@@ -1065,10 +1098,11 @@ public sealed class LayoutDifferentialTests
         return text.ToString();
     }
 
-    /// <summary>Gives a random style. Each enum value and each length kind of the supported fields can occur.</summary>
-    private static ComputedStyle RandomStyle(Random random)
+    /// <summary>Gives a random inline set. Each enum value and each length kind of the supported fields can occur.</summary>
+    /// <remarks>The set holds the same 25 members in each call, so a whole copy replaces each of them.</remarks>
+    private static StyleProperties RandomStyle(Random random)
     {
-        ComputedStyle style = default;
+        StyleProperties style = default;
         style.FlexDirection = (FlexDirection)random.Next(4);
         style.FlexWrap = random.Next(3) == 0 ? (FlexWrap)random.Next(3) : FlexWrap.NoWrap;
         style.JustifyContent = (Justify)random.Next(6);

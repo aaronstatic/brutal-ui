@@ -26,20 +26,20 @@ public sealed class RoundingFixtureTests
     {
         // Yoga fixture: rounding_flex_basis_flex_shrink_row
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Width = 101;
-        root.Style.Height = 100;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Width = 101;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexShrink = 1;
-        child0.Style.FlexBasis = 100;
+        child0.Inline.FlexShrink = 1;
+        child0.Inline.FlexBasis = 100;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.FlexBasis = 25;
+        child1.Inline.FlexBasis = 25;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.FlexBasis = 25;
+        child2.Inline.FlexBasis = 25;
 
         LayoutFixture.Calculate(root);
 

@@ -9,8 +9,8 @@ using Xunit;
 namespace BrutalUi.Core.Tests;
 
 /// <summary>
-/// Tests of the text changes of <see cref="Label"/>: the setters, the <c>SetText</c> overloads, the dirty bits of each
-/// change, the <see cref="LString"/> members, and <see cref="UiContext.RefreshLocalizedText"/>.
+/// Tests of the text changes of <see cref="Label"/>: the text values from the style, the <c>SetText</c> overloads, the
+/// dirty bits of each change, the <see cref="LString"/> members, and <see cref="UiContext.RefreshLocalizedText"/>.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -39,7 +39,7 @@ public sealed class LabelTextTests
         RecordingRenderer renderer = new();
         UiContext context = CreateContext(renderer);
         LString hello = new("label-text-tests.demo", "Hello");
-        Label label = AddLabel(context, new Label.CreateInfo { Color = White, Size = 16, LocalizedText = hello });
+        Label label = AddLabel(context, new Label.CreateInfo { LocalizedText = hello });
 
         context.Update(0f);
         string before = RectLine(label);
@@ -170,102 +170,212 @@ public sealed class LabelTextTests
         Assert.Equal("Begin 400x300 scale 1\nEnd", renderer.Describe());
     }
 
-    /// <summary>A new font marks the layout and the paint. The draw sends the new font.</summary>
+    /// <summary>
+    /// A new inline font size marks the style only. The style pass marks the layout, so the label measures its text
+    /// again, and the draw sends the new size.
+    /// </summary>
     [Fact]
-    public void SettingTheFontMarksLayoutAndPaint()
+    public void ANewFontSizeMeasuresTheLabelAgain()
     {
         RecordingRenderer renderer = new();
         UiContext context = CreateContext(renderer);
         Label label = AddLabel(context, "Hello");
         context.Update(0f);
+        int measures = renderer.MeasureCount;
 
-        label.Font = new FontHandle(3);
+        label.Inline.FontSize = 32;
 
-        Assert.Equal(LayoutAndPaint, label.Dirty & SelfBits);
+        Assert.Equal(DirtyFlags.Style, label.Dirty & SelfBits);
         context.Update(0f);
         context.Draw(renderer);
-        Assert.Equal(3, label.Font.Id);
-        Assert.Equal("rect 0,0,40,16", RectLine(label));
-        Assert.Equal("Text 0,0 font 3 size 16 #FFFFFFFF wrap 40 \"Hello\"", TextLine(renderer));
-    }
-
-    /// <summary>The same font id marks nothing.</summary>
-    [Fact]
-    public void SettingTheSameFontMarksNothing()
-    {
-        UiContext context = CreateContext(new RecordingRenderer());
-        Label label = AddLabel(context, "Hello");
-        context.Update(0f);
-
-        label.Font = new FontHandle(0);
-
-        Assert.Equal(DirtyFlags.None, label.Dirty);
-    }
-
-    /// <summary>A new size marks the layout and the paint. The next update gives the new size.</summary>
-    [Fact]
-    public void SettingTheSizeMarksLayoutAndPaint()
-    {
-        RecordingRenderer renderer = new();
-        UiContext context = CreateContext(renderer);
-        Label label = AddLabel(context, "Hello");
-        context.Update(0f);
-
-        label.Size = 32;
-
-        Assert.Equal(LayoutAndPaint, label.Dirty & SelfBits);
-        context.Update(0f);
-        context.Draw(renderer);
+        Assert.True(renderer.MeasureCount > measures, "The new size measures the label again.");
+        Assert.Equal(32f, label.Style.FontSize);
         Assert.Equal("rect 0,0,80,32", RectLine(label));
         Assert.Equal("Text 0,0 font 0 size 32 #FFFFFFFF wrap 80 \"Hello\"", TextLine(renderer));
     }
 
-    /// <summary>The same size marks nothing. <c>NaN</c> to <c>NaN</c> also marks nothing.</summary>
+    /// <summary>A new inline font measures the label again. The draw sends the new font.</summary>
     [Fact]
-    public void SettingTheSameSizeMarksNothing()
-    {
-        Label label = new(new Label.CreateInfo { Color = White, Size = 16, Text = "Hello" });
-        Settle(label);
-
-        label.Size = 16;
-        Assert.Equal(DirtyFlags.None, label.Dirty);
-
-        label.Size = float.NaN;
-        Assert.Equal(LayoutAndPaint, label.Dirty & SelfBits);
-        Settle(label);
-        label.Size = float.NaN;
-        Assert.Equal(DirtyFlags.None, label.Dirty);
-    }
-
-    /// <summary>A new color marks the paint only. The draw sends the new color.</summary>
-    [Fact]
-    public void SettingTheColorMarksPaint()
+    public void ANewFontMeasuresTheLabelAgain()
     {
         RecordingRenderer renderer = new();
         UiContext context = CreateContext(renderer);
         Label label = AddLabel(context, "Hello");
         context.Update(0f);
+        int measures = renderer.MeasureCount;
 
-        label.Color = new Rgba8(255, 0, 0);
+        label.Inline.Font = new FontHandle(3);
 
-        Assert.Equal(DirtyFlags.Paint, label.Dirty & SelfBits);
+        Assert.Equal(DirtyFlags.Style, label.Dirty & SelfBits);
         context.Update(0f);
         context.Draw(renderer);
+        Assert.True(renderer.MeasureCount > measures, "The new font measures the label again.");
+        Assert.Equal(3, label.Style.Font.Id);
+        Assert.Equal("rect 0,0,40,16", RectLine(label));
+        Assert.Equal("Text 0,0 font 3 size 16 #FFFFFFFF wrap 40 \"Hello\"", TextLine(renderer));
+    }
+
+    /// <summary>A new inline color does not measure the label again. The draw sends the new color.</summary>
+    [Fact]
+    public void ANewColorDrawsTheNewColorWithNoMeasure()
+    {
+        RecordingRenderer renderer = new();
+        UiContext context = CreateContext(renderer);
+        Label label = AddLabel(context, "Hello");
+        context.Update(0f);
+        int measures = renderer.MeasureCount;
+
+        label.Inline.Color = new Rgba8(255, 0, 0);
+
+        Assert.Equal(DirtyFlags.Style, label.Dirty & SelfBits);
+        context.Update(0f);
+        context.Draw(renderer);
+        Assert.Equal(measures, renderer.MeasureCount);
         Assert.Equal("rect 0,0,40,16", RectLine(label));
         Assert.Equal("Text 0,0 font 0 size 16 #FF0000FF wrap 40 \"Hello\"", TextLine(renderer));
     }
 
-    /// <summary>The same color marks nothing.</summary>
+    /// <summary>
+    /// The same text value does not measure the label again: the same inline value, the same value on the parent,
+    /// and <c>NaN</c> to <c>NaN</c>.
+    /// </summary>
     [Fact]
-    public void SettingTheSameColorMarksNothing()
+    public void TheSameTextValueDoesNotMeasureTheLabelAgain()
     {
-        UiContext context = CreateContext(new RecordingRenderer());
-        Label label = AddLabel(context, "Hello");
+        RecordingRenderer renderer = new();
+        UiContext context = CreateContext(renderer);
+        Element root = AddRoot(context);
+        root.Inline.FontSize = 16;
+        Label label = new(new Label.CreateInfo { Text = "Hello" });
+        root.Children.Add(label);
+        context.Update(0f);
+        int measures = renderer.MeasureCount;
+
+        // The same value on the parent: the parent style does not change, so the label gets no restyle.
+        root.Inline.FontSize = 16;
+        root.Inline.Font = new FontHandle(0);
+        root.Inline.Color = White;
+        context.Update(0f);
+        Assert.Equal(measures, renderer.MeasureCount);
+
+        // An inline value on the label that equals the inherited value: the label restyles, but its style is the same.
+        label.Inline.FontSize = 16;
+        Assert.Equal(DirtyFlags.Style, label.Dirty & SelfBits);
+        context.Update(0f);
+        Assert.Equal(measures, renderer.MeasureCount);
+
+        // The same inline value again marks nothing.
+        label.Inline.FontSize = 16;
+        Assert.Equal(DirtyFlags.None, label.Dirty);
+
+        // NaN is a change from 16, but NaN to NaN is no change.
+        label.Inline.FontSize = float.NaN;
+        context.Update(0f);
+        int afterNaN = renderer.MeasureCount;
+        Assert.True(afterNaN > measures, "The change to NaN measures the label again.");
+        label.Inline.FontSize = float.NaN;
+        Assert.Equal(DirtyFlags.None, label.Dirty);
+        context.Update(0f);
+        Assert.Equal(afterNaN, renderer.MeasureCount);
+        Assert.Equal("rect 0,0,0,0", RectLine(label));
+    }
+
+    /// <summary>
+    /// A label with no text value of its own, under a root with none, takes the text defaults of the context. A
+    /// create-info with no defaults gives font 0, size 0, and opaque white.
+    /// </summary>
+    [Fact]
+    public void ALabelWithNoValueTakesTheContextDefaults()
+    {
+        RecordingRenderer renderer = new();
+        UiContext context = new(new UiContext.CreateInfo
+        {
+            Measurer = renderer,
+            DefaultColor = new Rgba8(10, 20, 30, 255),
+            DefaultFont = new FontHandle(2),
+            DefaultFontSize = 20f,
+        })
+        {
+            ViewportSize = new float2(400, 300),
+        };
+        Element root = AddRoot(context);
+        Label label = new(new Label.CreateInfo { Text = "Hello" });
+        root.Children.Add(label);
+
+        context.Update(0f);
+        context.Draw(renderer);
+
+        Assert.Equal("rect 0,0,50,20", RectLine(label));
+        Assert.Equal("Text 0,0 font 2 size 20 #0A141EFF wrap 50 \"Hello\"", TextLine(renderer));
+
+        RecordingRenderer plainRenderer = new();
+        UiContext plain = CreateContext(plainRenderer);
+        Element plainRoot = AddRoot(plain);
+        Label plainLabel = new(new Label.CreateInfo { Text = "Hello" });
+        plainRoot.Children.Add(plainLabel);
+
+        plain.Update(0f);
+        plain.Draw(plainRenderer);
+
+        Assert.Equal(new FontHandle(0), plainLabel.Style.Font);
+        Assert.Equal(0f, plainLabel.Style.FontSize);
+        Assert.Equal(White, plainLabel.Style.Color);
+        Assert.Equal("rect 0,0,0,0", RectLine(plainLabel));
+        // The dump omits the wrap width 0.
+        Assert.Equal("Text 0,0 font 0 size 0 #FFFFFFFF \"Hello\"", TextLine(plainRenderer));
+    }
+
+    /// <summary>
+    /// A label that moves to a parent with another font size takes the new size and measures its text again.
+    /// </summary>
+    [Fact]
+    public void AMoveToANewParentMeasuresTheLabelInTheNewSize()
+    {
+        RecordingRenderer renderer = new();
+        UiContext context = CreateContext(renderer);
+        Element root = AddRoot(context);
+        Element small = new();
+        small.Inline.FontSize = 16;
+        Element large = new();
+        large.Inline.FontSize = 32;
+        root.Children.Add(small);
+        root.Children.Add(large);
+        Label label = new(new Label.CreateInfo { Text = "Hello" });
+        small.Children.Add(label);
+        context.Update(0f);
+        Assert.Equal("rect 0,0,40,16", RectLine(label));
+        int measures = renderer.MeasureCount;
+
+        small.Children.Remove(label);
+        large.Children.Add(label);
         context.Update(0f);
 
-        label.Color = new Rgba8(255, 255, 255, 255);
+        Assert.True(renderer.MeasureCount > measures, "The new parent size measures the label again.");
+        Assert.Equal("rect 0,0,80,32", RectLine(label));
+    }
 
-        Assert.Equal(DirtyFlags.None, label.Dirty);
+    /// <summary>
+    /// A font size change on an element that is not a <see cref="Label"/> gives no layout. A leaf with its own measure
+    /// callback does not measure again.
+    /// </summary>
+    [Fact]
+    public void AFontSizeChangeDoesNotMeasureAnElementThatIsNotALabel()
+    {
+        UiContext context = CreateContext(new RecordingRenderer());
+        Element root = AddRoot(context);
+        CountingLeaf leaf = new();
+        root.Children.Add(leaf);
+        context.Update(0f);
+        int measures = leaf.Count;
+        Assert.True(measures > 0, "The first update measures the leaf.");
+
+        leaf.Inline.FontSize = 32;
+        root.Inline.Font = new FontHandle(4);
+        context.Update(0f);
+
+        Assert.Equal(measures, leaf.Count);
+        Assert.Equal(32f, leaf.Style.FontSize);
+        Assert.Equal(4, leaf.Style.Font.Id);
     }
 
     /// <summary>A label with an <see cref="LString"/> in the create-info shows its localized text.</summary>
@@ -275,7 +385,7 @@ public sealed class LabelTextTests
         LString hello = new("label-text-tests.constructor", "Hello");
         hello.Localize("Hallo Welt");
 
-        Label label = new(new Label.CreateInfo { Color = White, LocalizedText = hello });
+        Label label = new(new Label.CreateInfo { LocalizedText = hello });
 
         Assert.Same(hello, label.LocalizedText);
         Assert.Equal("Hallo Welt", Encoding.UTF8.GetString(label.Text));
@@ -287,7 +397,7 @@ public sealed class LabelTextTests
     {
         UiContext context = CreateContext(new RecordingRenderer());
         LString hello = new("label-text-tests.span-clears", "Hello");
-        Label label = AddLabel(context, new Label.CreateInfo { Color = White, Size = 16, LocalizedText = hello });
+        Label label = AddLabel(context, new Label.CreateInfo { LocalizedText = hello });
 
         label.SetText("Hi"u8);
         context.Update(0f);
@@ -305,7 +415,7 @@ public sealed class LabelTextTests
     {
         UiContext context = CreateContext(new RecordingRenderer());
         LString hello = new("label-text-tests.string-clears", "Hello");
-        Label label = AddLabel(context, new Label.CreateInfo { Color = White, Size = 16, LocalizedText = hello });
+        Label label = AddLabel(context, new Label.CreateInfo { LocalizedText = hello });
         context.Update(0f);
 
         string text = "Hello";
@@ -358,7 +468,7 @@ public sealed class LabelTextTests
     {
         UiContext context = CreateContext(new RecordingRenderer());
         LString hello = new("label-text-tests.same-content", "Hello");
-        Label label = AddLabel(context, new Label.CreateInfo { Color = White, Size = 16, LocalizedText = hello });
+        Label label = AddLabel(context, new Label.CreateInfo { LocalizedText = hello });
         context.Update(0f);
 
         context.RefreshLocalizedText();
@@ -387,16 +497,20 @@ public sealed class LabelTextTests
         for (int i = 0; i < Depth; i++)
         {
             Element child = new();
-            child.Style.AlignItems = Align.FlexStart;
+            child.Inline.AlignItems = Align.FlexStart;
             parent.Children.Add(child);
             chain[i] = child;
             parent = child;
         }
 
         LString hello = new("label-text-tests.deep", "Hello");
-        Label label = new(new Label.CreateInfo { Color = White, Size = 16, LocalizedText = hello });
+        Label label = new(new Label.CreateInfo { LocalizedText = hello });
+        label.Inline.Color = White;
+        label.Inline.FontSize = 16;
         parent.Children.Add(label);
-        Label plain = new(new Label.CreateInfo { Color = White, Size = 16, Text = "Plain" });
+        Label plain = new(new Label.CreateInfo { Text = "Plain" });
+        plain.Inline.Color = White;
+        plain.Inline.FontSize = 16;
         root.Children.Add(plain);
         context.Update(0f);
 
@@ -422,7 +536,7 @@ public sealed class LabelTextTests
     {
         UiContext context = new() { ViewportSize = new float2(400, 300) };
         LString hello = new("label-text-tests.no-measurer", "Hello");
-        Label label = AddLabel(context, new Label.CreateInfo { Color = White, Size = 16, LocalizedText = hello });
+        Label label = AddLabel(context, new Label.CreateInfo { LocalizedText = hello });
         Settle(label);
 
         hello.Localize("Bonjour");
@@ -450,7 +564,7 @@ public sealed class LabelTextTests
         LString hello = new("label-text-tests.two-texts", "Hello");
 
         ArgumentException error = Assert.Throws<ArgumentException>(
-            () => new Label(new Label.CreateInfo { Color = White, Text = "Hello", LocalizedText = hello }));
+            () => new Label(new Label.CreateInfo { Text = "Hello", LocalizedText = hello }));
 
         Assert.Equal("info", error.ParamName);
     }
@@ -461,7 +575,7 @@ public sealed class LabelTextTests
     {
         UiContext context = CreateContext(new RecordingRenderer());
         LString hello = new("label-text-tests.remove", "Hello");
-        Label label = AddLabel(context, new Label.CreateInfo { Color = White, Size = 16, LocalizedText = hello });
+        Label label = AddLabel(context, new Label.CreateInfo { LocalizedText = hello });
         hello.Localize("Bonjour le monde");
         context.RefreshLocalizedText();
         context.Update(0f);
@@ -486,7 +600,7 @@ public sealed class LabelTextTests
         UiContext context = CreateContext(new RecordingRenderer());
         LocalizedStrings strings = new(null);
         LString hello = strings.Create("label-text-tests.provider", "Hello");
-        Label label = AddLabel(context, new Label.CreateInfo { Color = White, Size = 16, LocalizedText = hello });
+        Label label = AddLabel(context, new Label.CreateInfo { LocalizedText = hello });
         context.Update(0f);
 
         strings.SetLocalizedStringProvider(static (LString _, [NotNullWhen(true)] out string? localized) =>
@@ -507,7 +621,7 @@ public sealed class LabelTextTests
         string longText = new('a', 100);
         string shortText = new('b', 10);
         string otherLong = new('c', 100);
-        Label label = new(new Label.CreateInfo { Color = White, Size = 16 });
+        Label label = new(new Label.CreateInfo());
 
         label.SetText(longText);
         Assert.Equal(longText, Encoding.UTF8.GetString(label.Text));
@@ -579,7 +693,7 @@ public sealed class LabelTextTests
     private static Element AddRoot(UiContext context)
     {
         Element root = new();
-        root.Style.AlignItems = Align.FlexStart;
+        root.Inline.AlignItems = Align.FlexStart;
         context.AddRoot(root);
         return root;
     }
@@ -590,10 +704,10 @@ public sealed class LabelTextTests
     /// <returns>The label.</returns>
     private static Label AddLabel(UiContext context, string text)
     {
-        return AddLabel(context, new Label.CreateInfo { Color = White, Size = 16, Text = text });
+        return AddLabel(context, new Label.CreateInfo { Text = text });
     }
 
-    /// <summary>Adds a root and a label to a context.</summary>
+    /// <summary>Adds a root and a label to a context. The inline set gives the label white text of size 16.</summary>
     /// <param name="context">The context.</param>
     /// <param name="info">The create-info of the label.</param>
     /// <returns>The label.</returns>
@@ -601,8 +715,27 @@ public sealed class LabelTextTests
     {
         Element root = AddRoot(context);
         Label label = new(in info);
+        label.Inline.Color = White;
+        label.Inline.FontSize = 16;
         root.Children.Add(label);
         return label;
+    }
+
+    /// <summary>A leaf that is not a <see cref="Label"/>. Its measure callback counts each call.</summary>
+    private sealed class CountingLeaf : Element
+    {
+        /// <summary>Creates a leaf with the static measure callback.</summary>
+        public CountingLeaf()
+        {
+            Layout.Measure = static (element, width, widthMode, height, heightMode) =>
+            {
+                ((CountingLeaf)element).Count++;
+                return new float2(10, 10);
+            };
+        }
+
+        /// <summary>Gets the count of the measure calls.</summary>
+        public int Count { get; private set; }
     }
 
     /// <summary>Clears each dirty bit of an element with no context.</summary>

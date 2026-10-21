@@ -203,11 +203,11 @@ public sealed class RenderValueTests
     {
         Element element = new();
 
-        element.Style.Opacity = 0.3f;
-        Assert.Equal(0.3f, element.Style.Opacity);
+        element.Inline.Opacity = 0.3f;
+        Assert.Equal(0.3f, element.Inline.Opacity);
 
-        element.Style.Opacity = 0f;
-        Assert.Equal(0f, element.Style.Opacity);
+        element.Inline.Opacity = 0f;
+        Assert.Equal(0f, element.Inline.Opacity);
     }
 
     /// <summary>A factor of 1 keeps the alpha, and the other bytes never change.</summary>

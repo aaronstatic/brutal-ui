@@ -18,15 +18,15 @@ public sealed class ContentInsetsTests
     public void PixelPaddingAndBorderGiveEachEdge()
     {
         Element root = new() { Name = "root" };
-        root.Style.Width = 200;
-        root.Style.Height = 100;
-        root.Style.Padding = new LengthEdges(1, 2, 3, 4);
-        root.Style.BorderWidth = new LengthEdges(10, 20, 30, 40);
+        root.Inline.Width = 200;
+        root.Inline.Height = 100;
+        root.Inline.Padding = new LengthEdges(1, 2, 3, 4);
+        root.Inline.BorderWidth = new LengthEdges(10, 20, 30, 40);
 
         Element child = AddChild(root, "child");
-        child.Style.Width = 10;
-        child.Style.Height = 10;
-        child.Style.AlignSelf = Align.FlexStart;
+        child.Inline.Width = 10;
+        child.Inline.Height = 10;
+        child.Inline.AlignSelf = Align.FlexStart;
 
         Layout(root, new float2(400f, 300f));
 
@@ -39,10 +39,10 @@ public sealed class ContentInsetsTests
     public void ContentBoxRemovesTheInsets()
     {
         Element root = new() { Name = "root" };
-        root.Style.Width = 200;
-        root.Style.Height = 100;
-        root.Style.Padding = new LengthEdges(1, 2, 3, 4);
-        root.Style.BorderWidth = new LengthEdges(10, 20, 30, 40);
+        root.Inline.Width = 200;
+        root.Inline.Height = 100;
+        root.Inline.Padding = new LengthEdges(1, 2, 3, 4);
+        root.Inline.BorderWidth = new LengthEdges(10, 20, 30, 40);
 
         Layout(root, new float2(400f, 300f));
 
@@ -67,9 +67,9 @@ public sealed class ContentInsetsTests
     public void PaddingLargerThanTheSizeGivesAnEmptyContentBox()
     {
         Element root = new() { Name = "root" };
-        root.Style.Width = 10;
-        root.Style.Height = 10;
-        root.Style.Padding = LengthEdges.All(8);
+        root.Inline.Width = 10;
+        root.Inline.Height = 10;
+        root.Inline.Padding = LengthEdges.All(8);
 
         Layout(root, new float2(400f, 300f));
 
@@ -83,22 +83,20 @@ public sealed class ContentInsetsTests
     public void PercentPaddingOfAChildResolvesAgainstTheInnerWidthOfTheParent()
     {
         Element root = new() { Name = "root" };
-        root.Style.Width = 220;
-        root.Style.Height = 300;
-        root.Style.Padding.Left = 5;
-        root.Style.Padding.Right = 5;
-        root.Style.BorderWidth.Left = 5;
-        root.Style.BorderWidth.Right = 5;
+        root.Inline.Width = 220;
+        root.Inline.Height = 300;
+        root.Inline.Padding = root.Inline.Padding with { Left = 5, Right = 5 };
+        root.Inline.BorderWidth = root.Inline.BorderWidth with { Left = 5, Right = 5 };
 
         Element child = AddChild(root, "child");
-        child.Style.Height = 100;
-        child.Style.Padding = LengthEdges.All(Length.Percent(10));
-        child.Style.BorderWidth.Left = 3;
+        child.Inline.Height = 100;
+        child.Inline.Padding = LengthEdges.All(Length.Percent(10));
+        child.Inline.BorderWidth = child.Inline.BorderWidth with { Left = 3 };
 
         Element grand = AddChild(child, "grand");
-        grand.Style.Width = 10;
-        grand.Style.Height = 10;
-        grand.Style.AlignSelf = Align.FlexStart;
+        grand.Inline.Width = 10;
+        grand.Inline.Height = 10;
+        grand.Inline.AlignSelf = Align.FlexStart;
 
         Layout(root, new float2(400f, 300f));
 
@@ -111,22 +109,20 @@ public sealed class ContentInsetsTests
     public void PercentPaddingOfAnAbsoluteChildResolvesAgainstThePaddingBoxOfTheParent()
     {
         Element root = new() { Name = "root" };
-        root.Style.Width = 220;
-        root.Style.Height = 300;
-        root.Style.Padding.Left = 5;
-        root.Style.Padding.Right = 5;
-        root.Style.BorderWidth.Left = 5;
-        root.Style.BorderWidth.Right = 5;
+        root.Inline.Width = 220;
+        root.Inline.Height = 300;
+        root.Inline.Padding = root.Inline.Padding with { Left = 5, Right = 5 };
+        root.Inline.BorderWidth = root.Inline.BorderWidth with { Left = 5, Right = 5 };
 
         Element child = AddChild(root, "child");
-        child.Style.Position = PositionType.Absolute;
-        child.Style.Width = 100;
-        child.Style.Height = 100;
-        child.Style.Padding.Left = Length.Percent(10);
+        child.Inline.Position = PositionType.Absolute;
+        child.Inline.Width = 100;
+        child.Inline.Height = 100;
+        child.Inline.Padding = child.Inline.Padding with { Left = Length.Percent(10) };
 
         Element grand = AddChild(child, "grand");
-        grand.Style.Width = 10;
-        grand.Style.Height = 10;
+        grand.Inline.Width = 10;
+        grand.Inline.Height = 10;
 
         Layout(root, new float2(400f, 300f));
 
@@ -139,16 +135,13 @@ public sealed class ContentInsetsTests
     public void PercentPaddingOfARootResolvesAgainstTheViewportWidth()
     {
         Element root = new() { Name = "root" };
-        root.Style.Width = 100;
-        root.Style.Height = 100;
-        root.Style.Padding.Left = Length.Percent(10);
-        root.Style.Padding.Top = Length.Percent(5);
-        root.Style.Padding.Right = Length.Percent(2.5f);
-        root.Style.Padding.Bottom = 3;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
+        root.Inline.Padding = new LengthEdges(Length.Percent(10), Length.Percent(5), Length.Percent(2.5f), 3);
 
         Element grand = AddChild(root, "grand");
-        grand.Style.Width = 10;
-        grand.Style.Height = 10;
+        grand.Inline.Width = 10;
+        grand.Inline.Height = 10;
 
         Layout(root, new float2(400f, 300f));
 
@@ -161,12 +154,10 @@ public sealed class ContentInsetsTests
     public void PercentPaddingOfARootWithAnUndefinedViewportWidthGivesZero()
     {
         Element root = new() { Name = "root" };
-        root.Style.Width = 100;
-        root.Style.Height = 100;
-        root.Style.Padding.Left = Length.Percent(10);
-        root.Style.Padding.Top = Length.Percent(10);
-        root.Style.Padding.Right = 4;
-        root.Style.BorderWidth.Bottom = 2;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
+        root.Inline.Padding = root.Inline.Padding with { Left = Length.Percent(10), Top = Length.Percent(10), Right = 4 };
+        root.Inline.BorderWidth = root.Inline.BorderWidth with { Bottom = 2 };
 
         Layout(root, new float2(float.NaN, 300f));
 
@@ -178,22 +169,21 @@ public sealed class ContentInsetsTests
     public void InsetsFollowTheParentWidthWithACleanChild()
     {
         Element root = new() { Name = "root" };
-        root.Style.Width = 200;
-        root.Style.Height = 200;
-        root.Style.AlignItems = Align.FlexStart;
+        root.Inline.Width = 200;
+        root.Inline.Height = 200;
+        root.Inline.AlignItems = Align.FlexStart;
 
         Element child = AddChild(root, "child");
-        child.Style.Width = 100;
-        child.Style.Height = 100;
-        child.Style.Padding.Left = Length.Percent(10);
-        child.Style.Padding.Top = Length.Percent(5);
+        child.Inline.Width = 100;
+        child.Inline.Height = 100;
+        child.Inline.Padding = child.Inline.Padding with { Left = Length.Percent(10), Top = Length.Percent(5) };
 
         UiContext context = new() { ViewportSize = new float2(1000f, 1000f) };
         context.AddRoot(root);
         context.Update(0f);
         AssertInsets(child, 20, 10, 0, 0);
 
-        root.Style.Width = 300;
+        root.Inline.Width = 300;
         root.MarkDirty(DirtyFlags.Layout);
         Assert.Equal(DirtyFlags.None, child.Dirty & (DirtyFlags.Layout | DirtyFlags.DescendantLayout));
 
@@ -209,9 +199,9 @@ public sealed class ContentInsetsTests
     public void InsetsFollowANewViewportAtACleanRoot()
     {
         Element root = new() { Name = "root" };
-        root.Style.Width = 100;
-        root.Style.Height = 100;
-        root.Style.Padding.Left = Length.Percent(10);
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
+        root.Inline.Padding = root.Inline.Padding with { Left = Length.Percent(10) };
 
         UiContext context = new() { ViewportSize = new float2(200f, 200f) };
         context.AddRoot(root);
@@ -234,19 +224,19 @@ public sealed class ContentInsetsTests
         // the child the same layout constraints as pass 1 (a hit). A measurement must not change the insets, and the
         // hit must keep the value of the final layout.
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.Width = 300;
-        root.Style.Height = 200;
-        root.Style.AlignItems = Align.FlexStart;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.Width = 300;
+        root.Inline.Height = 200;
+        root.Inline.AlignItems = Align.FlexStart;
 
         Element parent = AddChild(root, "parent");
-        parent.Style.Width = 100;
-        parent.Style.Height = 50;
+        parent.Inline.Width = 100;
+        parent.Inline.Height = 50;
 
         Element child = AddChild(parent, "child");
-        child.Style.Width = 100;
-        child.Style.Height = 50;
-        child.Style.Padding.Left = Length.Percent(10);
+        child.Inline.Width = 100;
+        child.Inline.Height = 50;
+        child.Inline.Padding = child.Inline.Padding with { Left = Length.Percent(10) };
 
         UiContext context = new() { ViewportSize = new float2(1000f, 1000f) };
         context.AddRoot(root);
@@ -254,7 +244,7 @@ public sealed class ContentInsetsTests
         AssertInsets(child, 10, 0, 0, 0);
         Assert.Equal(0, child.Layout.Cache.NextCachedMeasurementsIndex);
 
-        parent.Style.Width = Length.Auto;
+        parent.Inline.Width = Length.Auto;
         parent.MarkDirty(DirtyFlags.Layout);
         context.Update(0f);
 
@@ -274,16 +264,16 @@ public sealed class ContentInsetsTests
     public void HiddenElementGetsZeroInsets()
     {
         Element root = new() { Name = "root" };
-        root.Style.Width = 200;
-        root.Style.Height = 200;
+        root.Inline.Width = 200;
+        root.Inline.Height = 200;
 
         Element child = AddChild(root, "child");
-        child.Style.Height = 50;
-        child.Style.Padding = LengthEdges.All(4);
+        child.Inline.Height = 50;
+        child.Inline.Padding = LengthEdges.All(4);
 
         Element grand = AddChild(child, "grand");
-        grand.Style.Height = 10;
-        grand.Style.BorderWidth = LengthEdges.All(2);
+        grand.Inline.Height = 10;
+        grand.Inline.BorderWidth = LengthEdges.All(2);
 
         UiContext context = new() { ViewportSize = new float2(400f, 400f) };
         context.AddRoot(root);
@@ -291,7 +281,7 @@ public sealed class ContentInsetsTests
         AssertInsets(child, 4, 4, 4, 4);
         AssertInsets(grand, 2, 2, 2, 2);
 
-        child.Style.Display = Display.None;
+        child.Inline.Display = Display.None;
         child.MarkDirty(DirtyFlags.Layout);
         context.Update(0f);
 
@@ -299,7 +289,7 @@ public sealed class ContentInsetsTests
         AssertInsets(child, 0, 0, 0, 0);
         AssertInsets(grand, 0, 0, 0, 0);
 
-        child.Style.Display = Display.Flex;
+        child.Inline.Display = Display.Flex;
         child.MarkDirty(DirtyFlags.Layout);
         context.Update(0f);
 
@@ -312,7 +302,7 @@ public sealed class ContentInsetsTests
     public void ElementBeforeTheFirstLayoutHasZeroInsets()
     {
         Element element = new() { Name = "element" };
-        element.Style.Padding = LengthEdges.All(4);
+        element.Inline.Padding = LengthEdges.All(4);
 
         Assert.Equal(default, element.Layout.ContentInsets);
     }

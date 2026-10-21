@@ -13,6 +13,13 @@ This file lists each notable change of brutal-ui. The format follows [Keep a Cha
 - `ImGuiRenderer`, `ImGuiFontService`, `ImGuiTextureService`, the size of `TextureHandle`, the `wrapWidth` parameter of `IUiRenderer.Text`, and the headless test project (imgui-renderer/imgui-draw-list).
 - `Label`, `Image`, `ImageScaleMode`, the measurer slot of `UiContext` (`UiContext.CreateInfo` and `UiContext.Measurer`), `UiContext.RefreshLocalizedText`, the content insets of the layout pass, and the element allocation gate `ElementAllocationTests` (imgui-renderer/label-and-image).
 - The HelloPanel sample shows a static brutal-ui screen with a panel, a label, and a procedural image, with the sample allocation gate and `TreeDrawBenchmark` (imgui-renderer/hello-panel-sample).
+- `StyleProperties`, `Selector`, `StyleRule`, `StyleSheet`, `InlineStyle` (`Element.Inline`), `ElementTypeId`, `ElementType`, `UiContext.AddSheet`, `UiContext.RemoveSheet`, the style pass with its cascade and text inheritance, and the text members `Color`, `Font`, and `FontSize` of `ComputedStyle` with the text defaults of `UiContext.CreateInfo` (style-system/stylesheet-model).
+
+### Changed
+
+- `Element.Style` is `ref readonly`, and the game writes `Element.Inline`. `Label.Color`, `Label.Font`, and `Label.Size`, and the matching members of `Label.CreateInfo`, go: the label reads its text style from `Element.Style` (style-system/stylesheet-model).
+- `AddRoot` now marks the new root and each descendant with `Style` and `DescendantStyle`. An attach (`Children.Add` and `Children.Insert`) marks the moved element and each descendant with `Style`, and each descendant with a child also gets `DescendantStyle`. The expected `Dirty` of `DirtyTrackingTests.AddRootOfAChildMarksTheOldParentForLayout` changed for this reason (style-system/stylesheet-model).
+- A label with no text value now draws in the default color of the context (opaque white). The old `Label.CreateInfo.Color` was `required`, and a game had to give a color (style-system/stylesheet-model).
 
 ### Fixed
 

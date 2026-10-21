@@ -131,12 +131,10 @@ internal static class HelloScreen
     /// <returns>The root element of the screen.</returns>
     public static Element Build(TextureHandle checker)
     {
-        Label greeting = new(new Label.CreateInfo
-        {
-            Color = GreetingColor,
-            Size = GreetingFontSize,
-            Text = GreetingText,
-        });
+        Label greeting = new(new Label.CreateInfo { Text = GreetingText });
+        // The label keeps font 0, the default font of the renderer. The inline set gives the color and the size.
+        greeting.Inline.Color = GreetingColor;
+        greeting.Inline.FontSize = GreetingFontSize;
 
         Image checkerImage = new(new Image.CreateInfo
         {
@@ -144,23 +142,24 @@ internal static class HelloScreen
             Tint = ImageTint,
             ScaleMode = ImageScaleMode.StretchToFill,
         });
-        checkerImage.Style.Margin.Top = ImageTopMargin;
+        // The view gives a copy of the edges, so the write changes the top edge of a whole value.
+        checkerImage.Inline.Margin = checkerImage.Inline.Margin with { Top = ImageTopMargin };
 
         Element panel = new();
-        panel.Style.FlexDirection = FlexDirection.Column;
-        panel.Style.AlignItems = Align.FlexStart;
-        panel.Style.Padding = LengthEdges.All(PanelPadding);
-        panel.Style.BorderWidth = LengthEdges.All(PanelBorderWidth);
-        panel.Style.CornerRadius = Corners.All(PanelCornerRadius);
-        panel.Style.BackgroundColor = PanelColor;
-        panel.Style.BorderColor = BorderColor;
+        panel.Inline.FlexDirection = FlexDirection.Column;
+        panel.Inline.AlignItems = Align.FlexStart;
+        panel.Inline.Padding = LengthEdges.All(PanelPadding);
+        panel.Inline.BorderWidth = LengthEdges.All(PanelBorderWidth);
+        panel.Inline.CornerRadius = Corners.All(PanelCornerRadius);
+        panel.Inline.BackgroundColor = PanelColor;
+        panel.Inline.BorderColor = BorderColor;
         panel.Children.Add(greeting);
         panel.Children.Add(checkerImage);
 
         // The root draws nothing. FlexStart stops the stretch, so the panel keeps the size of its content.
         Element root = new();
-        root.Style.AlignItems = Align.FlexStart;
-        root.Style.Padding = LengthEdges.All(RootPadding);
+        root.Inline.AlignItems = Align.FlexStart;
+        root.Inline.Padding = LengthEdges.All(RootPadding);
         root.Children.Add(panel);
 
         return root;

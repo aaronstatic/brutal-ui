@@ -20,19 +20,19 @@ public sealed class JustifyContentFixtureTests
     {
         // Yoga fixture: justify_content_row_flex_start
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
+        root.Inline.FlexDirection = FlexDirection.Row;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 102;
-        root.Style.Height = 102;
+        root.Inline.Width = 102;
+        root.Inline.Height = 102;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 10;
+        child0.Inline.Width = 10;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 10;
+        child1.Inline.Width = 10;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 10;
+        child2.Inline.Width = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -48,20 +48,20 @@ public sealed class JustifyContentFixtureTests
     {
         // Yoga fixture: justify_content_row_flex_end
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.JustifyContent = Justify.FlexEnd;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.JustifyContent = Justify.FlexEnd;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 102;
-        root.Style.Height = 102;
+        root.Inline.Width = 102;
+        root.Inline.Height = 102;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 10;
+        child0.Inline.Width = 10;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 10;
+        child1.Inline.Width = 10;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 10;
+        child2.Inline.Width = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -77,20 +77,20 @@ public sealed class JustifyContentFixtureTests
     {
         // Yoga fixture: justify_content_row_center
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.JustifyContent = Justify.Center;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.JustifyContent = Justify.Center;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 102;
-        root.Style.Height = 102;
+        root.Inline.Width = 102;
+        root.Inline.Height = 102;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 10;
+        child0.Inline.Width = 10;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 10;
+        child1.Inline.Width = 10;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 10;
+        child2.Inline.Width = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -106,20 +106,20 @@ public sealed class JustifyContentFixtureTests
     {
         // Yoga fixture: justify_content_row_space_between
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.JustifyContent = Justify.SpaceBetween;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.JustifyContent = Justify.SpaceBetween;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 102;
-        root.Style.Height = 102;
+        root.Inline.Width = 102;
+        root.Inline.Height = 102;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 10;
+        child0.Inline.Width = 10;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 10;
+        child1.Inline.Width = 10;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 10;
+        child2.Inline.Width = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -135,20 +135,20 @@ public sealed class JustifyContentFixtureTests
     {
         // Yoga fixture: justify_content_row_space_around
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.JustifyContent = Justify.SpaceAround;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.JustifyContent = Justify.SpaceAround;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 102;
-        root.Style.Height = 102;
+        root.Inline.Width = 102;
+        root.Inline.Height = 102;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 10;
+        child0.Inline.Width = 10;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 10;
+        child1.Inline.Width = 10;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 10;
+        child2.Inline.Width = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -165,17 +165,17 @@ public sealed class JustifyContentFixtureTests
         // Yoga fixture: justify_content_column_flex_start
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 102;
-        root.Style.Height = 102;
+        root.Inline.Width = 102;
+        root.Inline.Height = 102;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Height = 10;
+        child0.Inline.Height = 10;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Height = 10;
+        child1.Inline.Height = 10;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Height = 10;
+        child2.Inline.Height = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -191,19 +191,19 @@ public sealed class JustifyContentFixtureTests
     {
         // Yoga fixture: justify_content_column_flex_end
         Element root = new() { Name = "root" };
-        root.Style.JustifyContent = Justify.FlexEnd;
+        root.Inline.JustifyContent = Justify.FlexEnd;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 102;
-        root.Style.Height = 102;
+        root.Inline.Width = 102;
+        root.Inline.Height = 102;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Height = 10;
+        child0.Inline.Height = 10;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Height = 10;
+        child1.Inline.Height = 10;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Height = 10;
+        child2.Inline.Height = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -219,19 +219,19 @@ public sealed class JustifyContentFixtureTests
     {
         // Yoga fixture: justify_content_column_center
         Element root = new() { Name = "root" };
-        root.Style.JustifyContent = Justify.Center;
+        root.Inline.JustifyContent = Justify.Center;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 102;
-        root.Style.Height = 102;
+        root.Inline.Width = 102;
+        root.Inline.Height = 102;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Height = 10;
+        child0.Inline.Height = 10;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Height = 10;
+        child1.Inline.Height = 10;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Height = 10;
+        child2.Inline.Height = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -247,19 +247,19 @@ public sealed class JustifyContentFixtureTests
     {
         // Yoga fixture: justify_content_column_space_between
         Element root = new() { Name = "root" };
-        root.Style.JustifyContent = Justify.SpaceBetween;
+        root.Inline.JustifyContent = Justify.SpaceBetween;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 102;
-        root.Style.Height = 102;
+        root.Inline.Width = 102;
+        root.Inline.Height = 102;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Height = 10;
+        child0.Inline.Height = 10;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Height = 10;
+        child1.Inline.Height = 10;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Height = 10;
+        child2.Inline.Height = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -275,19 +275,19 @@ public sealed class JustifyContentFixtureTests
     {
         // Yoga fixture: justify_content_column_space_around
         Element root = new() { Name = "root" };
-        root.Style.JustifyContent = Justify.SpaceAround;
+        root.Inline.JustifyContent = Justify.SpaceAround;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 102;
-        root.Style.Height = 102;
+        root.Inline.Width = 102;
+        root.Inline.Height = 102;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Height = 10;
+        child0.Inline.Height = 10;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Height = 10;
+        child1.Inline.Height = 10;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Height = 10;
+        child2.Inline.Height = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -303,15 +303,15 @@ public sealed class JustifyContentFixtureTests
     {
         // Yoga fixture: justify_content_row_min_width_and_margin
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.JustifyContent = Justify.Center;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.JustifyContent = Justify.Center;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Margin.Left = 100;
-        root.Style.MinWidth = 50;
+        root.Inline.Margin = root.Inline.Margin with { Left = 100 };
+        root.Inline.MinWidth = 50;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 20;
-        child0.Style.Height = 20;
+        child0.Inline.Width = 20;
+        child0.Inline.Height = 20;
 
         LayoutFixture.Calculate(root);
 
@@ -325,16 +325,16 @@ public sealed class JustifyContentFixtureTests
     {
         // Yoga fixture: justify_content_row_max_width_and_margin
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.JustifyContent = Justify.Center;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.JustifyContent = Justify.Center;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Margin.Left = 100;
-        root.Style.Width = 100;
-        root.Style.MaxWidth = 80;
+        root.Inline.Margin = root.Inline.Margin with { Left = 100 };
+        root.Inline.Width = 100;
+        root.Inline.MaxWidth = 80;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 20;
-        child0.Style.Height = 20;
+        child0.Inline.Width = 20;
+        child0.Inline.Height = 20;
 
         LayoutFixture.Calculate(root);
 
@@ -348,14 +348,14 @@ public sealed class JustifyContentFixtureTests
     {
         // Yoga fixture: justify_content_column_min_height_and_margin
         Element root = new() { Name = "root" };
-        root.Style.JustifyContent = Justify.Center;
+        root.Inline.JustifyContent = Justify.Center;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Margin.Top = 100;
-        root.Style.MinHeight = 50;
+        root.Inline.Margin = root.Inline.Margin with { Top = 100 };
+        root.Inline.MinHeight = 50;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 20;
-        child0.Style.Height = 20;
+        child0.Inline.Width = 20;
+        child0.Inline.Height = 20;
 
         LayoutFixture.Calculate(root);
 
@@ -369,15 +369,15 @@ public sealed class JustifyContentFixtureTests
     {
         // Yoga fixture: justify_content_column_max_height_and_margin
         Element root = new() { Name = "root" };
-        root.Style.JustifyContent = Justify.Center;
+        root.Inline.JustifyContent = Justify.Center;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Margin.Top = 100;
-        root.Style.Height = 100;
-        root.Style.MaxHeight = 80;
+        root.Inline.Margin = root.Inline.Margin with { Top = 100 };
+        root.Inline.Height = 100;
+        root.Inline.MaxHeight = 80;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 20;
-        child0.Style.Height = 20;
+        child0.Inline.Width = 20;
+        child0.Inline.Height = 20;
 
         LayoutFixture.Calculate(root);
 
@@ -391,19 +391,19 @@ public sealed class JustifyContentFixtureTests
     {
         // Yoga fixture: justify_content_column_space_evenly
         Element root = new() { Name = "root" };
-        root.Style.JustifyContent = Justify.SpaceEvenly;
+        root.Inline.JustifyContent = Justify.SpaceEvenly;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 102;
-        root.Style.Height = 102;
+        root.Inline.Width = 102;
+        root.Inline.Height = 102;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Height = 10;
+        child0.Inline.Height = 10;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Height = 10;
+        child1.Inline.Height = 10;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Height = 10;
+        child2.Inline.Height = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -419,19 +419,19 @@ public sealed class JustifyContentFixtureTests
     {
         // Yoga fixture: justify_content_flex_start_row_reverse
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.RowReverse;
+        root.Inline.FlexDirection = FlexDirection.RowReverse;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 20;
+        child0.Inline.Width = 20;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 20;
+        child1.Inline.Width = 20;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 20;
+        child2.Inline.Width = 20;
 
         LayoutFixture.Calculate(root);
 
@@ -448,19 +448,19 @@ public sealed class JustifyContentFixtureTests
         // Yoga fixture: justify_content_flex_end_row_reverse
         // The Yoga fixture sets justify-content: flex-start in the HTML source, so the generated test sets no justify.
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.RowReverse;
+        root.Inline.FlexDirection = FlexDirection.RowReverse;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 20;
+        child0.Inline.Width = 20;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 20;
+        child1.Inline.Width = 20;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 20;
+        child2.Inline.Width = 20;
 
         LayoutFixture.Calculate(root);
 
@@ -476,19 +476,19 @@ public sealed class JustifyContentFixtureTests
     {
         // Yoga fixture: justify_content_overflow_row_flex_start
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
+        root.Inline.FlexDirection = FlexDirection.Row;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 102;
-        root.Style.Height = 102;
+        root.Inline.Width = 102;
+        root.Inline.Height = 102;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 40;
+        child0.Inline.Width = 40;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 40;
+        child1.Inline.Width = 40;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 40;
+        child2.Inline.Width = 40;
 
         LayoutFixture.Calculate(root);
 
@@ -504,20 +504,20 @@ public sealed class JustifyContentFixtureTests
     {
         // Yoga fixture: justify_content_overflow_row_flex_end
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.JustifyContent = Justify.FlexEnd;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.JustifyContent = Justify.FlexEnd;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 102;
-        root.Style.Height = 102;
+        root.Inline.Width = 102;
+        root.Inline.Height = 102;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 40;
+        child0.Inline.Width = 40;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 40;
+        child1.Inline.Width = 40;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 40;
+        child2.Inline.Width = 40;
 
         LayoutFixture.Calculate(root);
 
@@ -533,20 +533,20 @@ public sealed class JustifyContentFixtureTests
     {
         // Yoga fixture: justify_content_overflow_row_center
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.JustifyContent = Justify.Center;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.JustifyContent = Justify.Center;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 102;
-        root.Style.Height = 102;
+        root.Inline.Width = 102;
+        root.Inline.Height = 102;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 40;
+        child0.Inline.Width = 40;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 40;
+        child1.Inline.Width = 40;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 40;
+        child2.Inline.Width = 40;
 
         LayoutFixture.Calculate(root);
 
@@ -562,20 +562,20 @@ public sealed class JustifyContentFixtureTests
     {
         // Yoga fixture: justify_content_overflow_row_space_between
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.JustifyContent = Justify.SpaceBetween;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.JustifyContent = Justify.SpaceBetween;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 102;
-        root.Style.Height = 102;
+        root.Inline.Width = 102;
+        root.Inline.Height = 102;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 40;
+        child0.Inline.Width = 40;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 40;
+        child1.Inline.Width = 40;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 40;
+        child2.Inline.Width = 40;
 
         LayoutFixture.Calculate(root);
 
@@ -591,20 +591,20 @@ public sealed class JustifyContentFixtureTests
     {
         // Yoga fixture: justify_content_overflow_row_space_around
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.JustifyContent = Justify.SpaceAround;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.JustifyContent = Justify.SpaceAround;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 102;
-        root.Style.Height = 102;
+        root.Inline.Width = 102;
+        root.Inline.Height = 102;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 40;
+        child0.Inline.Width = 40;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 40;
+        child1.Inline.Width = 40;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 40;
+        child2.Inline.Width = 40;
 
         LayoutFixture.Calculate(root);
 
@@ -620,20 +620,20 @@ public sealed class JustifyContentFixtureTests
     {
         // Yoga fixture: justify_content_overflow_row_space_evenly
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.JustifyContent = Justify.SpaceEvenly;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.JustifyContent = Justify.SpaceEvenly;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 102;
-        root.Style.Height = 102;
+        root.Inline.Width = 102;
+        root.Inline.Height = 102;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 40;
+        child0.Inline.Width = 40;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 40;
+        child1.Inline.Width = 40;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 40;
+        child2.Inline.Width = 40;
 
         LayoutFixture.Calculate(root);
 
@@ -649,22 +649,22 @@ public sealed class JustifyContentFixtureTests
     {
         // Yoga fixture: justify_content_space_between_indefinite_container_dim_with_free_space
         Element root = new() { Name = "root" };
-        root.Style.AlignItems = Align.Center;
+        root.Inline.AlignItems = Align.Center;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 300;
+        root.Inline.Width = 300;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexDirection = FlexDirection.Row;
-        child0.Style.JustifyContent = Justify.SpaceBetween;
-        child0.Style.MinWidth = 200;
+        child0.Inline.FlexDirection = FlexDirection.Row;
+        child0.Inline.JustifyContent = Justify.SpaceBetween;
+        child0.Inline.MinWidth = 200;
 
         Element child0Child0 = AddChild(child0, "root_child0_child0");
-        child0Child0.Style.Width = 50;
-        child0Child0.Style.Height = 50;
+        child0Child0.Inline.Width = 50;
+        child0Child0.Inline.Height = 50;
 
         Element child0Child1 = AddChild(child0, "root_child0_child1");
-        child0Child1.Style.Width = 50;
-        child0Child1.Style.Height = 50;
+        child0Child1.Inline.Width = 50;
+        child0Child1.Inline.Height = 50;
 
         LayoutFixture.Calculate(root);
 
@@ -680,21 +680,21 @@ public sealed class JustifyContentFixtureTests
     {
         // Yoga fixture: justify_content_overflow_row_space_evenly_auto_margin
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.JustifyContent = Justify.SpaceEvenly;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Width = 102;
-        root.Style.Height = 102;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.JustifyContent = Justify.SpaceEvenly;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Width = 102;
+        root.Inline.Height = 102;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Margin.Right = Length.Auto;
-        child0.Style.Width = 40;
+        child0.Inline.Margin = child0.Inline.Margin with { Right = Length.Auto };
+        child0.Inline.Width = 40;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 40;
+        child1.Inline.Width = 40;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 40;
+        child2.Inline.Width = 40;
 
         LayoutFixture.Calculate(root);
 
@@ -710,28 +710,28 @@ public sealed class JustifyContentFixtureTests
     {
         // Yoga fixture: justify_content_min_width_with_padding_child_width_greater_than_parent
         Element root = new() { Name = "root" };
-        root.Style.AlignContent = Align.Stretch;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Width = 1000;
-        root.Style.Height = 1584;
+        root.Inline.AlignContent = Align.Stretch;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Width = 1000;
+        root.Inline.Height = 1584;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexDirection = FlexDirection.Row;
-        child0.Style.AlignContent = Align.Stretch;
+        child0.Inline.FlexDirection = FlexDirection.Row;
+        child0.Inline.AlignContent = Align.Stretch;
 
         Element child0Child0 = AddChild(child0, "root_child0_child0");
-        child0Child0.Style.FlexDirection = FlexDirection.Row;
-        child0Child0.Style.JustifyContent = Justify.Center;
-        child0Child0.Style.AlignContent = Align.Stretch;
-        child0Child0.Style.Padding.Left = 100;
-        child0Child0.Style.Padding.Right = 100;
-        child0Child0.Style.MinWidth = 400;
+        child0Child0.Inline.FlexDirection = FlexDirection.Row;
+        child0Child0.Inline.JustifyContent = Justify.Center;
+        child0Child0.Inline.AlignContent = Align.Stretch;
+        child0Child0.Inline.Padding = child0Child0.Inline.Padding with { Left = 100 };
+        child0Child0.Inline.Padding = child0Child0.Inline.Padding with { Right = 100 };
+        child0Child0.Inline.MinWidth = 400;
 
         Element child0Child0Child0 = AddChild(child0Child0, "root_child0_child0_child0");
-        child0Child0Child0.Style.FlexDirection = FlexDirection.Row;
-        child0Child0Child0.Style.AlignContent = Align.Stretch;
-        child0Child0Child0.Style.Width = 300;
-        child0Child0Child0.Style.Height = 100;
+        child0Child0Child0.Inline.FlexDirection = FlexDirection.Row;
+        child0Child0Child0.Inline.AlignContent = Align.Stretch;
+        child0Child0Child0.Inline.Width = 300;
+        child0Child0Child0.Inline.Height = 100;
 
         LayoutFixture.Calculate(root);
 

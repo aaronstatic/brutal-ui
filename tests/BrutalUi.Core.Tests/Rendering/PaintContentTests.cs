@@ -28,16 +28,16 @@ public sealed class PaintContentTests
         UiContext context = new() { ViewportSize = new float2(400, 300) };
 
         ContentProbe probe = new() { Name = "probe" };
-        probe.Style.Width = 100;
-        probe.Style.Height = 50;
-        probe.Style.Overflow = Overflow.Hidden;
-        probe.Style.BackgroundColor = Background;
+        probe.Inline.Width = 100;
+        probe.Inline.Height = 50;
+        probe.Inline.Overflow = Overflow.Hidden;
+        probe.Inline.BackgroundColor = Background;
         context.AddRoot(probe);
 
         Element child = new();
-        child.Style.Width = 20;
-        child.Style.Height = 10;
-        child.Style.BackgroundColor = Green;
+        child.Inline.Width = 20;
+        child.Inline.Height = 10;
+        child.Inline.BackgroundColor = Green;
         probe.Children.Add(child);
 
         RecordingRenderer renderer = new();
@@ -67,16 +67,15 @@ public sealed class PaintContentTests
         UiContext context = new() { ViewportSize = new float2(400, 300) };
 
         Element root = new();
-        root.Style.Width = 200;
-        root.Style.Height = 100;
-        root.Style.Padding = LengthEdges.All(10);
+        root.Inline.Width = 200;
+        root.Inline.Height = 100;
+        root.Inline.Padding = LengthEdges.All(10);
         context.AddRoot(root);
 
         ContentProbe probe = new();
-        probe.Style.Width = 40;
-        probe.Style.Height = 20;
-        probe.Style.Margin.Left = 2;
-        probe.Style.Margin.Top = 3;
+        probe.Inline.Width = 40;
+        probe.Inline.Height = 20;
+        probe.Inline.Margin = probe.Inline.Margin with { Left = 2, Top = 3 };
         root.Children.Add(probe);
 
         RecordingRenderer renderer = new();
@@ -94,15 +93,15 @@ public sealed class PaintContentTests
         UiContext context = new() { ViewportSize = new float2(400, 300) };
 
         Element root = new();
-        root.Style.Width = 100;
-        root.Style.Height = 100;
-        root.Style.Opacity = 0.5f;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
+        root.Inline.Opacity = 0.5f;
         context.AddRoot(root);
 
         ContentProbe probe = new();
-        probe.Style.Width = 40;
-        probe.Style.Height = 20;
-        probe.Style.Opacity = 0.5f;
+        probe.Inline.Width = 40;
+        probe.Inline.Height = 20;
+        probe.Inline.Opacity = 0.5f;
         root.Children.Add(probe);
 
         RecordingRenderer renderer = new();
@@ -125,29 +124,29 @@ public sealed class PaintContentTests
         UiContext context = new() { ViewportSize = new float2(400, 300) };
 
         Element root = new();
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
         context.AddRoot(root);
 
         ContentProbe hidden = new();
-        hidden.Style.Width = 40;
-        hidden.Style.Height = 20;
-        hidden.Style.Display = Display.None;
+        hidden.Inline.Width = 40;
+        hidden.Inline.Height = 20;
+        hidden.Inline.Display = Display.None;
         root.Children.Add(hidden);
 
         ContentProbe faded = new();
-        faded.Style.Width = 40;
-        faded.Style.Height = 20;
-        faded.Style.Opacity = 0f;
+        faded.Inline.Width = 40;
+        faded.Inline.Height = 20;
+        faded.Inline.Opacity = 0f;
         root.Children.Add(faded);
 
         Element hiddenParent = new();
-        hiddenParent.Style.Display = Display.None;
+        hiddenParent.Inline.Display = Display.None;
         root.Children.Add(hiddenParent);
 
         ContentProbe inHidden = new();
-        inHidden.Style.Width = 40;
-        inHidden.Style.Height = 20;
+        inHidden.Inline.Width = 40;
+        inHidden.Inline.Height = 20;
         hiddenParent.Children.Add(inHidden);
 
         RecordingRenderer renderer = new();
@@ -167,9 +166,9 @@ public sealed class PaintContentTests
         UiContext context = new() { ViewportSize = new float2(400, 300) };
 
         ContentProbe probe = new();
-        probe.Style.Width = 100;
-        probe.Style.Height = 50;
-        probe.Style.BackgroundColor = Background;
+        probe.Inline.Width = 100;
+        probe.Inline.Height = 50;
+        probe.Inline.BackgroundColor = Background;
         context.AddRoot(probe);
 
         RecordingRenderer renderer = new();
@@ -195,8 +194,8 @@ public sealed class PaintContentTests
         UiContext context = new() { ViewportSize = new float2(400, 300) };
 
         ContentProbe probe = new() { WrapWidth = 70f };
-        probe.Style.Width = 100;
-        probe.Style.Height = 50;
+        probe.Inline.Width = 100;
+        probe.Inline.Height = 50;
         context.AddRoot(probe);
 
         RecordingRenderer renderer = new();
@@ -230,8 +229,8 @@ public sealed class PaintContentTests
         UiContext context = new() { ViewportSize = new float2(400, 300) };
 
         ContentProbe probe = new() { WrapWidth = wrapWidth };
-        probe.Style.Width = 100;
-        probe.Style.Height = 50;
+        probe.Inline.Width = 100;
+        probe.Inline.Height = 50;
         context.AddRoot(probe);
 
         RecordingRenderer renderer = new();

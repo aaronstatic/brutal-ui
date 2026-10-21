@@ -31,14 +31,14 @@ public sealed class MeasureCacheFixtureTests
     {
         // Yoga fixture: measure_once_single_flexible_child
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.AlignItems = Align.FlexStart;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.AlignItems = Align.FlexStart;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         MeasureStub stub = new(MeasureStub.YogaMax);
         Element child0 = AddChild(root, "root_child0", stub.Callback);
-        child0.Style.FlexGrow = 1;
+        child0.Inline.FlexGrow = 1;
 
         LayoutFixture.Calculate(root);
 
@@ -70,7 +70,7 @@ public sealed class MeasureCacheFixtureTests
     {
         // Yoga fixture: remeasure_with_same_atmost_width_larger_than_needed_height
         Element root = new() { Name = "root" };
-        root.Style.AlignItems = Align.FlexStart;
+        root.Inline.AlignItems = Align.FlexStart;
 
         MeasureStub stub = new(MeasureStub.YogaMin);
         AddChild(root, "root_child0", stub.Callback);
@@ -90,7 +90,7 @@ public sealed class MeasureCacheFixtureTests
     {
         // Yoga fixture: remeasure_with_computed_width_larger_than_needed_height
         Element root = new() { Name = "root" };
-        root.Style.AlignItems = Align.FlexStart;
+        root.Inline.AlignItems = Align.FlexStart;
 
         MeasureStub stub = new(MeasureStub.YogaMin);
         AddChild(root, "root_child0", stub.Callback);
@@ -101,7 +101,7 @@ public sealed class MeasureCacheFixtureTests
         Calculate(context, 100, 100);
 
         // YGNodeStyleSetAlignItems marks the node dirty in Yoga.
-        root.Style.AlignItems = Align.Stretch;
+        root.Inline.AlignItems = Align.Stretch;
         root.MarkDirty(DirtyFlags.Layout);
         Calculate(context, 10, 50);
 
@@ -114,7 +114,7 @@ public sealed class MeasureCacheFixtureTests
     {
         // Yoga fixture: remeasure_with_atmost_computed_width_undefined_height
         Element root = new() { Name = "root" };
-        root.Style.AlignItems = Align.FlexStart;
+        root.Inline.AlignItems = Align.FlexStart;
 
         MeasureStub stub = new(MeasureStub.YogaMin);
         AddChild(root, "root_child0", stub.Callback);
@@ -134,13 +134,13 @@ public sealed class MeasureCacheFixtureTests
     {
         // Yoga fixture: remeasure_with_already_measured_value_smaller_but_still_float_equal
         Element root = new() { Name = "root" };
-        root.Style.Width = 288f;
-        root.Style.Height = 288f;
-        root.Style.FlexDirection = FlexDirection.Row;
+        root.Inline.Width = 288f;
+        root.Inline.Height = 288f;
+        root.Inline.FlexDirection = FlexDirection.Row;
 
         Element child0 = AddChild(root, "root_child0", null);
-        child0.Style.Padding = LengthEdges.All(2.88f);
-        child0.Style.FlexDirection = FlexDirection.Row;
+        child0.Inline.Padding = LengthEdges.All(2.88f);
+        child0.Inline.FlexDirection = FlexDirection.Row;
 
         MeasureStub stub = new(MeasureStub.Size84By49);
         AddChild(child0, "root_child0_child0", stub.Callback);

@@ -62,7 +62,7 @@ public class TreeLayoutBenchmark
     public void DirtySubtree()
     {
         _wide = !_wide;
-        _tree.StatValueLeaf.Style.Width = Length.Percent(
+        _tree.StatValueLeaf.Inline.Width = Length.Percent(
             _wide ? ThousandElementTree.ValueWidePercent : ThousandElementTree.ValueNarrowPercent);
         _tree.StatValueLeaf.MarkDirty(DirtyFlags.Layout);
         _tree.Context.Update(FrameTime);

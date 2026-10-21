@@ -26,12 +26,12 @@ public sealed class MarginFixtureTests
         // Yoga fixture: margin_top
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Margin.Top = 10;
-        child0.Style.Height = 10;
+        child0.Inline.Margin = child0.Inline.Margin with { Top = 10 };
+        child0.Inline.Height = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -45,14 +45,14 @@ public sealed class MarginFixtureTests
     {
         // Yoga fixture: margin_bottom
         Element root = new() { Name = "root" };
-        root.Style.JustifyContent = Justify.FlexEnd;
+        root.Inline.JustifyContent = Justify.FlexEnd;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Margin.Bottom = 10;
-        child0.Style.Height = 10;
+        child0.Inline.Margin = child0.Inline.Margin with { Bottom = 10 };
+        child0.Inline.Height = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -67,13 +67,13 @@ public sealed class MarginFixtureTests
         // Yoga fixture: margin_and_flex_column
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexGrow = 1;
-        child0.Style.Margin.Top = 10;
-        child0.Style.Margin.Bottom = 10;
+        child0.Inline.FlexGrow = 1;
+        child0.Inline.Margin = child0.Inline.Margin with { Top = 10 };
+        child0.Inline.Margin = child0.Inline.Margin with { Bottom = 10 };
 
         LayoutFixture.Calculate(root);
 
@@ -87,15 +87,15 @@ public sealed class MarginFixtureTests
     {
         // Yoga fixture: margin_and_stretch_row
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
+        root.Inline.FlexDirection = FlexDirection.Row;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexGrow = 1;
-        child0.Style.Margin.Top = 10;
-        child0.Style.Margin.Bottom = 10;
+        child0.Inline.FlexGrow = 1;
+        child0.Inline.Margin = child0.Inline.Margin with { Top = 10 };
+        child0.Inline.Margin = child0.Inline.Margin with { Bottom = 10 };
 
         LayoutFixture.Calculate(root);
 
@@ -110,15 +110,15 @@ public sealed class MarginFixtureTests
         // Yoga fixture: margin_with_sibling_column
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexGrow = 1;
-        child0.Style.Margin.Bottom = 10;
+        child0.Inline.FlexGrow = 1;
+        child0.Inline.Margin = child0.Inline.Margin with { Bottom = 10 };
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.FlexGrow = 1;
+        child1.Inline.FlexGrow = 1;
 
         LayoutFixture.Calculate(root);
 
@@ -134,14 +134,14 @@ public sealed class MarginFixtureTests
         // Yoga fixture: margin_should_not_be_part_of_max_height
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 250;
-        root.Style.Height = 250;
+        root.Inline.Width = 250;
+        root.Inline.Height = 250;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Margin.Top = 20;
-        child0.Style.Width = 100;
-        child0.Style.Height = 100;
-        child0.Style.MaxHeight = 100;
+        child0.Inline.Margin = child0.Inline.Margin with { Top = 20 };
+        child0.Inline.Width = 100;
+        child0.Inline.Height = 100;
+        child0.Inline.MaxHeight = 100;
 
         LayoutFixture.Calculate(root);
 
@@ -156,14 +156,14 @@ public sealed class MarginFixtureTests
         // Yoga fixture: margin_should_not_be_part_of_max_width
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 250;
-        root.Style.Height = 250;
+        root.Inline.Width = 250;
+        root.Inline.Height = 250;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Margin.Left = 20;
-        child0.Style.Width = 100;
-        child0.Style.MaxWidth = 100;
-        child0.Style.Height = 100;
+        child0.Inline.Margin = child0.Inline.Margin with { Left = 20 };
+        child0.Inline.Width = 100;
+        child0.Inline.MaxWidth = 100;
+        child0.Inline.Height = 100;
 
         LayoutFixture.Calculate(root);
 
@@ -177,19 +177,19 @@ public sealed class MarginFixtureTests
     {
         // Yoga fixture: margin_auto_bottom
         Element root = new() { Name = "root" };
-        root.Style.AlignItems = Align.Center;
+        root.Inline.AlignItems = Align.Center;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 200;
-        root.Style.Height = 200;
+        root.Inline.Width = 200;
+        root.Inline.Height = 200;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Margin.Bottom = Length.Auto;
-        child0.Style.Width = 50;
-        child0.Style.Height = 50;
+        child0.Inline.Margin = child0.Inline.Margin with { Bottom = Length.Auto };
+        child0.Inline.Width = 50;
+        child0.Inline.Height = 50;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 50;
-        child1.Style.Height = 50;
+        child1.Inline.Width = 50;
+        child1.Inline.Height = 50;
 
         LayoutFixture.Calculate(root);
 
@@ -204,19 +204,19 @@ public sealed class MarginFixtureTests
     {
         // Yoga fixture: margin_auto_top
         Element root = new() { Name = "root" };
-        root.Style.AlignItems = Align.Center;
+        root.Inline.AlignItems = Align.Center;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 200;
-        root.Style.Height = 200;
+        root.Inline.Width = 200;
+        root.Inline.Height = 200;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Margin.Top = Length.Auto;
-        child0.Style.Width = 50;
-        child0.Style.Height = 50;
+        child0.Inline.Margin = child0.Inline.Margin with { Top = Length.Auto };
+        child0.Inline.Width = 50;
+        child0.Inline.Height = 50;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 50;
-        child1.Style.Height = 50;
+        child1.Inline.Width = 50;
+        child1.Inline.Height = 50;
 
         LayoutFixture.Calculate(root);
 
@@ -231,20 +231,20 @@ public sealed class MarginFixtureTests
     {
         // Yoga fixture: margin_auto_bottom_and_top
         Element root = new() { Name = "root" };
-        root.Style.AlignItems = Align.Center;
+        root.Inline.AlignItems = Align.Center;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 200;
-        root.Style.Height = 200;
+        root.Inline.Width = 200;
+        root.Inline.Height = 200;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Margin.Top = Length.Auto;
-        child0.Style.Margin.Bottom = Length.Auto;
-        child0.Style.Width = 50;
-        child0.Style.Height = 50;
+        child0.Inline.Margin = child0.Inline.Margin with { Top = Length.Auto };
+        child0.Inline.Margin = child0.Inline.Margin with { Bottom = Length.Auto };
+        child0.Inline.Width = 50;
+        child0.Inline.Height = 50;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 50;
-        child1.Style.Height = 50;
+        child1.Inline.Width = 50;
+        child1.Inline.Height = 50;
 
         LayoutFixture.Calculate(root);
 
@@ -259,20 +259,20 @@ public sealed class MarginFixtureTests
     {
         // Yoga fixture: margin_auto_bottom_and_top_justify_center
         Element root = new() { Name = "root" };
-        root.Style.JustifyContent = Justify.Center;
+        root.Inline.JustifyContent = Justify.Center;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 200;
-        root.Style.Height = 200;
+        root.Inline.Width = 200;
+        root.Inline.Height = 200;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Margin.Top = Length.Auto;
-        child0.Style.Margin.Bottom = Length.Auto;
-        child0.Style.Width = 50;
-        child0.Style.Height = 50;
+        child0.Inline.Margin = child0.Inline.Margin with { Top = Length.Auto };
+        child0.Inline.Margin = child0.Inline.Margin with { Bottom = Length.Auto };
+        child0.Inline.Width = 50;
+        child0.Inline.Height = 50;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 50;
-        child1.Style.Height = 50;
+        child1.Inline.Width = 50;
+        child1.Inline.Height = 50;
 
         LayoutFixture.Calculate(root);
 
@@ -287,24 +287,24 @@ public sealed class MarginFixtureTests
     {
         // Yoga fixture: margin_auto_multiple_children_column
         Element root = new() { Name = "root" };
-        root.Style.AlignItems = Align.Center;
+        root.Inline.AlignItems = Align.Center;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 200;
-        root.Style.Height = 200;
+        root.Inline.Width = 200;
+        root.Inline.Height = 200;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Margin.Top = Length.Auto;
-        child0.Style.Width = 50;
-        child0.Style.Height = 50;
+        child0.Inline.Margin = child0.Inline.Margin with { Top = Length.Auto };
+        child0.Inline.Width = 50;
+        child0.Inline.Height = 50;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Margin.Top = Length.Auto;
-        child1.Style.Width = 50;
-        child1.Style.Height = 50;
+        child1.Inline.Margin = child1.Inline.Margin with { Top = Length.Auto };
+        child1.Inline.Width = 50;
+        child1.Inline.Height = 50;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 50;
-        child2.Style.Height = 50;
+        child2.Inline.Width = 50;
+        child2.Inline.Height = 50;
 
         LayoutFixture.Calculate(root);
 
@@ -320,25 +320,25 @@ public sealed class MarginFixtureTests
     {
         // Yoga fixture: margin_auto_multiple_children_row
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.AlignItems = Align.Center;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.AlignItems = Align.Center;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 200;
-        root.Style.Height = 200;
+        root.Inline.Width = 200;
+        root.Inline.Height = 200;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Margin.Right = Length.Auto;
-        child0.Style.Width = 50;
-        child0.Style.Height = 50;
+        child0.Inline.Margin = child0.Inline.Margin with { Right = Length.Auto };
+        child0.Inline.Width = 50;
+        child0.Inline.Height = 50;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Margin.Right = Length.Auto;
-        child1.Style.Width = 50;
-        child1.Style.Height = 50;
+        child1.Inline.Margin = child1.Inline.Margin with { Right = Length.Auto };
+        child1.Inline.Width = 50;
+        child1.Inline.Height = 50;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 50;
-        child2.Style.Height = 50;
+        child2.Inline.Width = 50;
+        child2.Inline.Height = 50;
 
         LayoutFixture.Calculate(root);
 
@@ -354,21 +354,21 @@ public sealed class MarginFixtureTests
     {
         // Yoga fixture: margin_auto_left_and_right_column
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.AlignItems = Align.Center;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.AlignItems = Align.Center;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 200;
-        root.Style.Height = 200;
+        root.Inline.Width = 200;
+        root.Inline.Height = 200;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Margin.Left = Length.Auto;
-        child0.Style.Margin.Right = Length.Auto;
-        child0.Style.Width = 50;
-        child0.Style.Height = 50;
+        child0.Inline.Margin = child0.Inline.Margin with { Left = Length.Auto };
+        child0.Inline.Margin = child0.Inline.Margin with { Right = Length.Auto };
+        child0.Inline.Width = 50;
+        child0.Inline.Height = 50;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 50;
-        child1.Style.Height = 50;
+        child1.Inline.Width = 50;
+        child1.Inline.Height = 50;
 
         LayoutFixture.Calculate(root);
 
@@ -384,18 +384,18 @@ public sealed class MarginFixtureTests
         // Yoga fixture: margin_auto_left_and_right
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 200;
-        root.Style.Height = 200;
+        root.Inline.Width = 200;
+        root.Inline.Height = 200;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Margin.Left = Length.Auto;
-        child0.Style.Margin.Right = Length.Auto;
-        child0.Style.Width = 50;
-        child0.Style.Height = 50;
+        child0.Inline.Margin = child0.Inline.Margin with { Left = Length.Auto };
+        child0.Inline.Margin = child0.Inline.Margin with { Right = Length.Auto };
+        child0.Inline.Width = 50;
+        child0.Inline.Height = 50;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 50;
-        child1.Style.Height = 50;
+        child1.Inline.Width = 50;
+        child1.Inline.Height = 50;
 
         LayoutFixture.Calculate(root);
 
@@ -410,20 +410,20 @@ public sealed class MarginFixtureTests
     {
         // Yoga fixture: margin_auto_left_and_right_column_and_center
         Element root = new() { Name = "root" };
-        root.Style.AlignItems = Align.Center;
+        root.Inline.AlignItems = Align.Center;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 200;
-        root.Style.Height = 200;
+        root.Inline.Width = 200;
+        root.Inline.Height = 200;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Margin.Left = Length.Auto;
-        child0.Style.Margin.Right = Length.Auto;
-        child0.Style.Width = 50;
-        child0.Style.Height = 50;
+        child0.Inline.Margin = child0.Inline.Margin with { Left = Length.Auto };
+        child0.Inline.Margin = child0.Inline.Margin with { Right = Length.Auto };
+        child0.Inline.Width = 50;
+        child0.Inline.Height = 50;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 50;
-        child1.Style.Height = 50;
+        child1.Inline.Width = 50;
+        child1.Inline.Height = 50;
 
         LayoutFixture.Calculate(root);
 
@@ -438,19 +438,19 @@ public sealed class MarginFixtureTests
     {
         // Yoga fixture: margin_auto_left
         Element root = new() { Name = "root" };
-        root.Style.AlignItems = Align.Center;
+        root.Inline.AlignItems = Align.Center;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 200;
-        root.Style.Height = 200;
+        root.Inline.Width = 200;
+        root.Inline.Height = 200;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Margin.Left = Length.Auto;
-        child0.Style.Width = 50;
-        child0.Style.Height = 50;
+        child0.Inline.Margin = child0.Inline.Margin with { Left = Length.Auto };
+        child0.Inline.Width = 50;
+        child0.Inline.Height = 50;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 50;
-        child1.Style.Height = 50;
+        child1.Inline.Width = 50;
+        child1.Inline.Height = 50;
 
         LayoutFixture.Calculate(root);
 
@@ -465,19 +465,19 @@ public sealed class MarginFixtureTests
     {
         // Yoga fixture: margin_auto_right
         Element root = new() { Name = "root" };
-        root.Style.AlignItems = Align.Center;
+        root.Inline.AlignItems = Align.Center;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 200;
-        root.Style.Height = 200;
+        root.Inline.Width = 200;
+        root.Inline.Height = 200;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Margin.Right = Length.Auto;
-        child0.Style.Width = 50;
-        child0.Style.Height = 50;
+        child0.Inline.Margin = child0.Inline.Margin with { Right = Length.Auto };
+        child0.Inline.Width = 50;
+        child0.Inline.Height = 50;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 50;
-        child1.Style.Height = 50;
+        child1.Inline.Width = 50;
+        child1.Inline.Height = 50;
 
         LayoutFixture.Calculate(root);
 
@@ -492,20 +492,20 @@ public sealed class MarginFixtureTests
     {
         // Yoga fixture: margin_auto_left_and_right_stretch
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
+        root.Inline.FlexDirection = FlexDirection.Row;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 200;
-        root.Style.Height = 200;
+        root.Inline.Width = 200;
+        root.Inline.Height = 200;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Margin.Left = Length.Auto;
-        child0.Style.Margin.Right = Length.Auto;
-        child0.Style.Width = 50;
-        child0.Style.Height = 50;
+        child0.Inline.Margin = child0.Inline.Margin with { Left = Length.Auto };
+        child0.Inline.Margin = child0.Inline.Margin with { Right = Length.Auto };
+        child0.Inline.Width = 50;
+        child0.Inline.Height = 50;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 50;
-        child1.Style.Height = 50;
+        child1.Inline.Width = 50;
+        child1.Inline.Height = 50;
 
         LayoutFixture.Calculate(root);
 
@@ -521,18 +521,18 @@ public sealed class MarginFixtureTests
         // Yoga fixture: margin_auto_top_and_bottom_stretch
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 200;
-        root.Style.Height = 200;
+        root.Inline.Width = 200;
+        root.Inline.Height = 200;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Margin.Top = Length.Auto;
-        child0.Style.Margin.Bottom = Length.Auto;
-        child0.Style.Width = 50;
-        child0.Style.Height = 50;
+        child0.Inline.Margin = child0.Inline.Margin with { Top = Length.Auto };
+        child0.Inline.Margin = child0.Inline.Margin with { Bottom = Length.Auto };
+        child0.Inline.Width = 50;
+        child0.Inline.Height = 50;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 50;
-        child1.Style.Height = 50;
+        child1.Inline.Width = 50;
+        child1.Inline.Height = 50;
 
         LayoutFixture.Calculate(root);
 
@@ -547,16 +547,16 @@ public sealed class MarginFixtureTests
     {
         // Yoga fixture: margin_auto_left_right_child_bigger_than_parent
         Element root = new() { Name = "root" };
-        root.Style.JustifyContent = Justify.Center;
+        root.Inline.JustifyContent = Justify.Center;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 52;
-        root.Style.Height = 52;
+        root.Inline.Width = 52;
+        root.Inline.Height = 52;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Margin.Left = Length.Auto;
-        child0.Style.Margin.Right = Length.Auto;
-        child0.Style.Width = 72;
-        child0.Style.Height = 72;
+        child0.Inline.Margin = child0.Inline.Margin with { Left = Length.Auto };
+        child0.Inline.Margin = child0.Inline.Margin with { Right = Length.Auto };
+        child0.Inline.Width = 72;
+        child0.Inline.Height = 72;
 
         LayoutFixture.Calculate(root);
 
@@ -570,15 +570,15 @@ public sealed class MarginFixtureTests
     {
         // Yoga fixture: margin_auto_left_child_bigger_than_parent
         Element root = new() { Name = "root" };
-        root.Style.JustifyContent = Justify.Center;
+        root.Inline.JustifyContent = Justify.Center;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 52;
-        root.Style.Height = 52;
+        root.Inline.Width = 52;
+        root.Inline.Height = 52;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Margin.Left = Length.Auto;
-        child0.Style.Width = 72;
-        child0.Style.Height = 72;
+        child0.Inline.Margin = child0.Inline.Margin with { Left = Length.Auto };
+        child0.Inline.Width = 72;
+        child0.Inline.Height = 72;
 
         LayoutFixture.Calculate(root);
 
@@ -592,16 +592,16 @@ public sealed class MarginFixtureTests
     {
         // Yoga fixture: margin_fix_left_auto_right_child_bigger_than_parent
         Element root = new() { Name = "root" };
-        root.Style.JustifyContent = Justify.Center;
+        root.Inline.JustifyContent = Justify.Center;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 52;
-        root.Style.Height = 52;
+        root.Inline.Width = 52;
+        root.Inline.Height = 52;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Margin.Left = 10;
-        child0.Style.Margin.Right = Length.Auto;
-        child0.Style.Width = 72;
-        child0.Style.Height = 72;
+        child0.Inline.Margin = child0.Inline.Margin with { Left = 10 };
+        child0.Inline.Margin = child0.Inline.Margin with { Right = Length.Auto };
+        child0.Inline.Width = 72;
+        child0.Inline.Height = 72;
 
         LayoutFixture.Calculate(root);
 
@@ -615,16 +615,16 @@ public sealed class MarginFixtureTests
     {
         // Yoga fixture: margin_auto_left_fix_right_child_bigger_than_parent
         Element root = new() { Name = "root" };
-        root.Style.JustifyContent = Justify.Center;
+        root.Inline.JustifyContent = Justify.Center;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 52;
-        root.Style.Height = 52;
+        root.Inline.Width = 52;
+        root.Inline.Height = 52;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Margin.Left = Length.Auto;
-        child0.Style.Margin.Right = 10;
-        child0.Style.Width = 72;
-        child0.Style.Height = 72;
+        child0.Inline.Margin = child0.Inline.Margin with { Left = Length.Auto };
+        child0.Inline.Margin = child0.Inline.Margin with { Right = 10 };
+        child0.Inline.Width = 72;
+        child0.Inline.Height = 72;
 
         LayoutFixture.Calculate(root);
 
@@ -638,20 +638,20 @@ public sealed class MarginFixtureTests
     {
         // Yoga fixture: margin_auto_top_stretching_child
         Element root = new() { Name = "root" };
-        root.Style.AlignItems = Align.Center;
+        root.Inline.AlignItems = Align.Center;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 200;
-        root.Style.Height = 200;
+        root.Inline.Width = 200;
+        root.Inline.Height = 200;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexGrow = 1;
-        child0.Style.FlexShrink = 1;
-        child0.Style.FlexBasis = Length.Percent(0);
-        child0.Style.Margin.Top = Length.Auto;
+        child0.Inline.FlexGrow = 1;
+        child0.Inline.FlexShrink = 1;
+        child0.Inline.FlexBasis = Length.Percent(0);
+        child0.Inline.Margin = child0.Inline.Margin with { Top = Length.Auto };
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 50;
-        child1.Style.Height = 50;
+        child1.Inline.Width = 50;
+        child1.Inline.Height = 50;
 
         LayoutFixture.Calculate(root);
 
@@ -666,20 +666,20 @@ public sealed class MarginFixtureTests
     {
         // Yoga fixture: margin_auto_left_stretching_child
         Element root = new() { Name = "root" };
-        root.Style.AlignItems = Align.Center;
+        root.Inline.AlignItems = Align.Center;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 200;
-        root.Style.Height = 200;
+        root.Inline.Width = 200;
+        root.Inline.Height = 200;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexGrow = 1;
-        child0.Style.FlexShrink = 1;
-        child0.Style.FlexBasis = Length.Percent(0);
-        child0.Style.Margin.Left = Length.Auto;
+        child0.Inline.FlexGrow = 1;
+        child0.Inline.FlexShrink = 1;
+        child0.Inline.FlexBasis = Length.Percent(0);
+        child0.Inline.Margin = child0.Inline.Margin with { Left = Length.Auto };
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 50;
-        child1.Style.Height = 50;
+        child1.Inline.Width = 50;
+        child1.Inline.Height = 50;
 
         LayoutFixture.Calculate(root);
 
@@ -694,19 +694,19 @@ public sealed class MarginFixtureTests
     {
         // Yoga fixture: margin_auto_overflowing_container
         Element root = new() { Name = "root" };
-        root.Style.AlignItems = Align.Center;
+        root.Inline.AlignItems = Align.Center;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 200;
-        root.Style.Height = 200;
+        root.Inline.Width = 200;
+        root.Inline.Height = 200;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Margin.Bottom = Length.Auto;
-        child0.Style.Width = 50;
-        child0.Style.Height = 150;
+        child0.Inline.Margin = child0.Inline.Margin with { Bottom = Length.Auto };
+        child0.Inline.Width = 50;
+        child0.Inline.Height = 150;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 50;
-        child1.Style.Height = 150;
+        child1.Inline.Width = 50;
+        child1.Inline.Height = 150;
 
         LayoutFixture.Calculate(root);
 

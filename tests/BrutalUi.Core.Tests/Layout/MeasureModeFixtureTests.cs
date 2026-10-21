@@ -29,8 +29,8 @@ public sealed class MeasureModeFixtureTests
     {
         // Yoga fixture: exactly_measure_stretched_child_column
         Element root = new() { Name = "root" };
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         MeasureStub stub = AddMeasuredChild(root);
 
@@ -47,9 +47,9 @@ public sealed class MeasureModeFixtureTests
     {
         // Yoga fixture: exactly_measure_stretched_child_row
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         MeasureStub stub = AddMeasuredChild(root);
 
@@ -66,8 +66,8 @@ public sealed class MeasureModeFixtureTests
     {
         // Yoga fixture: at_most_main_axis_column
         Element root = new() { Name = "root" };
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         MeasureStub stub = AddMeasuredChild(root);
 
@@ -84,9 +84,9 @@ public sealed class MeasureModeFixtureTests
     {
         // Yoga fixture: at_most_cross_axis_column
         Element root = new() { Name = "root" };
-        root.Style.AlignItems = Align.FlexStart;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.AlignItems = Align.FlexStart;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         MeasureStub stub = AddMeasuredChild(root);
 
@@ -103,9 +103,9 @@ public sealed class MeasureModeFixtureTests
     {
         // Yoga fixture: at_most_main_axis_row
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         MeasureStub stub = AddMeasuredChild(root);
 
@@ -122,10 +122,10 @@ public sealed class MeasureModeFixtureTests
     {
         // Yoga fixture: at_most_cross_axis_row
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.AlignItems = Align.FlexStart;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.AlignItems = Align.FlexStart;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         MeasureStub stub = AddMeasuredChild(root);
 
@@ -142,10 +142,10 @@ public sealed class MeasureModeFixtureTests
     {
         // Yoga fixture: flex_child
         Element root = new() { Name = "root" };
-        root.Style.Height = 100;
+        root.Inline.Height = 100;
 
         MeasureStub stub = AddMeasuredChild(root);
-        root.Children[0].Style.FlexGrow = 1;
+        root.Children[0].Inline.FlexGrow = 1;
 
         LayoutFixture.Calculate(root);
 
@@ -162,11 +162,11 @@ public sealed class MeasureModeFixtureTests
     {
         // Yoga fixture: flex_child_with_flex_basis
         Element root = new() { Name = "root" };
-        root.Style.Height = 100;
+        root.Inline.Height = 100;
 
         MeasureStub stub = AddMeasuredChild(root);
-        root.Children[0].Style.FlexGrow = 1;
-        root.Children[0].Style.FlexBasis = 0;
+        root.Children[0].Inline.FlexGrow = 1;
+        root.Children[0].Inline.FlexBasis = 0;
 
         LayoutFixture.Calculate(root);
 
@@ -181,10 +181,10 @@ public sealed class MeasureModeFixtureTests
     {
         // Yoga fixture: overflow_scroll_column
         Element root = new() { Name = "root" };
-        root.Style.AlignItems = Align.FlexStart;
-        root.Style.Overflow = Overflow.Scroll;
-        root.Style.Height = 100;
-        root.Style.Width = 100;
+        root.Inline.AlignItems = Align.FlexStart;
+        root.Inline.Overflow = Overflow.Scroll;
+        root.Inline.Height = 100;
+        root.Inline.Width = 100;
 
         MeasureStub stub = AddMeasuredChild(root);
 
@@ -203,11 +203,11 @@ public sealed class MeasureModeFixtureTests
     {
         // Yoga fixture: overflow_scroll_row
         Element root = new() { Name = "root" };
-        root.Style.AlignItems = Align.FlexStart;
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.Overflow = Overflow.Scroll;
-        root.Style.Height = 100;
-        root.Style.Width = 100;
+        root.Inline.AlignItems = Align.FlexStart;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.Overflow = Overflow.Scroll;
+        root.Inline.Height = 100;
+        root.Inline.Width = 100;
 
         MeasureStub stub = AddMeasuredChild(root);
 

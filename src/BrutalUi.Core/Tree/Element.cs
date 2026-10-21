@@ -1,3 +1,4 @@
+using System;
 using System.Diagnostics;
 using Brutal.Numerics;
 
@@ -7,9 +8,15 @@ namespace BrutalUi.Core;
 /// A node of the UI tree. An element has one parent at most, an ordered child list, and dirty bits.
 /// </summary>
 /// <remarks>
+/// <para>
 /// The tree is main-thread only. It uses no locks.
 /// A change of the tree sets dirty bits on the element and on its ancestors.
 /// <see cref="UiContext.Update(float)"/> walks the dirty bits and clears them.
+/// </para>
+/// <para>
+/// The inline style set lives in the element, next to the computed style (A1). Thus an inline write needs no lookup
+/// and no allocation. Each element holds the full set, also when it has no inline value.
+/// </para>
 /// </remarks>
 public class Element
 {
@@ -18,8 +25,12 @@ public class Element
     private DirtyFlags _dirty;
     private Element? _parent;
     private ComputedStyle _style;
+    private StyleProperties _inline;
+    private readonly InlineStyle _inlineView;
     private LayoutNode _layout;
     private PseudoStates _states;
+
+    private static readonly ElementTypeId s_typeId = ElementType.Intern("Element");
 
     /// <summary>
     /// Creates an element with no parent and no children. The element starts dirty for
@@ -28,7 +39,15 @@ public class Element
     public Element()
     {
         _dirty = DirtyFlags.Style | DirtyFlags.Layout | DirtyFlags.Paint;
+        _inlineView = new InlineStyle(this);
     }
+
+    /// <summary>Gets the type id of the element. A type selector of a style rule matches it.</summary>
+    /// <remarks>
+    /// A subclass overrides the property with its own name. A subclass with no override has the id of its base class.
+    /// The property reads a static field and allocates nothing.
+    /// </remarks>
+    public virtual ElementTypeId TypeId => s_typeId;
 
     /// <summary>Gets or sets the name of the element. A change of the name sets no dirty bit.</summary>
     public string? Name { get; set; }
@@ -83,10 +102,48 @@ public class Element
     public bool IsPickable { get; set; } = true;
 
     /// <summary>
-    /// Gets a reference to the computed style of the element. The style lives inline in the element.
+    /// Gets a read-only reference to the computed style of the element. The style lives inline in the element.
     /// </summary>
-    /// <remarks>A write through the reference sets no dirty bit. The caller calls <see cref="MarkDirty(DirtyFlags)"/>.</remarks>
-    public ref ComputedStyle Style => ref _style;
+    /// <remarks>
+    /// The style pass writes the style in <see cref="UiContext.Update(float)"/>. The game does not write the style.
+    /// The game writes <see cref="Inline"/>, and the next update writes the result here. Before the first update, the
+    /// style holds the defaults.
+    /// </remarks>
+    public ref readonly ComputedStyle Style => ref _style;
+
+    /// <summary>
+    /// Gets a reference to the computed style for the style pass. The pass writes the result of the cascade through it.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="Style"/> and this member give the same field. Only this member writes the style.
+    /// </remarks>
+    internal ref ComputedStyle StyleStorage => ref _style;
+
+    /// <summary>
+    /// Gets the inline style of the element. An inline value wins over each rule. The view allocates nothing.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A set marks the element for <see cref="DirtyFlags.Style"/>, and the next <see cref="UiContext.Update(float)"/>
+    /// writes the result to <see cref="Style"/>. Write a whole <see cref="LengthEdges"/> or <see cref="Corners"/>
+    /// value: a write of one part through the view does not compile (CS1612).
+    /// </para>
+    /// <para>
+    /// The member returns a <c>ref readonly</c> to a view that the element creates one time. C# accepts a property
+    /// set on a variable only, and a <c>ref</c> return is a variable. Thus <c>element.Inline.Width = 200;</c> compiles.
+    /// The <c>readonly</c> stops a write of a new view over the view of the element.
+    /// </para>
+    /// </remarks>
+    public ref readonly InlineStyle Inline => ref _inlineView;
+
+    /// <summary>
+    /// Gets the inline set of the element. <see cref="InlineStyle"/> writes it, and the style pass applies it last.
+    /// </summary>
+    /// <remarks>
+    /// The member returns a <c>ref</c>, so a change goes to the field and not to a copy. A write through the
+    /// reference sets no dirty bit. Write through <see cref="Inline"/>.
+    /// </remarks>
+    internal ref StyleProperties InlineStorage => ref _inline;
 
     /// <summary>
     /// Gets a reference to the layout data of the element. The data lives inline in the element.
@@ -160,12 +217,59 @@ public class Element
     }
 
     /// <summary>
+    /// Marks the element and each descendant for <see cref="DirtyFlags.Style"/>, so the next style pass restyles the
+    /// full subtree.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Each element of the subtree gets <see cref="DirtyFlags.Style"/>. Each element of the subtree with a child gets
+    /// <see cref="DirtyFlags.DescendantStyle"/>. Then <see cref="DirtyFlags.DescendantStyle"/> goes up the parent
+    /// chain from this element. Thus the dirty-bit invariant holds after the call.
+    /// </para>
+    /// <para>
+    /// A sheet change calls this method on each root. The recursion depth is the depth of the subtree.
+    /// The method allocates nothing.
+    /// </para>
+    /// </remarks>
+    internal void MarkSubtreeStyle()
+    {
+        MarkSubtreeStyleCore(this);
+        PropagateToAncestors(DirtyFlags.DescendantStyle);
+    }
+
+    /// <summary>Sets the style bits on one element and on its subtree, in tree order.</summary>
+    /// <param name="element">The root of the subtree.</param>
+    private static void MarkSubtreeStyleCore(Element element)
+    {
+        element._dirty |= DirtyFlags.Style;
+
+        ReadOnlySpan<Element> children = element._children.AsSpan();
+        if (children.Length == 0)
+        {
+            return;
+        }
+
+        element._dirty |= DirtyFlags.DescendantStyle;
+        for (int i = 0; i < children.Length; i++)
+        {
+            MarkSubtreeStyleCore(children[i]);
+        }
+    }
+
+    /// <summary>
     /// Links the element to a new parent and applies the child part of the add marks.
     /// </summary>
     /// <remarks>
-    /// The element gets the <see cref="DirtyFlags.Style"/> self bit, because its cascade changes.
-    /// Then all its bits go up the new parent chain as descendant bits, from the new parent.
+    /// <para>
+    /// The element and each descendant get the <see cref="DirtyFlags.Style"/> self bit, because the cascade of the
+    /// full subtree can change. A move into another context changes the sheets of each element of the subtree.
+    /// Each element of the subtree with a child also gets <see cref="DirtyFlags.DescendantStyle"/>.
+    /// </para>
+    /// <para>
+    /// Then all the bits of the element go up the new parent chain as descendant bits, from the new parent.
     /// The caller adds the element to the child storage of the parent first, and marks the parent for layout.
+    /// The subtree mark costs one walk of the subtree and allocates nothing.
+    /// </para>
     /// </remarks>
     /// <param name="parent">The new parent.</param>
     internal void AttachToParent(Element parent)
@@ -173,7 +277,7 @@ public class Element
         Debug.Assert(_parent is null, "The element must have no parent before an attach.");
 
         _parent = parent;
-        _dirty |= DirtyFlags.Style;
+        MarkSubtreeStyleCore(this);
 
         DirtyFlags flags = _dirty;
         PropagateToAncestors(DirtyBits.ToDescendant(flags & DirtyBits.SelfMask) | (flags & DirtyBits.DescendantMask));

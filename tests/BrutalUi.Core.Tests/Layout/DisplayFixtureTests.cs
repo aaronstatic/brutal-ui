@@ -20,17 +20,17 @@ public sealed class DisplayFixtureTests
     {
         // Yoga fixture: display_none
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexGrow = 1;
+        child0.Inline.FlexGrow = 1;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.FlexGrow = 1;
-        child1.Style.Display = Display.None;
+        child1.Inline.FlexGrow = 1;
+        child1.Inline.Display = Display.None;
 
         LayoutFixture.Calculate(root);
 
@@ -45,18 +45,18 @@ public sealed class DisplayFixtureTests
     {
         // Yoga fixture: display_none_fixed_size
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexGrow = 1;
+        child0.Inline.FlexGrow = 1;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 20;
-        child1.Style.Height = 20;
-        child1.Style.Display = Display.None;
+        child1.Inline.Width = 20;
+        child1.Inline.Height = 20;
+        child1.Inline.Display = Display.None;
 
         LayoutFixture.Calculate(root);
 
@@ -71,19 +71,19 @@ public sealed class DisplayFixtureTests
     {
         // Yoga fixture: display_none_with_margin
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Margin = LengthEdges.All(10);
-        child0.Style.Width = 20;
-        child0.Style.Height = 20;
-        child0.Style.Display = Display.None;
+        child0.Inline.Margin = LengthEdges.All(10);
+        child0.Inline.Width = 20;
+        child0.Inline.Height = 20;
+        child0.Inline.Display = Display.None;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.FlexGrow = 1;
+        child1.Inline.FlexGrow = 1;
 
         LayoutFixture.Calculate(root);
 
@@ -98,18 +98,18 @@ public sealed class DisplayFixtureTests
     {
         // Yoga fixture: display_none_with_position
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexGrow = 1;
+        child0.Inline.FlexGrow = 1;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.FlexGrow = 1;
-        child1.Style.Top = 10;
-        child1.Style.Display = Display.None;
+        child1.Inline.FlexGrow = 1;
+        child1.Inline.Top = 10;
+        child1.Inline.Display = Display.None;
 
         LayoutFixture.Calculate(root);
 
@@ -124,15 +124,15 @@ public sealed class DisplayFixtureTests
     {
         // Yoga fixture: display_none_with_position_absolute
         Element root = new() { Name = "root" };
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Position = PositionType.Absolute;
-        child0.Style.Width = 100;
-        child0.Style.Height = 100;
-        child0.Style.Display = Display.None;
+        child0.Inline.Position = PositionType.Absolute;
+        child0.Inline.Width = 100;
+        child0.Inline.Height = 100;
+        child0.Inline.Display = Display.None;
 
         LayoutFixture.Calculate(root);
 
@@ -146,32 +146,32 @@ public sealed class DisplayFixtureTests
     {
         // Yoga fixture: display_none_with_child
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexGrow = 1;
-        child0.Style.FlexShrink = 1;
-        child0.Style.FlexBasis = Length.Percent(0);
+        child0.Inline.FlexGrow = 1;
+        child0.Inline.FlexShrink = 1;
+        child0.Inline.FlexBasis = Length.Percent(0);
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.FlexGrow = 1;
-        child1.Style.FlexShrink = 1;
-        child1.Style.FlexBasis = Length.Percent(0);
-        child1.Style.Display = Display.None;
+        child1.Inline.FlexGrow = 1;
+        child1.Inline.FlexShrink = 1;
+        child1.Inline.FlexBasis = Length.Percent(0);
+        child1.Inline.Display = Display.None;
 
         Element child1Child0 = AddChild(child1, "root_child1_child0");
-        child1Child0.Style.FlexGrow = 1;
-        child1Child0.Style.FlexShrink = 1;
-        child1Child0.Style.FlexBasis = Length.Percent(0);
-        child1Child0.Style.Width = 20;
+        child1Child0.Inline.FlexGrow = 1;
+        child1Child0.Inline.FlexShrink = 1;
+        child1Child0.Inline.FlexBasis = Length.Percent(0);
+        child1Child0.Inline.Width = 20;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.FlexGrow = 1;
-        child2.Style.FlexShrink = 1;
-        child2.Style.FlexBasis = Length.Percent(0);
+        child2.Inline.FlexGrow = 1;
+        child2.Inline.FlexShrink = 1;
+        child2.Inline.FlexBasis = Length.Percent(0);
 
         LayoutFixture.Calculate(root);
 

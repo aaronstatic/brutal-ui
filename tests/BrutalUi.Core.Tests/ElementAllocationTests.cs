@@ -272,16 +272,19 @@ public sealed class ElementAllocationTests
         };
 
         Element root = new();
-        root.Style.FlexDirection = FlexDirection.Column;
-        root.Style.AlignItems = Align.FlexStart;
+        root.Inline.FlexDirection = FlexDirection.Column;
+        root.Inline.AlignItems = Align.FlexStart;
+        // The labels set no text value at creation. They inherit the color and the size of the root.
+        root.Inline.Color = White;
+        root.Inline.FontSize = FirstSize;
         context.AddRoot(root);
 
         Label[] labels = new Label[LabelCount];
         for (int i = 0; i < labels.Length; i++)
         {
-            Label label = new(new Label.CreateInfo { Color = White, Size = FirstSize, Text = InitialText });
-            label.Style.Width = LabelWidth;
-            label.Style.Padding = LengthEdges.All(LabelPadding);
+            Label label = new(new Label.CreateInfo { Text = InitialText });
+            label.Inline.Width = LabelWidth;
+            label.Inline.Padding = LengthEdges.All(LabelPadding);
             root.Children.Add(label);
             labels[i] = label;
         }
@@ -290,14 +293,14 @@ public sealed class ElementAllocationTests
         for (int i = 0; i < images.Length; i++)
         {
             Image image = new(new Image.CreateInfo { Texture = FirstTexture });
-            image.Style.Width = ImageWidth;
+            image.Inline.Width = ImageWidth;
             root.Children.Add(image);
             images[i] = image;
         }
 
         LString hello = new("element-allocation-tests.localized", "Hello");
         LString world = new("element-allocation-tests.other-localized", "World");
-        Label localized = new(new Label.CreateInfo { Color = White, Size = FirstSize, LocalizedText = hello });
+        Label localized = new(new Label.CreateInfo { LocalizedText = hello });
         root.Children.Add(localized);
 
         return new Scene
@@ -343,9 +346,9 @@ public sealed class ElementAllocationTests
         {
             Label label = labels[i];
             label.SetText(text);
-            label.Color = color;
-            label.Size = size;
-            label.Font = font;
+            label.Inline.Color = color;
+            label.Inline.FontSize = size;
+            label.Inline.Font = font;
 
             Image image = images[i];
             image.Tint = tint;

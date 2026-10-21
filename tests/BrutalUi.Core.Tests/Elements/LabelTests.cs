@@ -46,6 +46,55 @@ public sealed class LabelTests
         Assert.Equal(expected, actual);
     }
 
+    /// <summary>
+    /// The demo of phase 8: a label with no text value of its own takes the color and the size of its parent from a
+    /// sheet rule. A new size on the parent flows down, and the label measures its text again.
+    /// </summary>
+    [Fact]
+    public void ALabelDrawsInTheInheritedTextStyle()
+    {
+        Rgba8 gold = new(255, 204, 0, 255);
+        ClassId panelClass = ClassName.Intern("panel");
+        StyleSheet sheet = new StyleSheet.Builder()
+            .Add(Selector.ForClass(panelClass), new StyleProperties { Color = gold, FontSize = 16 })
+            .Build();
+
+        RecordingRenderer renderer = new();
+        UiContext context = CreateContext(renderer);
+        context.AddSheet(sheet);
+        Element root = AddRoot(context);
+        Element panel = new();
+        panel.Classes.Add(panelClass);
+        Label label = new(new Label.CreateInfo { Text = "Hello" });
+        panel.Children.Add(label);
+        root.Children.Add(panel);
+
+        context.Update(0f);
+        context.Draw(renderer);
+
+        string firstRect = DescribeRect(label);
+        string firstText = DescribeText(renderer);
+        TestContext.Current.TestOutputHelper?.WriteLine(firstRect);
+        TestContext.Current.TestOutputHelper?.WriteLine(firstText);
+        int firstMeasures = renderer.MeasureCount;
+
+        panel.Inline.FontSize = 32;
+        context.Update(0f);
+        context.Draw(renderer);
+
+        string secondRect = DescribeRect(label);
+        string secondText = DescribeText(renderer);
+        TestContext.Current.TestOutputHelper?.WriteLine(secondRect);
+        TestContext.Current.TestOutputHelper?.WriteLine(secondText);
+
+        Assert.Equal("rect 0,0,40,16", firstRect);
+        Assert.Equal("Text 0,0 font 0 size 16 #FFCC00FF wrap 40 \"Hello\"", firstText);
+        Assert.Equal("rect 0,0,80,32", secondRect);
+        Assert.Equal("Text 0,0 font 0 size 32 #FFCC00FF wrap 80 \"Hello\"", secondText);
+        Assert.True(renderer.MeasureCount > firstMeasures, "The new size measures the label again.");
+        Assert.Equal(0UL, label.InlineStorage.SetMask);
+    }
+
     /// <summary>The label measures through the measurer of the context, during <see cref="UiContext.Update(float)"/> only.</summary>
     [Fact]
     public void MeasuresThroughTheContextMeasurer()
@@ -196,7 +245,9 @@ public sealed class LabelTests
         Element outerRoot = AddRoot(outer);
         CatchingProbe probe = new() { Inner = inner };
         outerRoot.Children.Add(probe);
-        Label label = new(new Label.CreateInfo { Color = White, Size = 16, Text = "After" });
+        Label label = new(new Label.CreateInfo { Text = "After" });
+        label.Inline.Color = White;
+        label.Inline.FontSize = 16;
         outerRoot.Children.Add(label);
 
         outer.Update(0f);
@@ -237,7 +288,7 @@ public sealed class LabelTests
         RecordingRenderer renderer = new();
         UiContext context = CreateContext(renderer);
         Label label = AddLabel(context, "Hello");
-        label.Style.Opacity = 0.5f;
+        label.Inline.Opacity = 0.5f;
 
         context.Update(0f);
         context.Draw(renderer);
@@ -273,7 +324,9 @@ public sealed class LabelTests
         RecordingRenderer renderer = new();
         UiContext context = CreateContext(renderer);
         Element root = AddRoot(context);
-        Label label = new(new Label.CreateInfo { Color = Rgba8.Transparent, Size = 16, Text = "Hello" });
+        Label label = new(new Label.CreateInfo { Text = "Hello" });
+        label.Inline.Color = Rgba8.Transparent;
+        label.Inline.FontSize = 16;
         root.Children.Add(label);
 
         context.Update(0f);
@@ -290,16 +343,15 @@ public sealed class LabelTests
     public void EncodesTheTextToUtf8()
     {
         string longText = new('x', 100);
-        Label longLabel = new(new Label.CreateInfo { Color = White, Text = longText });
+        Label longLabel = new(new Label.CreateInfo { Text = longText });
         Assert.Equal(100, longLabel.Text.Length);
 
-        Label accented = new(new Label.CreateInfo { Color = White, Text = "hé" });
+        Label accented = new(new Label.CreateInfo { Text = "hé" });
         Assert.Equal(new byte[] { 0x68, 0xC3, 0xA9 }, accented.Text.ToArray());
 
-        Label defaults = new(new Label.CreateInfo { Color = White });
-        Assert.Equal(new FontHandle(0), defaults.Font);
-        Assert.Equal(0f, defaults.Size);
-        Assert.Equal(White, defaults.Color);
+        // The create-info has no text values, so a new label sets no inline value.
+        Label defaults = new(default(Label.CreateInfo));
+        Assert.Equal(0UL, defaults.InlineStorage.SetMask);
         Assert.True(defaults.Text.IsEmpty);
     }
 
@@ -334,7 +386,9 @@ public sealed class LabelTests
             ViewportSize = new float2(viewportWidth, 300),
         };
         Element root = AddRoot(context);
-        Label label = new(new Label.CreateInfo { Color = White, Size = 16, Text = "Hello" });
+        Label label = new(new Label.CreateInfo { Text = "Hello" });
+        label.Inline.Color = White;
+        label.Inline.FontSize = 16;
         root.Children.Add(label);
 
         context.Update(0f);
@@ -362,7 +416,7 @@ public sealed class LabelTests
     private static Element AddRoot(UiContext context)
     {
         Element root = new();
-        root.Style.AlignItems = Align.FlexStart;
+        root.Inline.AlignItems = Align.FlexStart;
         context.AddRoot(root);
         return root;
     }
@@ -374,9 +428,37 @@ public sealed class LabelTests
     private static Label AddLabel(UiContext context, string? text)
     {
         Element root = AddRoot(context);
-        Label label = new(new Label.CreateInfo { Color = White, Size = 16, Text = text });
+        Label label = new(new Label.CreateInfo { Text = text });
+        label.Inline.Color = White;
+        label.Inline.FontSize = 16;
         root.Children.Add(label);
         return label;
+    }
+
+    /// <summary>Describes the rect of an element as <c>rect x,y,w,h</c>.</summary>
+    /// <param name="element">The element.</param>
+    /// <returns>The line.</returns>
+    private static string DescribeRect(Element element)
+    {
+        float4 rect = element.Layout.Rect;
+        return string.Create(CultureInfo.InvariantCulture, $"rect {rect.X},{rect.Y},{rect.Z},{rect.W}");
+    }
+
+    /// <summary>Gives the one text line of the last draw of a renderer, or an empty string when it has none.</summary>
+    /// <param name="renderer">The renderer.</param>
+    /// <returns>The text line.</returns>
+    private static string DescribeText(RecordingRenderer renderer)
+    {
+        string[] lines = renderer.Describe().Split('\n');
+        for (int i = 0; i < lines.Length; i++)
+        {
+            if (lines[i].StartsWith("Text ", StringComparison.Ordinal))
+            {
+                return lines[i];
+            }
+        }
+
+        return string.Empty;
     }
 
     /// <summary>Adds a root and a scope probe to a context.</summary>

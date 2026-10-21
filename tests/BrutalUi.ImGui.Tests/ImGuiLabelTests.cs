@@ -306,9 +306,11 @@ public sealed unsafe class ImGuiLabelTests
     private static Label AddLabel(UiContext context, Align align)
     {
         Element root = new();
-        root.Style.AlignItems = align;
+        root.Inline.AlignItems = align;
         context.AddRoot(root);
-        Label label = new(new Label.CreateInfo { Color = White, Size = Size, Text = Hello });
+        Label label = new(new Label.CreateInfo { Text = Hello });
+        label.Inline.Color = White;
+        label.Inline.FontSize = Size;
         root.Children.Add(label);
         return label;
     }
@@ -321,7 +323,7 @@ public sealed unsafe class ImGuiLabelTests
     private static Label AddLabel(UiContext context, Align align, float paddingPercent)
     {
         Label label = AddLabel(context, align);
-        label.Style.Padding = LengthEdges.All(Length.Percent(paddingPercent));
+        label.Inline.Padding = LengthEdges.All(Length.Percent(paddingPercent));
         return label;
     }
 

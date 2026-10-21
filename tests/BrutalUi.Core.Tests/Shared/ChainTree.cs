@@ -87,15 +87,15 @@ internal sealed class ChainTree
 
             if (shape != ChainShape.PlainColumn)
             {
-                level.Style.FlexDirection = (i % 2 == 0) ? FlexDirection.Row : FlexDirection.Column;
+                level.Inline.FlexDirection = (i % 2 == 0) ? FlexDirection.Row : FlexDirection.Column;
 
                 if (shape == ChainShape.PercentPadding)
                 {
-                    level.Style.Padding = LengthEdges.All(Length.Percent(1));
+                    level.Inline.Padding = LengthEdges.All(Length.Percent(1));
                 }
                 else
                 {
-                    level.Style.MaxWidth = Length.Percent(99);
+                    level.Inline.MaxWidth = Length.Percent(99);
                 }
             }
 

@@ -31,6 +31,17 @@ namespace BrutalUi.Core.Tests;
 /// of fixed size (12 by 12), so its rect does not change. No other element has a border.
 /// </para>
 /// <para>
+/// The build adds <see cref="Sheet"/> to the context. The sheet holds <see cref="RuleCount"/> rules: type rules,
+/// class rules, and class-on-type rules. The root has the class <c>root</c>, each sidebar item has <c>item</c>, each
+/// stat row and each settings row has <c>row</c>, and each grid slot has <c>slot</c>. The fill of each grid slot comes
+/// from the <c>slot</c> rule, not from the inline set, so the <see cref="SelectedClass"/> rule can change it. The
+/// always-on rules set only a fill that the inline set had before, a border color with no border width, and text
+/// values (<see cref="ComputedStyle.Color"/>, <see cref="ComputedStyle.FontSize"/>). The tree holds no label, so a
+/// text value changes no rect and no draw call. Only the <see cref="SelectedClass"/> rule sets layout values, and the
+/// build puts no element in that class. The <see cref="MutedClass"/> rule sets a text color. No always-on rule sets a
+/// text color on the sidebar or on an element below it, so the sidebar labels inherit the color of the sidebar.
+/// </para>
+/// <para>
 /// The benchmark project links this file, so the file uses no test framework type and no internal member of
 /// <c>BrutalUi.Core</c>.
 /// </para>
@@ -98,7 +109,6 @@ internal sealed class ThousandElementTree
     private static readonly Rgba8 HeaderColor = new(32, 36, 48);
     private static readonly Rgba8 BodyColor = new(24, 27, 36);
     private static readonly Rgba8 SidebarItemColor = new(40, 44, 58);
-    private static readonly Rgba8 SlotColor = new(52, 58, 76);
     private static readonly Rgba8 StatRowColor = new(36, 40, 52);
     private static readonly Rgba8 FooterSlotColor = new(44, 48, 64);
     private static readonly Rgba8 TooltipColor = new(10, 10, 14, 230);
@@ -106,6 +116,34 @@ internal sealed class ThousandElementTree
     private static readonly Rgba8 SettingsColor = new(20, 22, 30, 240);
     private static readonly Rgba8 SettingsRowColor = new(38, 42, 56);
     private static readonly Rgba8 KeyBorderColor = new(220, 200, 80);
+    private static readonly Rgba8 ItemBorderColor = new(60, 66, 84);
+    private static readonly Rgba8 RowBorderColor = new(56, 62, 80);
+    private static readonly Rgba8 SlotBorderColor = new(72, 80, 104);
+    private static readonly Rgba8 RowTextColor = new(200, 204, 214);
+    private static readonly Rgba8 LabelTextColor = new(236, 238, 244);
+    private static readonly Rgba8 SelectedLabelColor = new(255, 220, 120);
+
+    /// <summary>The number of rules in <see cref="Sheet"/>.</summary>
+    public const int RuleCount = 12;
+
+    /// <summary>The font size that the type rule of <see cref="Element"/> sets on each element.</summary>
+    public const float ElementFontSize = 14f;
+
+    /// <summary>The minimum width that the <see cref="SelectedClass"/> rule sets, in pixels.</summary>
+    /// <remarks>It is equal to <see cref="SlotNarrowWidth"/>, so it changes no rect of grid slot 0.</remarks>
+    public const float SelectedMinWidth = SlotNarrowWidth;
+
+    /// <summary>The text color that the <c>root</c> rule sets. Each element with no text color rule inherits it.</summary>
+    public static readonly Rgba8 RootTextColor = new(220, 224, 232);
+
+    /// <summary>The fill of each grid slot. The <c>slot</c> rule sets it.</summary>
+    public static readonly Rgba8 SlotColor = new(52, 58, 76);
+
+    /// <summary>The fill that the <see cref="SelectedClass"/> rule sets.</summary>
+    public static readonly Rgba8 SelectedSlotColor = new(90, 120, 200);
+
+    /// <summary>The text color that the <see cref="MutedClass"/> rule sets.</summary>
+    public static readonly Rgba8 MutedTextColor = new(120, 124, 136);
 
     /// <summary>Gets the context that holds the root. Its viewport is <see cref="ViewportWideWidth"/> by <see cref="ViewportHeight"/>.</summary>
     public required UiContext Context { get; init; }
@@ -146,6 +184,22 @@ internal sealed class ThousandElementTree
     /// <summary>Gets the callback of each paragraph leaf. Its content width is <see cref="ParagraphContentWidth"/>.</summary>
     public required TextMeasure ParagraphText { get; init; }
 
+    /// <summary>Gets the sheet that the build adds to <see cref="Context"/>. It holds <see cref="RuleCount"/> rules.</summary>
+    public required StyleSheet Sheet { get; init; }
+
+    /// <summary>
+    /// Gets the id of the class <c>selected</c>. Its rule sets <see cref="SelectedSlotColor"/>, a width of
+    /// <see cref="SlotWideWidth"/>, and a minimum width of <see cref="SelectedMinWidth"/>. The build puts no element in
+    /// the class.
+    /// </summary>
+    public required ClassId SelectedClass { get; init; }
+
+    /// <summary>
+    /// Gets the id of the class <c>muted</c>. Its rule sets the text color <see cref="MutedTextColor"/>. The build puts
+    /// no element in the class.
+    /// </summary>
+    public required ClassId MutedClass { get; init; }
+
     /// <summary>
     /// Builds the tree, adds the root to a new context, and sets the viewport. It runs no update.
     /// </summary>
@@ -159,18 +213,19 @@ internal sealed class ThousandElementTree
 
         // 1. The root: a column with a padding of 8.
         Element root = c.Make("root");
-        root.Style.FlexDirection = FlexDirection.Column;
-        root.Style.Padding = LengthEdges.All(8f);
-        root.Style.BackgroundColor = RootColor;
+        root.Inline.FlexDirection = FlexDirection.Column;
+        root.Inline.Padding = LengthEdges.All(8f);
+        root.Inline.BackgroundColor = RootColor;
+        root.Classes.Add(ClassName.Intern("root"));
 
         BuildHeader(c, root, labelText);
 
         // 3. The body: a row that takes the free height. It can shrink, so it fits between the header and the footer.
         Element body = c.Add(root, "body");
-        body.Style.FlexDirection = FlexDirection.Row;
-        body.Style.FlexGrow = 1f;
-        body.Style.FlexShrink = 1f;
-        body.Style.BackgroundColor = BodyColor;
+        body.Inline.FlexDirection = FlexDirection.Row;
+        body.Inline.FlexGrow = 1f;
+        body.Inline.FlexShrink = 1f;
+        body.Inline.BackgroundColor = BodyColor;
 
         Element sidebar = BuildSidebar(c, body, labelText, out Element sidebarLabel);
         Element gridSlot = BuildGrid(c, body);
@@ -185,9 +240,14 @@ internal sealed class ThousandElementTree
             throw new InvalidOperationException("The tree must hold exactly 1000 elements.");
         }
 
+        ClassId selected = ClassName.Intern("selected");
+        ClassId muted = ClassName.Intern("muted");
+        StyleSheet sheet = BuildSheet(selected, muted);
+
         UiContext context = new();
         context.ViewportSize = new float2(ViewportWideWidth, ViewportHeight);
         context.AddRoot(root);
+        context.AddSheet(sheet);
 
         return new ThousandElementTree
         {
@@ -204,30 +264,124 @@ internal sealed class ThousandElementTree
             Paragraph = paragraph,
             LabelText = labelText,
             ParagraphText = paragraphText,
+            Sheet = sheet,
+            SelectedClass = selected,
+            MutedClass = muted,
         };
+    }
+
+    /// <summary>
+    /// Builds the sheet of <see cref="RuleCount"/> rules: 2 type rules, 6 class rules, and 4 class-on-type rules.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The <c>selected</c> rule and the <c>slot</c> rule have the same specificity. The <c>selected</c> rule comes later,
+    /// so its fill wins on a grid slot in both classes. The inline width of grid slot 0 wins over the width of the
+    /// <c>selected</c> rule, so only the minimum width reaches the computed style. That value is
+    /// <see cref="SlotNarrowWidth"/>, so it changes no rect.
+    /// </para>
+    /// <para>
+    /// The two rules of the type <c>Label</c> match no element of this tree. They add work to the match loop only.
+    /// </para>
+    /// </remarks>
+    private static StyleSheet BuildSheet(ClassId selected, ClassId muted)
+    {
+        ElementTypeId elementType = ElementType.Intern("Element");
+        ElementTypeId labelType = ElementType.Intern("Label");
+        ClassId rootClass = ClassName.Intern("root");
+        ClassId itemClass = ClassName.Intern("item");
+        ClassId rowClass = ClassName.Intern("row");
+        ClassId slotClass = ClassName.Intern("slot");
+        StyleSheet.Builder builder = new();
+
+        // 1. Each element: a font size. No element of the tree is a label, so no measure reads it.
+        StyleProperties properties = default;
+        properties.FontSize = ElementFontSize;
+        builder.Add(Selector.ForType(elementType), in properties);
+
+        // 2. Each label: a color and a font size. The tree holds no label.
+        properties = default;
+        properties.Color = LabelTextColor;
+        properties.FontSize = 16f;
+        builder.Add(Selector.ForType(labelType), in properties);
+
+        // 3. The root: the text color that each element inherits.
+        properties = default;
+        properties.Color = RootTextColor;
+        builder.Add(Selector.ForClass(rootClass), in properties);
+
+        // 4. Each sidebar item: a border color with no border width, so the draw does not change.
+        properties = default;
+        properties.BorderColor = ItemBorderColor;
+        builder.Add(Selector.ForClass(itemClass), in properties);
+
+        // 5. Each stat row and each settings row: a text color. No row is in the sidebar.
+        properties = default;
+        properties.Color = RowTextColor;
+        builder.Add(Selector.ForClass(rowClass), in properties);
+
+        // 6. Each grid slot: the fill. The inline set of the slot holds no fill.
+        properties = default;
+        properties.BackgroundColor = SlotColor;
+        builder.Add(Selector.ForClass(slotClass), in properties);
+
+        // 7. The selected slot: a fill and two width values. It comes after rule 6, so its fill wins.
+        properties = default;
+        properties.BackgroundColor = SelectedSlotColor;
+        properties.Width = SlotWideWidth;
+        properties.MinWidth = SelectedMinWidth;
+        builder.Add(Selector.ForClass(selected), in properties);
+
+        // 8. A muted element: a text color that each descendant inherits.
+        properties = default;
+        properties.Color = MutedTextColor;
+        builder.Add(Selector.ForClass(muted), in properties);
+
+        // 9. Each sidebar item as an element: a font size.
+        properties = default;
+        properties.FontSize = 13f;
+        builder.Add(Selector.ForTypeAndClass(elementType, itemClass), in properties);
+
+        // 10. Each row as an element: a font size and a border color with no border width.
+        properties = default;
+        properties.FontSize = 12f;
+        properties.BorderColor = RowBorderColor;
+        builder.Add(Selector.ForTypeAndClass(elementType, rowClass), in properties);
+
+        // 11. Each grid slot as an element: a border color with no border width. It sets no fill, so rule 7 still wins.
+        properties = default;
+        properties.BorderColor = SlotBorderColor;
+        builder.Add(Selector.ForTypeAndClass(elementType, slotClass), in properties);
+
+        // 12. A selected label: a color. The tree holds no label.
+        properties = default;
+        properties.Color = SelectedLabelColor;
+        builder.Add(Selector.ForTypeAndClass(labelType, selected), in properties);
+
+        return builder.Build();
     }
 
     /// <summary>2. The header: a row of height 48 with a title and 6 buttons. 14 elements.</summary>
     private static void BuildHeader(Collector c, Element root, TextMeasure labelText)
     {
         Element header = c.Add(root, "header");
-        header.Style.FlexDirection = FlexDirection.Row;
-        header.Style.Height = 48f;
-        header.Style.JustifyContent = Justify.SpaceBetween;
-        header.Style.AlignItems = Align.Center;
-        header.Style.BackgroundColor = HeaderColor;
+        header.Inline.FlexDirection = FlexDirection.Row;
+        header.Inline.Height = 48f;
+        header.Inline.JustifyContent = Justify.SpaceBetween;
+        header.Inline.AlignItems = Align.Center;
+        header.Inline.BackgroundColor = HeaderColor;
 
         Element title = c.Add(header, "header-title");
-        title.Style.FlexGrow = 1f;
+        title.Inline.FlexGrow = 1f;
         title.Layout.Measure = labelText.Callback;
 
         for (int i = 0; i < 6; i++)
         {
             Element button = c.Add(header, "header-button");
-            button.Style.Width = 80f;
-            button.Style.Height = 32f;
-            button.Style.JustifyContent = Justify.Center;
-            button.Style.AlignItems = Align.Center;
+            button.Inline.Width = 80f;
+            button.Inline.Height = 32f;
+            button.Inline.JustifyContent = Justify.Center;
+            button.Inline.AlignItems = Align.Center;
 
             Element label = c.Add(button, "header-button-label");
             label.Layout.Measure = labelText.Callback;
@@ -238,26 +392,28 @@ internal sealed class ThousandElementTree
     private static Element BuildSidebar(Collector c, Element body, TextMeasure labelText, out Element firstLabel)
     {
         Element sidebar = c.Add(body, "sidebar");
-        sidebar.Style.FlexDirection = FlexDirection.Column;
-        sidebar.Style.Width = Length.Percent(20f);
-        sidebar.Style.Padding = LengthEdges.All(Length.Percent(1f));
-        sidebar.Style.Overflow = Overflow.Hidden;
+        sidebar.Inline.FlexDirection = FlexDirection.Column;
+        sidebar.Inline.Width = Length.Percent(20f);
+        sidebar.Inline.Padding = LengthEdges.All(Length.Percent(1f));
+        sidebar.Inline.Overflow = Overflow.Hidden;
 
+        ClassId itemClass = ClassName.Intern("item");
         firstLabel = null!;
         for (int i = 0; i < 50; i++)
         {
             Element item = c.Add(sidebar, "sidebar-item");
-            item.Style.FlexDirection = FlexDirection.Row;
-            item.Style.Height = 24f;
-            item.Style.AlignItems = Align.Center;
-            item.Style.BackgroundColor = SidebarItemColor;
+            item.Classes.Add(itemClass);
+            item.Inline.FlexDirection = FlexDirection.Row;
+            item.Inline.Height = 24f;
+            item.Inline.AlignItems = Align.Center;
+            item.Inline.BackgroundColor = SidebarItemColor;
 
             Element icon = c.Add(item, "sidebar-icon");
-            icon.Style.Width = 16f;
-            icon.Style.Height = 16f;
+            icon.Inline.Width = 16f;
+            icon.Inline.Height = 16f;
 
             Element label = c.Add(item, "sidebar-label");
-            label.Style.FlexGrow = 1f;
+            label.Inline.FlexGrow = 1f;
             label.Layout.Measure = labelText.Callback;
             if (i == 0)
             {
@@ -275,35 +431,37 @@ internal sealed class ThousandElementTree
     private static Element BuildGrid(Collector c, Element body)
     {
         Element grid = c.Add(body, "grid");
-        grid.Style.FlexDirection = FlexDirection.Row;
-        grid.Style.FlexWrap = FlexWrap.Wrap;
-        grid.Style.FlexGrow = 1f;
-        grid.Style.FlexShrink = 1f;
-        grid.Style.AlignContent = Align.SpaceBetween;
-        grid.Style.Overflow = Overflow.Hidden;
+        grid.Inline.FlexDirection = FlexDirection.Row;
+        grid.Inline.FlexWrap = FlexWrap.Wrap;
+        grid.Inline.FlexGrow = 1f;
+        grid.Inline.FlexShrink = 1f;
+        grid.Inline.AlignContent = Align.SpaceBetween;
+        grid.Inline.Overflow = Overflow.Hidden;
 
+        ClassId slotClass = ClassName.Intern("slot");
         Element firstSlot = null!;
         for (int i = 0; i < 120; i++)
         {
+            // The fill comes from the slot rule of the sheet.
             Element slot = c.Add(grid, "grid-slot");
-            slot.Style.Width = SlotNarrowWidth;
-            slot.Style.Height = 48f;
-            slot.Style.Margin = LengthEdges.All(2f);
-            slot.Style.AlignItems = Align.Center;
-            slot.Style.JustifyContent = Justify.Center;
-            slot.Style.BackgroundColor = SlotColor;
-            slot.Style.CornerRadius = Corners.All(SlotCornerRadius);
+            slot.Classes.Add(slotClass);
+            slot.Inline.Width = SlotNarrowWidth;
+            slot.Inline.Height = 48f;
+            slot.Inline.Margin = LengthEdges.All(2f);
+            slot.Inline.AlignItems = Align.Center;
+            slot.Inline.JustifyContent = Justify.Center;
+            slot.Inline.CornerRadius = Corners.All(SlotCornerRadius);
 
             Element icon = c.Add(slot, "grid-icon");
-            icon.Style.Width = Length.Percent(80f);
-            icon.Style.Height = Length.Percent(80f);
+            icon.Inline.Width = Length.Percent(80f);
+            icon.Inline.Height = Length.Percent(80f);
 
             Element badge = c.Add(slot, "grid-badge");
-            badge.Style.Position = PositionType.Absolute;
-            badge.Style.Right = 2f;
-            badge.Style.Bottom = 2f;
-            badge.Style.Width = 12f;
-            badge.Style.Height = 12f;
+            badge.Inline.Position = PositionType.Absolute;
+            badge.Inline.Right = 2f;
+            badge.Inline.Bottom = 2f;
+            badge.Inline.Width = 12f;
+            badge.Inline.Height = 12f;
             if (i == 0)
             {
                 firstSlot = slot;
@@ -317,36 +475,38 @@ internal sealed class ThousandElementTree
     private static Element BuildStats(Collector c, Element body, TextMeasure labelText, out Element firstName)
     {
         Element stats = c.Add(body, "stats");
-        stats.Style.FlexDirection = FlexDirection.Column;
-        stats.Style.Width = Length.Percent(25f);
-        stats.Style.MaxWidth = 320f;
+        stats.Inline.FlexDirection = FlexDirection.Column;
+        stats.Inline.Width = Length.Percent(25f);
+        stats.Inline.MaxWidth = 320f;
 
+        ClassId rowClass = ClassName.Intern("row");
         firstName = null!;
         Element firstValue = null!;
         for (int i = 0; i < 40; i++)
         {
             Element row = c.Add(stats, "stat-row");
-            row.Style.FlexDirection = FlexDirection.Row;
-            row.Style.Height = 20f;
-            row.Style.AlignItems = Align.Center;
-            row.Style.BackgroundColor = StatRowColor;
+            row.Classes.Add(rowClass);
+            row.Inline.FlexDirection = FlexDirection.Row;
+            row.Inline.Height = 20f;
+            row.Inline.AlignItems = Align.Center;
+            row.Inline.BackgroundColor = StatRowColor;
 
             Element name = c.Add(row, "stat-name");
-            name.Style.FlexGrow = 1f;
+            name.Inline.FlexGrow = 1f;
             name.Layout.Measure = labelText.Callback;
 
             Element value = c.Add(row, "stat-value");
-            value.Style.Width = Length.Percent(ValueNarrowPercent);
-            value.Style.Height = 16f;
+            value.Inline.Width = Length.Percent(ValueNarrowPercent);
+            value.Inline.Height = 16f;
 
             Element bar = c.Add(row, "stat-bar");
-            bar.Style.FlexDirection = FlexDirection.Row;
-            bar.Style.Width = 40f;
-            bar.Style.Height = 6f;
+            bar.Inline.FlexDirection = FlexDirection.Row;
+            bar.Inline.Width = 40f;
+            bar.Inline.Height = 6f;
 
             Element fill = c.Add(bar, "stat-fill");
-            fill.Style.Width = Length.Percent(50f);
-            fill.Style.Height = Length.Percent(100f);
+            fill.Inline.Width = Length.Percent(50f);
+            fill.Inline.Height = Length.Percent(100f);
             if (i == 0)
             {
                 firstName = name;
@@ -361,29 +521,29 @@ internal sealed class ThousandElementTree
     private static void BuildFooter(Collector c, Element root)
     {
         Element footer = c.Add(root, "footer");
-        footer.Style.FlexDirection = FlexDirection.Row;
-        footer.Style.Height = 64f;
-        footer.Style.JustifyContent = Justify.Center;
-        footer.Style.AlignItems = Align.Center;
+        footer.Inline.FlexDirection = FlexDirection.Row;
+        footer.Inline.Height = 64f;
+        footer.Inline.JustifyContent = Justify.Center;
+        footer.Inline.AlignItems = Align.Center;
 
         for (int i = 0; i < 10; i++)
         {
             Element slot = c.Add(footer, "footer-slot");
-            slot.Style.Width = 56f;
-            slot.Style.Height = 56f;
-            slot.Style.BackgroundColor = FooterSlotColor;
+            slot.Inline.Width = 56f;
+            slot.Inline.Height = 56f;
+            slot.Inline.BackgroundColor = FooterSlotColor;
 
             Element icon = c.Add(slot, "footer-icon");
-            icon.Style.FlexGrow = 1f;
+            icon.Inline.FlexGrow = 1f;
 
             Element key = c.Add(slot, "footer-key");
-            key.Style.Position = PositionType.Absolute;
-            key.Style.Left = 2f;
-            key.Style.Top = 2f;
-            key.Style.Width = 12f;
-            key.Style.Height = 12f;
-            key.Style.BorderWidth = LengthEdges.All(KeyBorderWidth);
-            key.Style.BorderColor = KeyBorderColor;
+            key.Inline.Position = PositionType.Absolute;
+            key.Inline.Left = 2f;
+            key.Inline.Top = 2f;
+            key.Inline.Width = 12f;
+            key.Inline.Height = 12f;
+            key.Inline.BorderWidth = LengthEdges.All(KeyBorderWidth);
+            key.Inline.BorderColor = KeyBorderColor;
         }
     }
 
@@ -391,14 +551,14 @@ internal sealed class ThousandElementTree
     private static Element BuildTooltip(Collector c, Element root, TextMeasure labelText)
     {
         Element tooltip = c.Add(root, "tooltip");
-        tooltip.Style.Position = PositionType.Absolute;
-        tooltip.Style.Left = 40f;
-        tooltip.Style.Top = 40f;
-        tooltip.Style.Width = TooltipNarrowWidth;
-        tooltip.Style.FlexDirection = FlexDirection.Column;
-        tooltip.Style.Padding = LengthEdges.All(4f);
-        tooltip.Style.BackgroundColor = TooltipColor;
-        tooltip.Style.Opacity = TooltipOpacity;
+        tooltip.Inline.Position = PositionType.Absolute;
+        tooltip.Inline.Left = 40f;
+        tooltip.Inline.Top = 40f;
+        tooltip.Inline.Width = TooltipNarrowWidth;
+        tooltip.Inline.FlexDirection = FlexDirection.Column;
+        tooltip.Inline.Padding = LengthEdges.All(4f);
+        tooltip.Inline.BackgroundColor = TooltipColor;
+        tooltip.Inline.Opacity = TooltipOpacity;
 
         for (int i = 0; i < 6; i++)
         {
@@ -416,39 +576,39 @@ internal sealed class ThousandElementTree
     private static Element BuildModal(Collector c, Element root, TextMeasure labelText, TextMeasure paragraphText)
     {
         Element modal = c.Add(root, "modal");
-        modal.Style.Position = PositionType.Absolute;
-        modal.Style.Width = Length.Percent(50f);
-        modal.Style.Height = Length.Percent(50f);
-        modal.Style.Left = Length.Percent(25f);
-        modal.Style.Top = Length.Percent(25f);
-        modal.Style.FlexDirection = FlexDirection.Column;
-        modal.Style.Padding = LengthEdges.All(8f);
-        modal.Style.BackgroundColor = ModalColor;
-        modal.Style.Overflow = Overflow.Hidden;
-        modal.Style.Opacity = ModalOpacity;
+        modal.Inline.Position = PositionType.Absolute;
+        modal.Inline.Width = Length.Percent(50f);
+        modal.Inline.Height = Length.Percent(50f);
+        modal.Inline.Left = Length.Percent(25f);
+        modal.Inline.Top = Length.Percent(25f);
+        modal.Inline.FlexDirection = FlexDirection.Column;
+        modal.Inline.Padding = LengthEdges.All(8f);
+        modal.Inline.BackgroundColor = ModalColor;
+        modal.Inline.Overflow = Overflow.Hidden;
+        modal.Inline.Opacity = ModalOpacity;
 
         Element titleRow = c.Add(modal, "modal-title-row");
-        titleRow.Style.FlexDirection = FlexDirection.Row;
-        titleRow.Style.Height = 32f;
-        titleRow.Style.AlignItems = Align.Center;
+        titleRow.Inline.FlexDirection = FlexDirection.Row;
+        titleRow.Inline.Height = 32f;
+        titleRow.Inline.AlignItems = Align.Center;
 
         Element title = c.Add(titleRow, "modal-title");
-        title.Style.FlexGrow = 1f;
+        title.Inline.FlexGrow = 1f;
         title.Layout.Measure = labelText.Callback;
 
         Element close = c.Add(titleRow, "modal-close");
-        close.Style.Width = 24f;
-        close.Style.Height = 24f;
+        close.Inline.Width = 24f;
+        close.Inline.Height = 24f;
 
         Element modalBody = c.Add(modal, "modal-body");
-        modalBody.Style.FlexDirection = FlexDirection.Column;
-        modalBody.Style.FlexGrow = 1f;
+        modalBody.Inline.FlexDirection = FlexDirection.Column;
+        modalBody.Inline.FlexGrow = 1f;
 
         Element firstParagraph = null!;
         for (int i = 0; i < 3; i++)
         {
             Element paragraph = c.Add(modalBody, "modal-paragraph");
-            paragraph.Style.Margin = LengthEdges.All(4f);
+            paragraph.Inline.Margin = LengthEdges.All(4f);
             paragraph.Layout.Measure = paragraphText.Callback;
             if (i == 0)
             {
@@ -457,16 +617,16 @@ internal sealed class ThousandElementTree
         }
 
         Element buttonRow = c.Add(modal, "modal-button-row");
-        buttonRow.Style.FlexDirection = FlexDirection.Row;
-        buttonRow.Style.JustifyContent = Justify.FlexEnd;
+        buttonRow.Inline.FlexDirection = FlexDirection.Row;
+        buttonRow.Inline.JustifyContent = Justify.FlexEnd;
 
         for (int i = 0; i < 2; i++)
         {
             Element button = c.Add(buttonRow, "modal-button");
-            button.Style.Width = 80f;
-            button.Style.Height = 32f;
-            button.Style.AlignItems = Align.Center;
-            button.Style.JustifyContent = Justify.Center;
+            button.Inline.Width = 80f;
+            button.Inline.Height = 32f;
+            button.Inline.AlignItems = Align.Center;
+            button.Inline.JustifyContent = Justify.Center;
 
             Element label = c.Add(button, "modal-button-label");
             label.Layout.Measure = labelText.Callback;
@@ -482,27 +642,29 @@ internal sealed class ThousandElementTree
     private static Element BuildSettings(Collector c, Element root)
     {
         Element settings = c.Add(root, "settings");
-        settings.Style.Display = Display.None;
-        settings.Style.Position = PositionType.Absolute;
-        settings.Style.Left = 0f;
-        settings.Style.Top = 0f;
-        settings.Style.Width = Length.Percent(100f);
-        settings.Style.Height = Length.Percent(100f);
-        settings.Style.FlexDirection = FlexDirection.Column;
-        settings.Style.BackgroundColor = SettingsColor;
+        settings.Inline.Display = Display.None;
+        settings.Inline.Position = PositionType.Absolute;
+        settings.Inline.Left = 0f;
+        settings.Inline.Top = 0f;
+        settings.Inline.Width = Length.Percent(100f);
+        settings.Inline.Height = Length.Percent(100f);
+        settings.Inline.FlexDirection = FlexDirection.Column;
+        settings.Inline.BackgroundColor = SettingsColor;
 
+        ClassId rowClass = ClassName.Intern("row");
         for (int i = 0; i < SettingsRowCount; i++)
         {
             Element row = c.Add(settings, "settings-row");
-            row.Style.FlexDirection = FlexDirection.Row;
-            row.Style.BackgroundColor = SettingsRowColor;
+            row.Classes.Add(rowClass);
+            row.Inline.FlexDirection = FlexDirection.Row;
+            row.Inline.BackgroundColor = SettingsRowColor;
 
             Element label = c.Add(row, "settings-label");
-            label.Style.FlexGrow = 1f;
+            label.Inline.FlexGrow = 1f;
 
             Element toggle = c.Add(row, "settings-toggle");
-            toggle.Style.Width = 24f;
-            toggle.Style.Height = 12f;
+            toggle.Inline.Width = 24f;
+            toggle.Inline.Height = 12f;
         }
 
         return settings;

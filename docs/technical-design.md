@@ -134,7 +134,7 @@ brutal-ui/
    │
    ├─ UiContext.Update()
    │     ├─ Framework: mode diff, store notifications, bindings
-   │     ├─ Style pass: resolve classes and pseudo-states for dirty elements
+   │     ├─ Style pass: cascade the sheet rules and the inline set for dirty elements
    │     └─ Layout pass: flexbox on dirty subtrees
    │
    ├─ UiContext.Draw(IUiRenderer)
@@ -146,7 +146,9 @@ brutal-ui/
 ### Frame order
 
 1. The game calls `GlfwBackend.NewFrame()` and `ImGui.NewFrame()` as it does today.
-2. The game sets `ViewportSize` from `io.DisplaySize`. Then it calls `UiContext.Update(deltaTime)`. The framework applies pending mode changes and store notifications. The style and layout passes run on dirty subtrees.
+2. The game sets `ViewportSize` from `io.DisplaySize`. Then it calls `UiContext.Update(deltaTime)`. The framework applies pending mode changes and store notifications. The style pass runs first, then the layout pass. Both run on dirty subtrees.
+
+**The style pass at the seam.** `UiContext.Update` calls the internal `UiContext.UpdateStyles` first, before the layout pass. The pass restyles each element with the `Style` bit or the `DescendantStyle` bit, and it marks `Layout` or `Paint` when the result changes. The layout pass then reads the new `ComputedStyle`. The pass has its own recursion, because it marks the children of an element during the visit, and the visitor rules of `DirtyWalk` forbid a mark of the walked kind. The pass clears the two style bits of an element after its subtree. It never clears `Layout` or `Paint`.
 3. The game calls `UiContext.Draw(IUiRenderer)`. `PaintWalk` visits the tree with an explicit frame stack and calls the renderer for each painted element. It builds no command list.
 4. The game renders the ImGui frame as it does today.
 
@@ -174,7 +176,9 @@ public class Element
     public ClassList Classes { get; }          // view on an inline set of 8, then a pooled array
     public PseudoStates States { get; set; }   // Hover, Active, Focus, Disabled, Checked
     public bool IsPickable { get; set; }       // default true
-    public ref ComputedStyle Style { get; }    // resolved style, struct
+    public virtual ElementTypeId TypeId { get; }  // the type id that a type selector matches
+    public ref readonly ComputedStyle Style { get; }  // resolved style, written by the style pass only
+    public ref readonly InlineStyle Inline { get; }   // the write API of the game, wins over each rule
     public ref LayoutNode Layout { get; }      // the output rect, the measure callback, and the layout cache
     public DirtyFlags Dirty { get; }           // self bits and descendant bits
     public void MarkDirty(DirtyFlags kinds);
@@ -211,19 +215,32 @@ public static class ClassName
     public static string GetName(ClassId id);
 }
 
+public readonly struct ElementTypeId;          // small integer id of an interned type name
+
+public static class ElementType
+{
+    public static ElementTypeId Intern(string name);  // thread-safe, call it before the hot path
+    public static string GetName(ElementTypeId id);
+}
+
 public sealed class UiContext
 {
     public struct CreateInfo
     {
         public required IUiRenderer Measurer;  // measures text for the layout pass, not null
+        public Rgba8? DefaultColor;            // text color of a root, default null: opaque white
+        public FontHandle DefaultFont;         // font of a root, default id 0
+        public float DefaultFontSize;          // font size of a root, default 0: the default size of the font
     }
 
-    public UiContext();                        // no measurer
+    public UiContext();                        // no measurer, the same text defaults
     public UiContext(in CreateInfo info);      // ArgumentNullException for a null measurer
     public IUiRenderer? Measurer { get; }      // set at creation only
     public ReadOnlySpan<Element> Roots { get; }
-    public void AddRoot(Element root);
+    public void AddRoot(Element root);         // marks the root and each descendant Style
     public bool RemoveRoot(Element root);
+    public void AddSheet(StyleSheet sheet);    // allocates, call it in load code
+    public bool RemoveSheet(StyleSheet sheet); // allocates, call it in load code
     public float2 ViewportSize { get; set; }   // available size of each root, default (0, 0)
     public void Update(float deltaTime);
     public void Draw(IUiRenderer renderer);    // reads the tree only, call it after Update
@@ -232,11 +249,8 @@ public sealed class UiContext
 
 public sealed class Label : Element
 {
-    public struct CreateInfo
+    public struct CreateInfo                   // no color, font, or size: the label reads them from its style
     {
-        public required Rgba8 Color;           // Transparent draws nothing
-        public FontHandle Font;                // default id 0: the default font of the renderer
-        public float Size;                     // default 0: the default size of the font
         public string? Text;                   // encoded to UTF-8 one time
         public LString? LocalizedText;         // Text and LocalizedText together: ArgumentException
     }
@@ -244,9 +258,6 @@ public sealed class Label : Element
     public Label(in CreateInfo info);
     public ReadOnlySpan<byte> Text { get; }    // the owned UTF-8 text, valid until the next change
     public LString? LocalizedText { get; }
-    public FontHandle Font { get; set; }       // a change marks Layout and Paint
-    public float Size { get; set; }            // a change marks Layout and Paint
-    public Rgba8 Color { get; set; }           // a change marks Paint
     public void SetText(ReadOnlySpan<byte> utf8);  // copies the bytes, clears LocalizedText
     public void SetText(string? text);         // encodes to UTF-8, clears LocalizedText
     public void SetText(LString? text);        // shows LString.Localized as it is
@@ -274,6 +285,10 @@ public sealed class Image : Element
 
 `DirtyFlags` has the kinds `Style`, `Layout`, and `Paint`, and one descendant bit for each kind. `ElementBuilder` adds the extension methods `Class(string)`, `Class(ClassId)`, and `Child(Element)` for a fluent build.
 
+**The style members.** `Element.Style` is a `ref readonly` to the computed style. Only the style pass writes it, so game code cannot write a computed value by mistake. Before the first `Update`, it holds the defaults. The game writes `Element.Inline`: `panel.Inline.Width = 200;`. A set to a new value marks `Style`, and the next `Update` writes the result to `Style`. A set to the same value marks nothing. `Inline` is `public ref readonly InlineStyle`, not a property that returns the struct by value. C# accepts a property set on a variable only, and a `ref` return is a variable. A by-value return gives error CS1612 on `el.Inline.Width = 200`. The element creates the view one time in its constructor, so it costs 8 bytes and allocates nothing. A nested write such as `el.Inline.Margin.Top = 12` also gives CS1612. Write the whole value: `el.Inline.Margin = el.Inline.Margin with { Top = 12 };`. `InlineStyle` has one property for each member of `ComputedStyle` (32 members), `IsSet(StyleProperty)`, and `Clear(StyleProperty)`.
+
+**The type id.** `Element.TypeId` is virtual. `Element` returns the id of the name `Element`. `Label` and `Image` override it with their own ids. A subclass with no override has the id of its base class, and a type rule for the base class matches it. A type rule does not match a subclass with its own id. The id comes from `ElementType.Intern(name)`. The type table and the class table are separate.
+
 **The measurer of the context.** A `Label` measures its text with `UiContext.Measurer` during `Update`. Create the context with `new UiContext(new UiContext.CreateInfo { Measurer = renderer })` for a tree with a label. A context from `UiContext()` has no measurer. Its `Update` throws `InvalidOperationException` when a label needs a measure. An `Image` needs no measurer. The measurer and the renderer of `Draw` must use the same font ids. Pass the renderer that draws, or a renderer that shares its font service.
 
 **Label and image.** Both classes are leaves, and both have the `sealed` modifier. Do not add children to them. The engine calls a measure callback for an element with no children only. Each constructor sets a cached static measure callback one time. Each setter and each `SetText` overload compares the old value first. A set to the same value marks nothing, so the game calls no `MarkDirty` for these properties. The `Image.Texture` setter compares the id and the size. A new size, or a change to or from the none handle, marks `Layout` and `Paint`. A new id with the same size marks `Paint` only.
@@ -293,7 +308,7 @@ A struct event with a phase (capture, target, bubble) walks the tree. Handlers r
 - `ComputedStyle` and `LayoutNode` are structs stored inline in the element. The layout engine reads them through `ref`. No per-node heap object beyond the element itself.
 - Each dirty kind has a self bit and a descendant bit. A mark sets the self bit and sends the descendant bit up to the root, and it stops at the first ancestor that holds the bit. The walk enters only the subtrees that have a descendant bit.
 - Text lives in owned UTF-8 buffers on the element. A `Label` accepts `ReadOnlySpan<byte>`, `string`, and `LString`. The buffer starts at 32 bytes, grows by doubling, and never shrinks. A text change after warm-up allocates nothing.
-- A create-info member is `required` only when it has no safe default: `Label.CreateInfo.Color`, `Image.CreateInfo.Texture`, and `UiContext.CreateInfo.Measurer`.
+- A create-info member is `required` only when it has no safe default: `Image.CreateInfo.Texture` and `UiContext.CreateInfo.Measurer`. `Label.CreateInfo` has no `required` member, because the color, the font, and the size come from the style.
 
 ---
 
@@ -309,7 +324,7 @@ Flexbox layout on the element tree with the Yoga subset that games use.
 
 ### Inputs
 
-The layout inputs are 25 public fields of `ComputedStyle`: `FlexDirection`, `Width`, `Height`, `Margin`, `Padding`, `BorderWidth`, `FlexGrow`, `FlexShrink`, `FlexBasis`, `MinWidth`, `MinHeight`, `MaxWidth`, `MaxHeight`, `JustifyContent`, `AlignItems`, `AlignSelf`, `FlexWrap`, `AlignContent`, `Display`, `Position`, `Left`, `Top`, `Right`, `Bottom`, and `Overflow`. The fields are public so that `element.Style.Width = 120;` compiles. A write sets no dirty bit. The caller then calls `MarkDirty(DirtyFlags.Layout)`. The enums are `FlexDirection`, `FlexWrap`, `Justify`, `Align`, `Display`, `PositionType`, and `Overflow`.
+The layout inputs are 25 public fields of `ComputedStyle`: `FlexDirection`, `Width`, `Height`, `Margin`, `Padding`, `BorderWidth`, `FlexGrow`, `FlexShrink`, `FlexBasis`, `MinWidth`, `MinHeight`, `MaxWidth`, `MaxHeight`, `JustifyContent`, `AlignItems`, `AlignSelf`, `FlexWrap`, `AlignContent`, `Display`, `Position`, `Left`, `Top`, `Right`, `Bottom`, and `Overflow`. The fields are public so that a read of a nested value, such as `Style.Margin.Left`, compiles. Game code does not write them. It writes `Element.Inline`, and the style pass sets `Layout` when the computed value changes (section 7). The enums are `FlexDirection`, `FlexWrap`, `Justify`, `Align`, `Display`, `PositionType`, and `Overflow`.
 
 A `Length` holds a value and a `LengthUnit`: `Undefined`, `Pixel`, `Percent`, or `Auto`. `Length.Px(10)`, `Length.Percent(50)`, and `Length.Auto` make the values. A `float` converts to pixels. A percent resolves against the size of the parent content box on the same axis. The exceptions are a margin and a padding, which resolve against the parent width on all four edges. `LengthEdges` holds a `Length` for `Left`, `Top`, `Right`, and `Bottom`. The engine has no start or end edge.
 
@@ -374,17 +389,85 @@ Classes, pseudo-states, and a cascade on the element tree.
 ### Model
 
 ```csharp
-public struct StyleRule
+public readonly struct Selector
 {
-    public Selector Selector;        // class, name, type, pseudo-state, and a parent-child chain of depth 2
-    public StyleProperties Props;    // sparse set of property values
-    public int Specificity;
+    public ClassId Class { get; }               // none, or the class that the element must hold
+    public ElementTypeId Type { get; }          // none, or the type id that the element must have
+    public int Specificity { get; }             // class 10, type 1, both 11
+    public static Selector ForClass(ClassId id);
+    public static Selector ForType(ElementTypeId type);
+    public static Selector ForTypeAndClass(ElementTypeId type, ClassId id);
+}
+
+public struct StyleProperties                   // sparse set: a mask and one value for each member
+{
+    public bool IsEmpty { get; }
+    public bool IsSet(StyleProperty property);
+    public void Clear(StyleProperty property);
+    public Length Width { get; set; }           // one property for each member of ComputedStyle (32)
+    // ...
+}
+
+public readonly struct StyleRule
+{
+    public readonly Selector Selector;
+    public readonly StyleProperties Properties; // a copy of the set at creation
+    public readonly int Specificity;            // the value of the selector at creation
+    public StyleRule(in Selector selector, in StyleProperties properties);
+}
+
+public sealed class StyleSheet                  // immutable
+{
+    public ReadOnlySpan<StyleRule> Rules { get; }   // sorted by specificity, then by the order of add
+
+    public sealed class Builder
+    {
+        public Builder Add(in Selector selector, in StyleProperties properties);  // default(Selector) throws
+        public StyleSheet Build();              // copies the rules, so a later Add changes no built sheet
+    }
+}
+
+public readonly struct InlineStyle              // the view behind Element.Inline
+{
+    public Length Width { get; set; }           // a set to a new value marks Style
+    // ... one property for each member of ComputedStyle
+    public bool IsSet(StyleProperty property);
+    public void Clear(StyleProperty property);  // a clear of an unset member marks nothing
 }
 ```
 
-A `StyleSheet` is a sorted rule list. The style pass matches rules against a dirty element, merges by specificity, and writes `ComputedStyle`. Inline style on an element wins.
+A `StyleSheet` is an immutable, sorted rule list. `StyleSheet.Builder` copies each rule at `Build`. The context merges the rules of all its sheets into one cascade. The style pass matches the cascade against a dirty element and writes `ComputedStyle`. `StyleProperties` is a struct with a mask and one field for each member (about 250 bytes), so a rule and an inline set need no allocation per property. A set to the default value still sets the bit, so a rule can put a member back to its default. `Clear` is the only way to remove a value.
 
-The imgui-renderer epic adds four paint members to `ComputedStyle`: `BackgroundColor` (`Rgba8`), `BorderColor` (`Rgba8`), `CornerRadius` (`Corners`), and `Opacity` (`float`, default 1). In this epic, code writes them inline. The cascade of the style-system epic writes them later. A write sets no dirty bit. After a write, the caller calls `MarkDirty(DirtyFlags.Paint)`. The paint members change no layout.
+`ComputedStyle` holds 32 members. They are the 25 layout inputs (section 6), four paint members, and three text members. The paint members are `BackgroundColor` (`Rgba8`), `BorderColor` (`Rgba8`), `CornerRadius` (`Corners`), and `Opacity` (`float`, default 1). The text members are `Color` (`Rgba8`), `Font` (`FontHandle`), and `FontSize` (`float`). `Label` reads the three text members from its style (section 8).
+
+**The cascade order.** The style pass builds the style of a dirty element from `default(ComputedStyle)` in these steps:
+
+1. The pass applies each matching rule in the order of the cascade. The order is the specificity (10 for each class, 1 for each type), then the order of `AddSheet`, then the rule order in the sheet. A later rule wins. The decimal sum keeps the CSS order only while each tier count stays below 10. The selector-matching feature must replace the weights with bit fields, or cap the counts, before it adds the name and the pseudo-states, because one selector can hold 12 units of the class tier.
+2. The pass applies the inline set last. An inline member always wins over a rule.
+3. A text member that no rule and no inline value sets takes the value of the parent. A root takes the text default of the context.
+
+A type rule matches an element when the type id of the selector equals `Element.TypeId`. A class rule matches when the element holds the class. A rule with both parts needs both. A `default(Selector)` matches nothing, and the builder rejects it.
+
+**The inheritance.** `Color`, `Font`, and `FontSize` inherit. The other members do not. When a text member of an element changes, the pass marks each child with `Style` during the visit, and the visit reads the bits again after the restyle. Thus a new value flows to the descendants in the same `Update`. A child with its own value for a member keeps it. A child that sets only `Color` still inherits `Font` and `FontSize`. A move to a new parent marks the full subtree of the moved element with `Style`, so a move into another context restyles each descendant with the sheets of that context. `AddRoot` marks the full subtree of the new root.
+
+**The context defaults.** `UiContext.CreateInfo` holds `DefaultColor`, `DefaultFont`, and `DefaultFontSize`. A `null` color gives opaque white (255, 255, 255, 255), because `default(Rgba8)` is transparent and draws no text. The default font is the id 0, the default font of the renderer. The default font size is 0, the default size of the font. The create-info checks no value of the font size. A context from `UiContext()` has the same defaults.
+
+**The dirty rule.** The pass compares the old style with the new style member by member and marks the kinds that changed:
+
+| Changed member | Bit |
+|----------------|-----|
+| A layout member: the 25 inputs, with `Overflow`, `Display`, and `BorderWidth` | `Layout` |
+| A paint member, or `Color` | `Paint` |
+| `Font` or `FontSize` | `Paint`, and `Layout` also on a `Label` |
+| No member (the same value, also `NaN` to `NaN`) | no bit |
+
+`Overflow`, `Display`, and `BorderWidth` count as layout members, because the draw walk reads them and the layout engine reads them. A change of a text member also marks each child with `Style` (the inheritance). A plain element and an `Image` get `Paint` for a new font size, because only a `Label` measures text. The `Label` check is a type check in the pass.
+
+**The write rule.** Game code writes `Element.Inline` or a rule. It does not write `Element.Style`. The style pass owns the style, so it rebuilds the style of a dirty element from the defaults. A direct write would not survive the next restyle.
+
+**The sheets of a context.** `AddSheet` and `RemoveSheet` build the cascade again and mark each element of each root with `Style`. Both allocate, so call them in load code. `AddSheet` throws `InvalidOperationException` for a sheet that the context holds already. `RemoveSheet` returns `false` for an absent sheet. A sheet can be shared between contexts.
+
+**The cost.** The inline set lives in each element, also when empty. It adds about 250 bytes to each element (`StyleProperties`) and 8 bytes for the view. The `--facts` line shows 1041.5 bytes for each element in the 1000-element tree with its 12-rule sheet. `StylePassTests.TheStylePassAllocatesNothingAfterWarmUp` and the style step of `ThousandElementAllocationTests` guard the pass (section 14). The rules have no index yet, so each restyled element scans all rules of the cascade. A rule index waits for a benchmark.
 
 ### Transitions
 
@@ -392,8 +475,10 @@ A property transition has a duration and an easing. The style pass writes the ta
 
 ### Design Decisions
 
-- Pseudo-states: `:hover`, `:active`, `:focus`, `:disabled`, `:checked`.
-- Selector depth 2 (`.a > .b` and `.a .b`) in the first release. Depth is a constant, not a list.
+- Pseudo-states: `:hover`, `:active`, `:focus`, `:disabled`, `:checked`. The selector-matching feature adds them. The stylesheet-model feature matches a type and a class only.
+- Selector depth 2 (`.a > .b` and `.a .b`) in the first release. Depth is a constant, not a list. The selector-matching feature adds it.
+- The style pass has its own recursion and not `DirtyWalk`, because it marks children during the visit.
+- `StyleRule` stores the specificity at creation, so a change of the weights touches `Selector.Specificity` only.
 - Theme variables (`--name`) resolve at parse time per stylesheet, not at runtime.
 
 ---
@@ -485,7 +570,7 @@ return MeasureText(font, size, text, limit)             // wrap at the limit
 
 The callback calls the measurer one or two times. It sets each component of a measurer result that is not finite, or that is below 0, to 0, so the engine always gets a finite size. It does not clamp to the limit. The engine adds the padding and the border, and it applies `Exactly`, the minimum, and the maximum. The layout cache stops a repeat of the same constraint, so the label keeps no measure cache. An empty text measures as one line: `(0, size)`.
 
-**The label draw rule.** The label draws its text at the top-left corner of its content box. The color is `Color` scaled by the opacity. An empty text, or a color with an alpha of 0 after the scale, draws nothing. The call is `Text((content.X, content.Y), Font, Size, color, Text, DrawWrapWidth(content.Z, borderBox.Z))`. The measure and the draw give the same lines, in the limits of the snap rule. With `Exactly`, both sides wrap at the same snapped width. With `AtMost`, the measure wraps at the limit and gives the widest line, and the draw wraps at that width. A greedy break at the limit takes the longest prefix that fits. That prefix also fits the widest line, so the draw takes the same prefix. The values differ, and the lines stay the same.
+**The label draw rule.** The label draws its text at the top-left corner of its content box. The color is `Style.Color` scaled by the opacity. An empty text, or a color with an alpha of 0 after the scale, draws nothing. The call is `Text((content.X, content.Y), Style.Font, Style.FontSize, color, Text, DrawWrapWidth(content.Z, borderBox.Z))`. The measure and the draw give the same lines, in the limits of the snap rule. With `Exactly`, both sides wrap at the same snapped width. With `AtMost`, the measure wraps at the limit and gives the widest line, and the draw wraps at that width. A greedy break at the limit takes the longest prefix that fits. That prefix also fits the widest line, so the draw takes the same prefix. The values differ, and the lines stay the same.
 
 **The snap rule.** `Label.SnapWrapWidth` (internal) gives the wrap width of the measure and of the draw. A value that is not finite, or 0 or less, gives 0 (no wrap). A value within 1/64 pixel of a whole number gives that whole number. Another value stays the same. The snap removes float noise near a whole number. The value `(w + insets) - insets` can differ from `w` by one unit in the last place of the box width. A line that fits exactly can then wrap. A content width of 0 thus draws with no wrap, and the text extends past the box. `Overflow.Hidden` clips it.
 
@@ -501,7 +586,9 @@ The callback calls the measurer one or two times. It sets each component of a me
 
 The aspect is `natural.X / natural.Y`. A natural size with a component of 0, or a content box with no area, uses the `StretchToFill` rule. The image then still sends the call, and the renderer skips a rect with no area. A flipped UV rect keeps its direction, because the crop scales the signed span. An unknown `ImageScaleMode` value draws as `StretchToFill`. The rules are internal static functions (`Image.NaturalSize`, `Image.MeasureAxis`, `Image.FitRect`, and `Image.CropUv`), so a test checks them with no tree.
 
-**Limits.** An image with a style width and an auto height keeps its natural height, so its aspect changes. The `ScaleToFit` rect can have fractional pixels, and the image does not snap it. A minimum width above the available width gives the box the lines of the available width. The draw wraps at the box width and can use fewer lines. A label has no single-line mode and no text alignment. `Label.Color`, `Label.Font`, and `Label.Size` are properties of the element, not style fields.
+**Limits.** An image with a style width and an auto height keeps its natural height, so its aspect changes. The `ScaleToFit` rect can have fractional pixels, and the image does not snap it. A minimum width above the available width gives the box the lines of the available width. The draw wraps at the box width and can use fewer lines. A label has no single-line mode and no text alignment.
+
+**The text style.** `Label` has no color, font, or size member. It reads `Style.Color`, `Style.Font`, and `Style.FontSize`, which a rule, an inline value, or the parent sets (section 7). Write them with `label.Inline.Color`, `label.Inline.Font`, and `label.Inline.FontSize`, or set them on an ancestor. The measure callback and the draw take `ref readonly ComputedStyle style = ref Style` one time, so they copy no struct. A label with no value draws in the default color of the context (opaque white by default). A change of `Font` or `FontSize` marks `Layout` and `Paint`, and a change of `Color` marks `Paint` only.
 
 ### Design Decisions
 
@@ -617,13 +704,15 @@ The Vulkan backend binds one render pass at construction. Phase 5 tests a second
 ### Test types
 
 - **Unit tests** on the layout engine with fixtures from the Yoga test suite, ported by hand.
-- **Unit tests** on the style cascade, the XML loader, the stylesheet parser, and the framework diff.
-- **Allocation tests** that run update and draw on a warm 1000-element tree and assert zero bytes allocated. `ThousandElementAllocationTests` is the gate. It covers the update and the draw. The draw test runs full frames (`Update`, then `Draw` into a `RecordingRenderer`) after a warm-up. Each zero-byte gate of `BrutalUi.Core.Tests` calls `AllocationGate.ReleaseAllocationContext()` right before its measured region. A background GC can add the free part of the allocation context to the counter, and the release stops this. `BrutalUi.ImGui.Tests` runs no tests in parallel, so its gates do not call the helper.
+- **Unit tests** on the XML loader, the stylesheet parser, and the framework diff.
+- **Style tests** in `BrutalUi.Core.Tests/Style/`. `StylePropertiesTests` checks the sparse set, the masks, and the throw for a value that is not a member. `StyleSheetTests` checks the builder, the sort, and the rule copy. `StylePassTests` checks the cascade, the compare of each member (a theory over all 32 members gives the kind of bit for each), and the dirty rule table of section 7. `InlineStyleTests` checks the view: a theory over all members checks that each set writes its own bit, that the same value marks nothing, and that a clear gives the default back. `TextInheritanceTests` checks the inheritance, the child marks, and the context defaults. `TypeSelectorTests` and `ElementTypeTests` check the type id and the type match. `MultiSheetTests` checks the merge of more than one sheet, `RemoveSheet`, and the mark of `AddRoot`. The layout tests and the Yoga fixtures write through `Inline`, and no expected rect changed. `LayoutDifferentialTests` compares 200 random trees with a fresh layout.
+- **Allocation tests** that run update and draw on a warm 1000-element tree and assert zero bytes allocated. `ThousandElementAllocationTests` is the gate. It covers the update and the draw, and it holds a style step (see below). The draw test runs full frames (`Update`, then `Draw` into a `RecordingRenderer`) after a warm-up. Each zero-byte gate of `BrutalUi.Core.Tests` calls `AllocationGate.ReleaseAllocationContext()` right before its measured region. A background GC can add the free part of the allocation context to the counter, and the release stops this. `BrutalUi.ImGui.Tests` runs no tests in parallel, so its gates do not call the helper.
+- **The style step of the allocation gate.** The 1000-element tree holds a sheet of 12 rules, added with `AddSheet`: type rules, class rules, and rules with a type and a class. The frame body adds and removes two classes (`selected` on a grid slot and `muted` on the sidebar), and it marks `Style` on each element. Each round then runs a full restyle of 1000 elements, with a merge of the rules and the inheritance. The gate asserts zero allocated bytes. `TheStyleStepRestylesTheTree` checks that the step changes the slot fill, the label color, and the inherited values. `StylePassTests.TheStylePassAllocatesNothingAfterWarmUp` is a smaller gate on 50 elements and 4 rules. A planted `GC.KeepAlive(new object())` in `Restyle` fails 7 gates: both gates of `ThousandElementAllocationTests` and one gate in each of 5 other classes. The class has 9 tests.
 - **Headless ImGui tests** in `BrutalUi.ImGui.Tests`. A harness creates an ImGui context with no window and no GPU, runs frames, and reads the background draw list as text lines (clip, texture, element count, vertex bounds, colors). The tests need no `VulkanBackend`. `dotnet test` loads the native ImGui library of the pinned `Ahwoo.BRUTAL.ImGui` package.
 - **A second allocation gate.** `ImGuiRendererAllocationTests` runs full frames through `ImGuiRenderer` on the 1000-element tree and through the direct calls (rounded rect with a border, square and rounded image, wrapped text, and a measure outside a frame). It asserts zero allocated bytes after warm-up. A test also checks that the measured draw does real work, so a draw that does nothing cannot pass.
 - **Element tests** in `BrutalUi.Core.Tests/Elements/`: `LabelTests`, `LabelWrapTests`, `LabelTextTests`, `ImageTests`, and `ContentBoxTests`. `ContentInsetsTests` in `Layout/` checks the insets of the engine. `RecordingRenderer` is the measurer and the renderer. Its wrap rule counts bytes, and each byte is `size * 0.5` pixels wide. It breaks a line at a blank and cuts a word that is wider than the wrap width. The tests check the measure, draw, snap, and dirty rules. They also check the locale refresh, the scale modes, and the content box. A theory checks each width from 8 to 200, and from 20 to 400 with a percent padding. At each width, the text at the draw wrap width has the height of the measured box.
 - **ImGui label tests.** `ImGuiLabelTests` and `ImGuiImageElementTests` in `BrutalUi.ImGui.Tests` run a `Label` and an `Image` through `ImGuiRenderer` on the headless context. They use the real ImGui measure and read the vertices of the background list. A sweep checks each width from 40 to 200, with no padding and with a padding of 5 %. At each width, the measure and the draw give the same line count. Each glyph lies inside the label box grown by 1 pixel.
-- **A third allocation gate.** `ElementAllocationTests` runs 100 frames on a tree of 50 labels with wrapped text, 50 images with a width of 32, and one label with an `LString`. Each frame changes 10 labels and 10 images. On a label, it sets the text, the color, the size, and the font. On an image, it sets the tint, the UV rect, the texture, and the scale mode. A new UV span runs the image measure. The frame also sets one of two `LString` instances on the last label. Then it runs `Update` and `Draw` into a `RecordingRenderer`. The tests assert zero allocated bytes after warm-up for the span path, the string path, and `RefreshLocalizedText`. Before each measured refresh, the test changes the locale string, so each refresh takes the slow path. `TheMeasuredBodyDoesRealWork` checks that each frame measures and draws the new values. `ImGuiRendererAllocationTests.LabelUpdateAndDrawAllocateNothingAfterWarmUp` runs the same scene through `ImGuiRenderer`. The harness has one font, so that test does not change the font. A planted allocation in the label measure makes three of these tests fail. A planted allocation in the image measure, in the `Uv`, `Color`, or `Size` setter, in `SetText(LString)`, or in the slow path of the refresh makes one test or more fail.
+- **A third allocation gate.** `ElementAllocationTests` runs 100 frames on a tree of 50 labels with wrapped text, 50 images with a width of 32, and one label with an `LString`. Each frame changes 10 labels and 10 images. On a label, it sets the text and the inline color, size, and font. On an image, it sets the tint, the UV rect, the texture, and the scale mode. A new UV span runs the image measure. The frame also sets one of two `LString` instances on the last label. Then it runs `Update` and `Draw` into a `RecordingRenderer`. The tests assert zero allocated bytes after warm-up for the span path, the string path, and `RefreshLocalizedText`. Before each measured refresh, the test changes the locale string, so each refresh takes the slow path. `TheMeasuredBodyDoesRealWork` checks that each frame measures and draws the new values. `ImGuiRendererAllocationTests.LabelUpdateAndDrawAllocateNothingAfterWarmUp` runs the same scene through `ImGuiRenderer`. The harness has one font, so that test does not change the font. A planted allocation in the label measure makes three of these tests fail. A planted allocation in the image measure, in the `Uv`, `Color`, or `Size` setter, in `SetText(LString)`, or in the slow path of the refresh makes one test or more fail.
 - **Benchmarks** with BenchmarkDotNet for layout and draw on that tree. `TreeLayoutBenchmark` measures the full layout, a dirty subtree, and a clean update on the 1000-element tree. The settings panel is hidden, so the full layout pass lays out 780 elements and sets the 220 elements of the panel to zero. `PercentChainBenchmark` measures a leaf mark under a chain of percent sizes. `TreeDrawBenchmark` measures `Draw` on the 1000-element tree into `RecordingRenderer`. The time holds the walk and the cost of the recording.
 - **Facts report.** The `--facts` mode of the benchmark project prints four `facts:` lines: the size of the tree, the callback calls of the two percent chains, and the number of levels that pass on a 1 MB stack.
 - **Sample projects** as the integration test, built in CI. The HelloPanel smoke run (`--frames 120`) prints 3 lines: `HelloPanel: 120 frames rendered.`, `HelloPanel: last frame: draw commands 2, vertices 128.`, and `HelloPanel: bytes after warm-up: Update and Draw 0, frame <F>, in 117 frames.` The run is also a gate. It exits with code 1 and writes `HelloPanel: Update and Draw allocated <B> bytes after warm-up. The limit is 0 bytes.` to standard error when the UI region (`ViewportSize`, `Update`, and `Draw`) allocates after 3 warm-up frames. The frame number is a report only. In a measured frame in which the thread allocated since the last release, the sample releases the allocation context before the UI region and outside it, for the same cause as the test gates.

@@ -27,15 +27,15 @@ public sealed class SizeOverflowFixtureTests
     {
         // Yoga fixture: nested_overflowing_child
         Element root = new() { Name = "root" };
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
 
         Element child0Child0 = AddChild(child0, "root_child0_child0");
-        child0Child0.Style.Width = 200;
-        child0Child0.Style.Height = 200;
+        child0Child0.Inline.Width = 200;
+        child0Child0.Inline.Height = 200;
 
         LayoutFixture.Calculate(root);
 
@@ -50,17 +50,17 @@ public sealed class SizeOverflowFixtureTests
     {
         // Yoga fixture: nested_overflowing_child_in_constraint_parent
         Element root = new() { Name = "root" };
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 100;
-        child0.Style.Height = 100;
+        child0.Inline.Width = 100;
+        child0.Inline.Height = 100;
 
         Element child0Child0 = AddChild(child0, "root_child0_child0");
-        child0Child0.Style.Width = 200;
-        child0Child0.Style.Height = 200;
+        child0Child0.Inline.Width = 200;
+        child0Child0.Inline.Height = 200;
 
         LayoutFixture.Calculate(root);
 
@@ -75,16 +75,16 @@ public sealed class SizeOverflowFixtureTests
     {
         // Yoga fixture: parent_wrap_child_size_overflowing_parent
         Element root = new() { Name = "root" };
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 100;
+        child0.Inline.Width = 100;
 
         Element child0Child0 = AddChild(child0, "root_child0_child0");
-        child0Child0.Style.Width = 100;
-        child0Child0.Style.Height = 200;
+        child0Child0.Inline.Width = 100;
+        child0Child0.Inline.Height = 200;
 
         LayoutFixture.Calculate(root);
 

@@ -19,17 +19,21 @@ namespace BrutalUi.Core.Tests;
 /// walks two tree sizes, and the recording renderer reaches its peak size during the warm-up.
 /// </para>
 /// <para>
-/// The tree is <see cref="ThousandElementTree"/>. The measured body rotates through eight kinds of change. Each kind
-/// dirties another part of the tree, so the layout pass runs that part and does not hit the cache: the width of a
-/// percent leaf, the width of a wrap item, the width of an absolute element, the <see cref="Display"/> of the hidden
-/// settings panel, a mark on three text leaves, a reorder of the sidebar, the viewport size, and a mark on each
-/// element. The kinds run in a fixed order, and the second round of a kind reverses the first.
+/// The tree is <see cref="ThousandElementTree"/>, with its sheet of <see cref="ThousandElementTree.RuleCount"/> rules.
+/// The measured body rotates through nine kinds of change. Each kind dirties another part of the tree, so the layout
+/// pass runs that part and does not hit the cache: the width of a percent leaf, the width of a wrap item, the width of
+/// an absolute element, the <see cref="Display"/> of the hidden settings panel, a mark on three text leaves, a reorder
+/// of the sidebar, the viewport size, and a mark on each element. The ninth kind, the style kind, toggles the class
+/// <c>selected</c> on grid slot 0 and the class <c>muted</c> on the sidebar, and then marks
+/// <see cref="DirtyFlags.Style"/> on each element. Thus the style pass restyles all 1000 elements against all rules,
+/// which is the worst case of the pass. The kinds run in a fixed order, and the second round of a kind reverses the
+/// first.
 /// </para>
 /// </remarks>
 public sealed class ThousandElementAllocationTests
 {
     private const int Iterations = 100;
-    private const int KindCount = 8;
+    private const int KindCount = 9;
     private const float Tolerance = 0.001f;
 
     /// <summary>The height of the body: 720 minus the padding of 16, the header of 48, and the footer of 64.</summary>
@@ -44,8 +48,20 @@ public sealed class ThousandElementAllocationTests
     /// <summary>The width of a settings toggle. The last element of the tree is one of them.</summary>
     private const float SettingsToggleWidth = 24f;
 
-    // The kinds of change that a step makes. A new kind gets a new constant after FullKind, and KindCount grows.
+    // The kinds of change that a step makes. A new kind gets a new constant after StyleKind, and KindCount grows.
     // Each test finds its kind by the constant and does not depend on the place of the kind in the order.
+    //
+    // | Kind         | Change                                                                 |
+    // |--------------|------------------------------------------------------------------------|
+    // | LeafKind     | the percent width of the value leaf of stat row 0                      |
+    // | WrapKind     | the width of grid slot 0, so slot 12 moves to another line             |
+    // | AbsoluteKind | the width of the tooltip                                               |
+    // | HiddenKind   | the Display of the settings panel                                      |
+    // | TextKind     | a layout mark on three text leaves                                     |
+    // | ReorderKind  | a move of the first sidebar item to the end, and back                  |
+    // | ViewportKind | the viewport width                                                     |
+    // | FullKind     | a layout mark on each element                                          |
+    // | StyleKind    | the classes selected and muted, and a style mark on each element       |
     private const int LeafKind = 0;
     private const int WrapKind = 1;
     private const int AbsoluteKind = 2;
@@ -54,6 +70,7 @@ public sealed class ThousandElementAllocationTests
     private const int ReorderKind = 5;
     private const int ViewportKind = 6;
     private const int FullKind = 7;
+    private const int StyleKind = 8;
 
     /// <summary>The tree and the step counter. The test builds all of it before the measure.</summary>
     private sealed class Scene
@@ -87,22 +104,22 @@ public sealed class ThousandElementAllocationTests
         switch (kind)
         {
             case LeafKind:
-                tree.StatValueLeaf.Style.Width = Length.Percent(
+                tree.StatValueLeaf.Inline.Width = Length.Percent(
                     second ? ThousandElementTree.ValueWidePercent : ThousandElementTree.ValueNarrowPercent);
                 tree.StatValueLeaf.MarkDirty(DirtyFlags.Layout);
                 break;
             case WrapKind:
-                tree.GridSlot.Style.Width = second ? ThousandElementTree.SlotWideWidth : ThousandElementTree.SlotNarrowWidth;
+                tree.GridSlot.Inline.Width = second ? ThousandElementTree.SlotWideWidth : ThousandElementTree.SlotNarrowWidth;
                 tree.GridSlot.MarkDirty(DirtyFlags.Layout);
                 break;
             case AbsoluteKind:
-                tree.Tooltip.Style.Width = second
+                tree.Tooltip.Inline.Width = second
                     ? ThousandElementTree.TooltipWideWidth
                     : ThousandElementTree.TooltipNarrowWidth;
                 tree.Tooltip.MarkDirty(DirtyFlags.Layout);
                 break;
             case HiddenKind:
-                tree.Settings.Style.Display = second ? Display.Flex : Display.None;
+                tree.Settings.Inline.Display = second ? Display.Flex : Display.None;
                 tree.Settings.MarkDirty(DirtyFlags.Layout);
                 break;
             case TextKind:
@@ -133,6 +150,27 @@ public sealed class ThousandElementAllocationTests
                 for (int i = 0; i < all.Length; i++)
                 {
                     all[i].MarkDirty(DirtyFlags.Layout);
+                }
+
+                break;
+            case StyleKind:
+                // The class changes mark the slot and the sidebar. The loop then marks each element, so the style
+                // pass restyles the full tree against each rule of the sheet.
+                if (second)
+                {
+                    tree.GridSlot.Classes.Add(tree.SelectedClass);
+                    tree.Sidebar.Classes.Add(tree.MutedClass);
+                }
+                else
+                {
+                    tree.GridSlot.Classes.Remove(tree.SelectedClass);
+                    tree.Sidebar.Classes.Remove(tree.MutedClass);
+                }
+
+                Element[] styled = tree.All;
+                for (int i = 0; i < styled.Length; i++)
+                {
+                    styled[i].MarkDirty(DirtyFlags.Style);
                 }
 
                 break;
@@ -231,6 +269,9 @@ public sealed class ThousandElementAllocationTests
     public void TheTreeHoldsTheRequiredMix()
     {
         ThousandElementTree tree = ThousandElementTree.Build();
+
+        // The style pass writes the inline set to the computed style, so the reads below come after one Update.
+        tree.Context.Update(0.016f);
         Element[] all = tree.All;
         Assert.Equal(ThousandElementTree.ElementCount, all.Length);
 
@@ -251,20 +292,20 @@ public sealed class ThousandElementAllocationTests
         {
             Element element = all[i];
             Assert.NotNull(element);
-            ref ComputedStyle style = ref element.Style;
+            ref readonly ComputedStyle style = ref element.Style;
             rows += style.FlexDirection == FlexDirection.Row ? 1 : 0;
             columns += style.FlexDirection == FlexDirection.Column ? 1 : 0;
             wraps += style.FlexWrap == FlexWrap.Wrap ? 1 : 0;
             grows += style.FlexGrow > 0f ? 1 : 0;
             absolutes += style.Position == PositionType.Absolute ? 1 : 0;
-            percents += HasPercentSize(ref style) ? 1 : 0;
+            percents += HasPercentSize(in style) ? 1 : 0;
             hidden += style.Display == Display.None ? 1 : 0;
             callbacks += element.Layout.Measure is null ? 0 : 1;
             backgrounds += style.BackgroundColor.A > 0 ? 1 : 0;
-            borders += HasVisibleBorder(ref style) ? 1 : 0;
+            borders += HasVisibleBorder(in style) ? 1 : 0;
             clips += style.Overflow != Overflow.Visible ? 1 : 0;
             fades += style.Opacity < 1f ? 1 : 0;
-            radii += HasCornerRadius(ref style) ? 1 : 0;
+            radii += HasCornerRadius(in style) ? 1 : 0;
         }
 
         Assert.True(rows >= 1);
@@ -290,6 +331,63 @@ public sealed class ThousandElementAllocationTests
         }
 
         Assert.Equal(ThousandElementTree.ElementCount, CountSubtree(tree.Root));
+
+        // The context holds the sheet: a second add of the same sheet throws, and the throw changes nothing.
+        Assert.Equal(ThousandElementTree.RuleCount, tree.Sheet.Rules.Length);
+        Assert.Throws<InvalidOperationException>(() => tree.Context.AddSheet(tree.Sheet));
+        Assert.False(tree.SelectedClass.IsNone);
+        Assert.False(tree.MutedClass.IsNone);
+        Assert.NotEqual(tree.SelectedClass, tree.MutedClass);
+
+        // The sheet reaches the tree: the slot rule gives the fill of the slot, the root rule gives the inherited
+        // text color, and the type rule gives the font size of each element. No element is in a toggled class.
+        Assert.Equal(ThousandElementTree.SlotColor, tree.GridSlot.Style.BackgroundColor);
+        Assert.Equal(ThousandElementTree.RootTextColor, tree.SidebarLabel.Style.Color);
+        Assert.Equal(ThousandElementTree.ElementFontSize, tree.SidebarLabel.Style.FontSize);
+        for (int i = 0; i < all.Length; i++)
+        {
+            Assert.False(all[i].Classes.Contains(tree.SelectedClass));
+            Assert.False(all[i].Classes.Contains(tree.MutedClass));
+        }
+    }
+
+    [Fact]
+    public void TheStyleStepRestylesTheTree()
+    {
+        Scene scene = BuildWarmScene();
+        ThousandElementTree tree = scene.Tree;
+        Element slot = tree.GridSlot;
+        Element label = tree.SidebarLabel;
+        float slotWidth = slot.Layout.Rect.Z;
+        Assert.Equal(ThousandElementTree.SlotColor, slot.Style.BackgroundColor);
+        Assert.Equal(ThousandElementTree.RootTextColor, label.Style.Color);
+        Assert.Equal(Length.Undefined, slot.Style.MinWidth);
+
+        // The first style step adds the classes. The slot takes the fill of the selected rule, and the label takes
+        // the muted color of the sidebar through the sidebar item. The inline width of the slot wins over the rule.
+        scene.StepCount = StyleKind;
+        Run(scene, 1);
+        Assert.True(slot.Classes.Contains(tree.SelectedClass));
+        Assert.True(tree.Sidebar.Classes.Contains(tree.MutedClass));
+        Assert.Equal(ThousandElementTree.SelectedSlotColor, slot.Style.BackgroundColor);
+        Assert.Equal(ThousandElementTree.MutedTextColor, label.Style.Color);
+        Assert.Equal(Length.Px(ThousandElementTree.SlotNarrowWidth), slot.Style.Width);
+        Assert.Equal(Length.Px(ThousandElementTree.SelectedMinWidth), slot.Style.MinWidth);
+        Assert.Equal(slotWidth, slot.Layout.Rect.Z, Tolerance);
+
+        // The muted color does not reach an element outside the sidebar.
+        Assert.Equal(ThousandElementTree.RootTextColor, tree.Tooltip.Style.Color);
+
+        // The next style step removes the classes and gives the old values back.
+        scene.StepCount = KindCount + StyleKind;
+        Run(scene, 1);
+        Assert.False(slot.Classes.Contains(tree.SelectedClass));
+        Assert.False(tree.Sidebar.Classes.Contains(tree.MutedClass));
+        Assert.Equal(ThousandElementTree.SlotColor, slot.Style.BackgroundColor);
+        Assert.Equal(ThousandElementTree.RootTextColor, label.Style.Color);
+        Assert.Equal(Length.Undefined, slot.Style.MinWidth);
+        Assert.Equal(slotWidth, slot.Layout.Rect.Z, Tolerance);
+        Assert.Equal(DirtyFlags.None, tree.Root.Dirty);
     }
 
     [Fact]
@@ -331,7 +429,7 @@ public sealed class ThousandElementAllocationTests
         Assert.Equal(ThousandElementTree.SlotWideWidth, tree.GridSlot.Layout.Rect.Z, Tolerance);
         Assert.NotEqual(wrapBefore, wrapSlot.Layout.Rect.Y, Tolerance);
         Assert.Equal(ThousandElementTree.TooltipWideWidth, tree.Tooltip.Layout.Rect.Z, Tolerance);
-        Assert.Equal(Display.Flex, tree.Settings.Style.Display);
+        Assert.Equal(Display.Flex, tree.Settings.Inline.Display);
 
         // The overlay takes no space in the flow, so the body keeps its height while the panel shows.
         Assert.Equal(BodyHeight, body.Layout.Rect.W, Tolerance);
@@ -353,7 +451,7 @@ public sealed class ThousandElementAllocationTests
         Assert.Equal(ThousandElementTree.SlotNarrowWidth, tree.GridSlot.Layout.Rect.Z, Tolerance);
         Assert.Equal(wrapBefore, wrapSlot.Layout.Rect.Y, Tolerance);
         Assert.Equal(ThousandElementTree.TooltipNarrowWidth, tree.Tooltip.Layout.Rect.Z, Tolerance);
-        Assert.Equal(Display.None, tree.Settings.Style.Display);
+        Assert.Equal(Display.None, tree.Settings.Inline.Display);
         Assert.Equal(0f, tree.Settings.Layout.Rect.Z);
         Assert.Equal(0f, tree.Settings.Layout.Rect.W);
         Assert.Same(sidebarItem, tree.Sidebar.Children[0]);
@@ -397,13 +495,13 @@ public sealed class ThousandElementAllocationTests
         // Run steps until the next step is a full step and the settings panel is hidden. The hidden kind of the
         // second round hides the panel before the full step of that round.
         int guard = KindCount * 4;
-        while (guard-- > 0 && (scene.StepCount % KindCount != FullKind || tree.Settings.Style.Display != Display.None))
+        while (guard-- > 0 && (scene.StepCount % KindCount != FullKind || tree.Settings.Inline.Display != Display.None))
         {
             Run(scene, 1);
         }
 
         Assert.Equal(FullKind, scene.StepCount % KindCount);
-        Assert.Equal(Display.None, tree.Settings.Style.Display);
+        Assert.Equal(Display.None, tree.Settings.Inline.Display);
         Run(scene, 1);
 
         long generation = tree.Root.Layout.Generation;
@@ -436,7 +534,7 @@ public sealed class ThousandElementAllocationTests
         Element[] all = tree.All;
 
         // The tree starts with the settings panel hidden. Draw the hidden frame without a step.
-        Assert.Equal(Display.None, tree.Settings.Style.Display);
+        Assert.Equal(Display.None, tree.Settings.Inline.Display);
         tree.Context.Draw(scene.Renderer);
         int hiddenRects = CountCalls(scene.Renderer, DrawCallKind.Rect);
         Assert.Equal(CountPainted(all), hiddenRects);
@@ -444,7 +542,7 @@ public sealed class ThousandElementAllocationTests
         Assert.True(CountCalls(scene.Renderer, DrawCallKind.PushClip) > 0);
 
         // Show the panel, update, and draw the visible frame.
-        tree.Settings.Style.Display = Display.Flex;
+        tree.Settings.Inline.Display = Display.Flex;
         tree.Settings.MarkDirty(DirtyFlags.Layout);
         tree.Context.Update(0.016f);
         tree.Context.Draw(scene.Renderer);
@@ -497,7 +595,7 @@ public sealed class ThousandElementAllocationTests
                 continue;
             }
 
-            ref ComputedStyle style = ref all[i].Style;
+            ref readonly ComputedStyle style = ref all[i].Style;
             bool fill = style.BackgroundColor.ScaleAlpha(opacity).A > 0;
             bool border = style.BorderWidth.Left.Unit == LengthUnit.Pixel
                 && style.BorderWidth.Left.Value > 0f
@@ -508,14 +606,14 @@ public sealed class ThousandElementAllocationTests
         return count;
     }
 
-    private static bool HasVisibleBorder(ref ComputedStyle style)
+    private static bool HasVisibleBorder(in ComputedStyle style)
     {
         return style.BorderWidth.Left.Unit == LengthUnit.Pixel
             && style.BorderWidth.Left.Value > 0f
             && style.BorderColor.A > 0;
     }
 
-    private static bool HasCornerRadius(ref ComputedStyle style)
+    private static bool HasCornerRadius(in ComputedStyle style)
     {
         return style.CornerRadius.TopLeft > 0f
             || style.CornerRadius.TopRight > 0f
@@ -523,7 +621,7 @@ public sealed class ThousandElementAllocationTests
             || style.CornerRadius.BottomLeft > 0f;
     }
 
-    private static bool HasPercentSize(ref ComputedStyle style)
+    private static bool HasPercentSize(in ComputedStyle style)
     {
         return style.Width.Unit == LengthUnit.Percent
             || style.Height.Unit == LengthUnit.Percent

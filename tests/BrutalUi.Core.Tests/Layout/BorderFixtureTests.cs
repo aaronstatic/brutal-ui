@@ -20,7 +20,7 @@ public sealed class BorderFixtureTests
         // Yoga fixture: border_no_size
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.BorderWidth = LengthEdges.All(10);
+        root.Inline.BorderWidth = LengthEdges.All(10);
 
         LayoutFixture.Calculate(root);
 
@@ -34,11 +34,11 @@ public sealed class BorderFixtureTests
         // Yoga fixture: border_container_match_child
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.BorderWidth = LengthEdges.All(10);
+        root.Inline.BorderWidth = LengthEdges.All(10);
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 10;
-        child0.Style.Height = 10;
+        child0.Inline.Width = 10;
+        child0.Inline.Height = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -53,13 +53,13 @@ public sealed class BorderFixtureTests
         // Yoga fixture: border_flex_child
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.BorderWidth = LengthEdges.All(10);
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.BorderWidth = LengthEdges.All(10);
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexGrow = 1;
-        child0.Style.Width = 10;
+        child0.Inline.FlexGrow = 1;
+        child0.Inline.Width = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -74,12 +74,12 @@ public sealed class BorderFixtureTests
         // Yoga fixture: border_stretch_child
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.BorderWidth = LengthEdges.All(10);
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.BorderWidth = LengthEdges.All(10);
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Height = 10;
+        child0.Inline.Height = 10;
 
         LayoutFixture.Calculate(root);
 

@@ -31,13 +31,13 @@ public sealed class BoxModelTests
     public void MarginLeftInRow()
     {
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Margin.Left = 10;
-        child0.Style.Width = 10;
+        child0.Inline.Margin = child0.Inline.Margin with { Left = 10 };
+        child0.Inline.Width = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -51,16 +51,16 @@ public sealed class BoxModelTests
     public void MarginRightMovesSibling()
     {
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Margin.Right = 10;
-        child0.Style.Width = 10;
+        child0.Inline.Margin = child0.Inline.Margin with { Right = 10 };
+        child0.Inline.Width = 10;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 10;
+        child1.Inline.Width = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -75,16 +75,16 @@ public sealed class BoxModelTests
     public void MarginTopAndBottomMoveSibling()
     {
         Element root = new() { Name = "root" };
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Margin.Top = 5;
-        child0.Style.Margin.Bottom = 5;
-        child0.Style.Height = 10;
+        child0.Inline.Margin = child0.Inline.Margin with { Top = 5 };
+        child0.Inline.Margin = child0.Inline.Margin with { Bottom = 5 };
+        child0.Inline.Height = 10;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Height = 10;
+        child1.Inline.Height = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -99,11 +99,11 @@ public sealed class BoxModelTests
     public void MarginBottomCountsInAutoHeight()
     {
         Element root = new() { Name = "root" };
-        root.Style.Width = 100;
+        root.Inline.Width = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Margin.Bottom = 10;
-        child0.Style.Height = 10;
+        child0.Inline.Margin = child0.Inline.Margin with { Bottom = 10 };
+        child0.Inline.Height = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -120,13 +120,13 @@ public sealed class BoxModelTests
     public void MarginLeftAndRightShrinkStretch()
     {
         Element root = new() { Name = "root" };
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Margin.Left = 10;
-        child0.Style.Margin.Right = 10;
-        child0.Style.Height = 10;
+        child0.Inline.Margin = child0.Inline.Margin with { Left = 10 };
+        child0.Inline.Margin = child0.Inline.Margin with { Right = 10 };
+        child0.Inline.Height = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -143,13 +143,13 @@ public sealed class BoxModelTests
     public void AbsolutePercentMarginTopResolvesAgainstWidth()
     {
         Element root = new() { Name = "root" };
-        root.Style.Width = 200;
-        root.Style.Height = 100;
+        root.Inline.Width = 200;
+        root.Inline.Height = 100;
 
         Element child0 = AddAbsoluteChild(root, "root_child0");
-        child0.Style.Top = 0;
-        child0.Style.Left = 0;
-        child0.Style.Margin.Top = Length.Percent(10);
+        child0.Inline.Top = 0;
+        child0.Inline.Left = 0;
+        child0.Inline.Margin = child0.Inline.Margin with { Top = Length.Percent(10) };
 
         LayoutFixture.Calculate(root);
 
@@ -164,13 +164,13 @@ public sealed class BoxModelTests
     public void AbsolutePercentMarginLeftResolvesAgainstWidth()
     {
         Element root = new() { Name = "root" };
-        root.Style.Width = 200;
-        root.Style.Height = 100;
+        root.Inline.Width = 200;
+        root.Inline.Height = 100;
 
         Element child0 = AddAbsoluteChild(root, "root_child0");
-        child0.Style.Top = 0;
-        child0.Style.Left = 0;
-        child0.Style.Margin.Left = Length.Percent(10);
+        child0.Inline.Top = 0;
+        child0.Inline.Left = 0;
+        child0.Inline.Margin = child0.Inline.Margin with { Left = Length.Percent(10) };
 
         LayoutFixture.Calculate(root);
 
@@ -188,13 +188,13 @@ public sealed class BoxModelTests
     public void AbsolutePercentMarginBottomWithBottomOffsetResolvesAgainstWidth()
     {
         Element root = new() { Name = "root" };
-        root.Style.Width = 200;
-        root.Style.Height = 100;
+        root.Inline.Width = 200;
+        root.Inline.Height = 100;
 
         Element child0 = AddAbsoluteChild(root, "root_child0");
-        child0.Style.Bottom = 0;
-        child0.Style.Left = 0;
-        child0.Style.Margin.Bottom = Length.Percent(10);
+        child0.Inline.Bottom = 0;
+        child0.Inline.Left = 0;
+        child0.Inline.Margin = child0.Inline.Margin with { Bottom = Length.Percent(10) };
 
         LayoutFixture.Calculate(root);
 
@@ -212,14 +212,14 @@ public sealed class BoxModelTests
     public void AbsolutePercentMarginTopInColumnReverseResolvesAgainstWidth()
     {
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.ColumnReverse;
-        root.Style.Width = 200;
-        root.Style.Height = 100;
+        root.Inline.FlexDirection = FlexDirection.ColumnReverse;
+        root.Inline.Width = 200;
+        root.Inline.Height = 100;
 
         Element child0 = AddAbsoluteChild(root, "root_child0");
-        child0.Style.Top = 0;
-        child0.Style.Left = 0;
-        child0.Style.Margin.Top = Length.Percent(10);
+        child0.Inline.Top = 0;
+        child0.Inline.Left = 0;
+        child0.Inline.Margin = child0.Inline.Margin with { Top = Length.Percent(10) };
 
         LayoutFixture.Calculate(root);
 
@@ -238,21 +238,15 @@ public sealed class BoxModelTests
     public void AbsolutePercentMarginResolvesAgainstPaddingBoxWidth()
     {
         Element root = new() { Name = "root" };
-        root.Style.Width = 200;
-        root.Style.Height = 100;
-        root.Style.BorderWidth.Left = 10;
-        root.Style.BorderWidth.Top = 10;
-        root.Style.BorderWidth.Right = 10;
-        root.Style.BorderWidth.Bottom = 10;
-        root.Style.Padding.Left = 5;
-        root.Style.Padding.Top = 5;
-        root.Style.Padding.Right = 5;
-        root.Style.Padding.Bottom = 5;
+        root.Inline.Width = 200;
+        root.Inline.Height = 100;
+        root.Inline.BorderWidth = LengthEdges.All(10);
+        root.Inline.Padding = LengthEdges.All(5);
 
         Element child0 = AddAbsoluteChild(root, "root_child0");
-        child0.Style.Top = 0;
-        child0.Style.Left = 0;
-        child0.Style.Margin.Top = Length.Percent(10);
+        child0.Inline.Top = 0;
+        child0.Inline.Left = 0;
+        child0.Inline.Margin = child0.Inline.Margin with { Top = Length.Percent(10) };
 
         LayoutFixture.Calculate(root);
 
@@ -268,7 +262,7 @@ public sealed class BoxModelTests
     public void WrappedRowFlexStartAddsTopMarginToLineStart()
     {
         Element root = BuildWrappedRow(Align.FlexStart, 20, out Element child0, out Element child1, out Element child2);
-        child2.Style.Margin.Top = 10;
+        child2.Inline.Margin = child2.Inline.Margin with { Top = 10 };
 
         LayoutFixture.Calculate(root);
 
@@ -287,7 +281,7 @@ public sealed class BoxModelTests
     public void WrappedRowCenterCentersMarginBox()
     {
         Element root = BuildWrappedRow(Align.Center, 40, out Element child0, out Element child1, out Element child2);
-        child1.Style.Margin.Top = 10;
+        child1.Inline.Margin = child1.Inline.Margin with { Top = 10 };
 
         LayoutFixture.Calculate(root);
 
@@ -307,7 +301,7 @@ public sealed class BoxModelTests
     public void WrappedRowFlexEndEndsMarginBoxAtLineEnd()
     {
         Element root = BuildWrappedRow(Align.FlexEnd, 40, out Element child0, out Element child1, out Element child2);
-        child1.Style.Margin.Bottom = 10;
+        child1.Inline.Margin = child1.Inline.Margin with { Bottom = 10 };
 
         LayoutFixture.Calculate(root);
 
@@ -330,23 +324,23 @@ public sealed class BoxModelTests
     public void WrappedColumnStretchKeepsHeightWithMargins()
     {
         Element root = new() { Name = "root" };
-        root.Style.Width = 100;
-        root.Style.Height = 100;
-        root.Style.FlexWrap = FlexWrap.Wrap;
-        root.Style.AlignContent = Align.FlexStart;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
+        root.Inline.FlexWrap = FlexWrap.Wrap;
+        root.Inline.AlignContent = Align.FlexStart;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Height = 40;
-        child0.Style.Margin.Left = 5;
-        child0.Style.Margin.Top = 3;
+        child0.Inline.Height = 40;
+        child0.Inline.Margin = child0.Inline.Margin with { Left = 5 };
+        child0.Inline.Margin = child0.Inline.Margin with { Top = 3 };
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 30;
-        child1.Style.Height = 40;
+        child1.Inline.Width = 30;
+        child1.Inline.Height = 40;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 20;
-        child2.Style.Height = 40;
+        child2.Inline.Width = 20;
+        child2.Inline.Height = 40;
 
         LayoutFixture.Calculate(root);
 
@@ -372,24 +366,24 @@ public sealed class BoxModelTests
     public void WrappedRowStretchKeepsWidthWithMargins()
     {
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
-        root.Style.FlexWrap = FlexWrap.Wrap;
-        root.Style.AlignContent = Align.FlexStart;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
+        root.Inline.FlexWrap = FlexWrap.Wrap;
+        root.Inline.AlignContent = Align.FlexStart;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 40;
-        child0.Style.Margin.Left = 5;
-        child0.Style.Margin.Top = 3;
+        child0.Inline.Width = 40;
+        child0.Inline.Margin = child0.Inline.Margin with { Left = 5 };
+        child0.Inline.Margin = child0.Inline.Margin with { Top = 3 };
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 40;
-        child1.Style.Height = 30;
+        child1.Inline.Width = 40;
+        child1.Inline.Height = 30;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 40;
-        child2.Style.Height = 20;
+        child2.Inline.Width = 40;
+        child2.Inline.Height = 20;
 
         LayoutFixture.Calculate(root);
 
@@ -521,24 +515,24 @@ public sealed class BoxModelTests
     public void WrappedColumnSpaceBetweenStretchFillsLineOnly()
     {
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Column;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
-        root.Style.FlexWrap = FlexWrap.Wrap;
-        root.Style.AlignContent = Align.SpaceBetween;
-        root.Style.AlignItems = Align.Stretch;
+        root.Inline.FlexDirection = FlexDirection.Column;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
+        root.Inline.FlexWrap = FlexWrap.Wrap;
+        root.Inline.AlignContent = Align.SpaceBetween;
+        root.Inline.AlignItems = Align.Stretch;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Height = 40;
-        child0.Style.MinWidth = 20;
+        child0.Inline.Height = 40;
+        child0.Inline.MinWidth = 20;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Height = 40;
-        child1.Style.MinWidth = 20;
+        child1.Inline.Height = 40;
+        child1.Inline.MinWidth = 20;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Height = 40;
-        child2.Style.MinWidth = 20;
+        child2.Inline.Height = 40;
+        child2.Inline.MinWidth = 20;
 
         LayoutFixture.Calculate(root);
 
@@ -563,25 +557,25 @@ public sealed class BoxModelTests
     public void GrowWithEachItemFrozenGivesFiniteRects()
     {
         Element root = new() { Name = "root" };
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         // The row is wider than the root, so its owner width (100) and its inner width (200) are different.
         Element row = AddChild(root, "row");
-        row.Style.FlexDirection = FlexDirection.Row;
-        row.Style.Width = 200;
-        row.Style.Height = 50;
+        row.Inline.FlexDirection = FlexDirection.Row;
+        row.Inline.Width = 200;
+        row.Inline.Height = 50;
 
         Element first = AddChild(row, "row_child0");
-        first.Style.FlexBasis = 10;
-        first.Style.MinWidth = Length.Percent(75);
-        first.Style.FlexGrow = 0.5f;
+        first.Inline.FlexBasis = 10;
+        first.Inline.MinWidth = Length.Percent(75);
+        first.Inline.FlexGrow = 0.5f;
 
         Element second = AddChild(row, "row_child1");
-        second.Style.Width = 30;
-        second.Style.MaxWidth = 20;
-        second.Style.FlexGrow = 1;
-        second.Style.Margin.Left = Length.Auto;
+        second.Inline.Width = 30;
+        second.Inline.MaxWidth = 20;
+        second.Inline.FlexGrow = 1;
+        second.Inline.Margin = second.Inline.Margin with { Left = Length.Auto };
 
         LayoutFixture.Calculate(root);
 
@@ -619,28 +613,28 @@ public sealed class BoxModelTests
     public void GrowWithEachItemFrozenAndRoundingResidualGivesBoundBasis(float grow0, float grow1, float grow2)
     {
         Element root = new() { Name = "root" };
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element row = AddChild(root, "row");
-        row.Style.FlexDirection = FlexDirection.Row;
-        row.Style.Width = 200;
-        row.Style.Height = 50;
+        row.Inline.FlexDirection = FlexDirection.Row;
+        row.Inline.Width = 200;
+        row.Inline.Height = 50;
 
         Element first = AddChild(row, "row_child0");
-        first.Style.FlexBasis = 10;
-        first.Style.MinWidth = Length.Percent(75);
-        first.Style.FlexGrow = grow0;
+        first.Inline.FlexBasis = 10;
+        first.Inline.MinWidth = Length.Percent(75);
+        first.Inline.FlexGrow = grow0;
 
         Element second = AddChild(row, "row_child1");
-        second.Style.Width = 30;
-        second.Style.MaxWidth = 5;
-        second.Style.FlexGrow = grow1;
+        second.Inline.Width = 30;
+        second.Inline.MaxWidth = 5;
+        second.Inline.FlexGrow = grow1;
 
         Element third = AddChild(row, "row_child2");
-        third.Style.Width = 30;
-        third.Style.MaxWidth = 5;
-        third.Style.FlexGrow = grow2;
+        third.Inline.Width = 30;
+        third.Inline.MaxWidth = 5;
+        third.Inline.FlexGrow = grow2;
 
         LayoutFixture.Calculate(root);
 
@@ -674,28 +668,28 @@ public sealed class BoxModelTests
     public void ShrinkWithEachItemFrozenAndRoundingResidualGivesBoundBasis(float shrink0, float shrink1, float shrink2)
     {
         Element root = new() { Name = "root" };
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element row = AddChild(root, "row");
-        row.Style.FlexDirection = FlexDirection.Row;
-        row.Style.Width = 50;
-        row.Style.Height = 50;
+        row.Inline.FlexDirection = FlexDirection.Row;
+        row.Inline.Width = 50;
+        row.Inline.Height = 50;
 
         Element first = AddChild(row, "row_child0");
-        first.Style.Width = 40;
-        first.Style.MinWidth = 40;
-        first.Style.FlexShrink = shrink0;
+        first.Inline.Width = 40;
+        first.Inline.MinWidth = 40;
+        first.Inline.FlexShrink = shrink0;
 
         Element second = AddChild(row, "row_child1");
-        second.Style.Width = 50;
-        second.Style.MinWidth = 50;
-        second.Style.FlexShrink = shrink1;
+        second.Inline.Width = 50;
+        second.Inline.MinWidth = 50;
+        second.Inline.FlexShrink = shrink1;
 
         Element third = AddChild(row, "row_child2");
-        third.Style.Width = 60;
-        third.Style.MinWidth = 60;
-        third.Style.FlexShrink = shrink2;
+        third.Inline.Width = 60;
+        third.Inline.MinWidth = 60;
+        third.Inline.FlexShrink = shrink2;
 
         LayoutFixture.Calculate(root);
 
@@ -726,21 +720,21 @@ public sealed class BoxModelTests
     public void InvalidGrowFactorCountsAsZero(float grow)
     {
         Element root = new() { Name = "root" };
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element row = AddChild(root, "row");
-        row.Style.FlexDirection = FlexDirection.Row;
-        row.Style.Width = 100;
-        row.Style.Height = 50;
+        row.Inline.FlexDirection = FlexDirection.Row;
+        row.Inline.Width = 100;
+        row.Inline.Height = 50;
 
         Element first = AddChild(row, "row_child0");
-        first.Style.Width = 20;
-        first.Style.FlexGrow = grow;
+        first.Inline.Width = 20;
+        first.Inline.FlexGrow = grow;
 
         Element second = AddChild(row, "row_child1");
-        second.Style.Width = 20;
-        second.Style.FlexGrow = 1;
+        second.Inline.Width = 20;
+        second.Inline.FlexGrow = 1;
 
         LayoutFixture.Calculate(root);
 
@@ -765,21 +759,21 @@ public sealed class BoxModelTests
     public void InvalidShrinkFactorCountsAsZero(float shrink)
     {
         Element root = new() { Name = "root" };
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element row = AddChild(root, "row");
-        row.Style.FlexDirection = FlexDirection.Row;
-        row.Style.Width = 100;
-        row.Style.Height = 50;
+        row.Inline.FlexDirection = FlexDirection.Row;
+        row.Inline.Width = 100;
+        row.Inline.Height = 50;
 
         Element first = AddChild(row, "row_child0");
-        first.Style.Width = 80;
-        first.Style.FlexShrink = shrink;
+        first.Inline.Width = 80;
+        first.Inline.FlexShrink = shrink;
 
         Element second = AddChild(row, "row_child1");
-        second.Style.Width = 80;
-        second.Style.FlexShrink = 1;
+        second.Inline.Width = 80;
+        second.Inline.FlexShrink = 1;
 
         LayoutFixture.Calculate(root);
 
@@ -810,12 +804,12 @@ public sealed class BoxModelTests
         out Element child3)
     {
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
-        root.Style.FlexWrap = FlexWrap.Wrap;
-        root.Style.AlignContent = alignContent;
-        root.Style.AlignItems = Align.Stretch;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
+        root.Inline.FlexWrap = FlexWrap.Wrap;
+        root.Inline.AlignContent = alignContent;
+        root.Inline.AlignItems = Align.Stretch;
 
         child0 = AddStretchChild(root, "root_child0");
         child1 = AddStretchChild(root, "root_child1");
@@ -834,8 +828,8 @@ public sealed class BoxModelTests
     private static Element AddStretchChild(Element parent, string name)
     {
         Element child = AddChild(parent, name);
-        child.Style.Width = 40;
-        child.Style.MinHeight = 20;
+        child.Inline.Width = 40;
+        child.Inline.MinHeight = 20;
         return child;
     }
 
@@ -858,24 +852,24 @@ public sealed class BoxModelTests
         out Element child2)
     {
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
-        root.Style.FlexWrap = FlexWrap.Wrap;
-        root.Style.AlignContent = Align.FlexStart;
-        root.Style.AlignItems = alignItems;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
+        root.Inline.FlexWrap = FlexWrap.Wrap;
+        root.Inline.AlignContent = Align.FlexStart;
+        root.Inline.AlignItems = alignItems;
 
         child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 50;
-        child0.Style.Height = firstHeight;
+        child0.Inline.Width = 50;
+        child0.Inline.Height = firstHeight;
 
         child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 50;
-        child1.Style.Height = 20;
+        child1.Inline.Width = 50;
+        child1.Inline.Height = 20;
 
         child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 50;
-        child2.Style.Height = 20;
+        child2.Inline.Width = 50;
+        child2.Inline.Height = 20;
 
         return root;
     }
@@ -885,9 +879,9 @@ public sealed class BoxModelTests
     public void MeasureLeafGetsCallbackSize()
     {
         Element root = new() { Name = "root" };
-        root.Style.AlignItems = Align.FlexStart;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.AlignItems = Align.FlexStart;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddMeasuredChild(root, "root_child0", MeasureStub.Size40By30);
 
@@ -904,13 +898,13 @@ public sealed class BoxModelTests
     {
         // The callback returns 40 by 30. MaxWidth 25 cuts the width to 25. MinHeight 50 grows the height to 50.
         Element root = new() { Name = "root" };
-        root.Style.AlignItems = Align.FlexStart;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.AlignItems = Align.FlexStart;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddMeasuredChild(root, "root_child0", MeasureStub.Size40By30);
-        child0.Style.MaxWidth = 25;
-        child0.Style.MinHeight = 50;
+        child0.Inline.MaxWidth = 25;
+        child0.Inline.MinHeight = 50;
 
         LayoutFixture.Calculate(root);
 
@@ -924,8 +918,8 @@ public sealed class BoxModelTests
     {
         // The root is a column of 100 pixels width. The child stretches to 100. The callback gets the width 100.
         Element root = new() { Name = "root" };
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddMeasuredChild(root, "root_child0", MeasureStub.AvailableWidthBy20);
 
@@ -940,16 +934,16 @@ public sealed class BoxModelTests
     public void MeasureCallbackOnElementWithChildrenIsNotCalled()
     {
         Element root = new() { Name = "root" };
-        root.Style.AlignItems = Align.FlexStart;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.AlignItems = Align.FlexStart;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         MeasureStub stub = new(10, 10);
         Element child0 = AddMeasuredChild(root, "root_child0", stub.Callback);
 
         Element child0Child0 = AddChild(child0, "root_child0_child0");
-        child0Child0.Style.Width = 30;
-        child0Child0.Style.Height = 40;
+        child0Child0.Inline.Width = 30;
+        child0Child0.Inline.Height = 40;
 
         LayoutFixture.Calculate(root);
 
@@ -1024,7 +1018,7 @@ public sealed class BoxModelTests
         // The content is 300 + 20 = 320 wide. min(100, 320) = 100, and 100 is not below the padding of 20.
         // The height has no limit in the column: 300 + 20 = 320.
         Element root = BuildScrollTree(Overflow.Scroll, FlexDirection.Column, FlexDirection.Column, out Element scroll, out Element content);
-        scroll.Style.Padding = LengthEdges.All(10);
+        scroll.Inline.Padding = LengthEdges.All(10);
 
         LayoutFixture.Calculate(root);
 
@@ -1038,8 +1032,8 @@ public sealed class BoxModelTests
     public void ScrollContainerWithFixedSizeKeepsSize()
     {
         Element root = BuildScrollTree(Overflow.Scroll, FlexDirection.Column, FlexDirection.Column, out Element scroll, out Element content);
-        scroll.Style.Width = 60;
-        scroll.Style.Height = 70;
+        scroll.Inline.Width = 60;
+        scroll.Inline.Height = 70;
 
         LayoutFixture.Calculate(root);
 
@@ -1078,18 +1072,18 @@ public sealed class BoxModelTests
         out Element content)
     {
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = parentDirection;
-        root.Style.AlignItems = Align.FlexStart;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.FlexDirection = parentDirection;
+        root.Inline.AlignItems = Align.FlexStart;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         scroll = AddChild(root, "root_child0");
-        scroll.Style.FlexDirection = scrollDirection;
-        scroll.Style.Overflow = overflow;
+        scroll.Inline.FlexDirection = scrollDirection;
+        scroll.Inline.Overflow = overflow;
 
         content = AddChild(scroll, "root_child0_child0");
-        content.Style.Width = 300;
-        content.Style.Height = 300;
+        content.Inline.Width = 300;
+        content.Inline.Height = 300;
 
         return root;
     }
@@ -1101,9 +1095,9 @@ public sealed class BoxModelTests
     private static Element AddAbsoluteChild(Element parent, string name)
     {
         Element child = AddChild(parent, name);
-        child.Style.Position = PositionType.Absolute;
-        child.Style.Width = 10;
-        child.Style.Height = 10;
+        child.Inline.Position = PositionType.Absolute;
+        child.Inline.Width = 10;
+        child.Inline.Height = 10;
         return child;
     }
 

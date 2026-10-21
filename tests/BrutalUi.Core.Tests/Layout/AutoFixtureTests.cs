@@ -19,22 +19,22 @@ public sealed class AutoFixtureTests
     {
         // Yoga fixture: auto_width
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Width = Length.Auto;
-        root.Style.Height = 50;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Width = Length.Auto;
+        root.Inline.Height = 50;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 50;
-        child0.Style.Height = 50;
+        child0.Inline.Width = 50;
+        child0.Inline.Height = 50;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 50;
-        child1.Style.Height = 50;
+        child1.Inline.Width = 50;
+        child1.Inline.Height = 50;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 50;
-        child2.Style.Height = 50;
+        child2.Inline.Width = 50;
+        child2.Inline.Height = 50;
 
         LayoutFixture.Calculate(root);
 
@@ -50,21 +50,21 @@ public sealed class AutoFixtureTests
     {
         // Yoga fixture: auto_height
         Element root = new() { Name = "root" };
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Width = 50;
-        root.Style.Height = Length.Auto;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Width = 50;
+        root.Inline.Height = Length.Auto;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 50;
-        child0.Style.Height = 50;
+        child0.Inline.Width = 50;
+        child0.Inline.Height = 50;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 50;
-        child1.Style.Height = 50;
+        child1.Inline.Width = 50;
+        child1.Inline.Height = 50;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 50;
-        child2.Style.Height = 50;
+        child2.Inline.Width = 50;
+        child2.Inline.Height = 50;
 
         LayoutFixture.Calculate(root);
 
@@ -80,20 +80,20 @@ public sealed class AutoFixtureTests
     {
         // Yoga fixture: auto_flex_basis
         Element root = new() { Name = "root" };
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Width = 50;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Width = 50;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 50;
-        child0.Style.Height = 50;
+        child0.Inline.Width = 50;
+        child0.Inline.Height = 50;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 50;
-        child1.Style.Height = 50;
+        child1.Inline.Width = 50;
+        child1.Inline.Height = 50;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 50;
-        child2.Style.Height = 50;
+        child2.Inline.Width = 50;
+        child2.Inline.Height = 50;
 
         LayoutFixture.Calculate(root);
 
@@ -109,14 +109,14 @@ public sealed class AutoFixtureTests
     {
         // Yoga fixture: auto_position
         Element root = new() { Name = "root" };
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Width = 50;
-        root.Style.Height = 50;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Width = 50;
+        root.Inline.Height = 50;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Right = Length.Auto;
-        child0.Style.Width = 25;
-        child0.Style.Height = 25;
+        child0.Inline.Right = Length.Auto;
+        child0.Inline.Width = 25;
+        child0.Inline.Height = 25;
 
         LayoutFixture.Calculate(root);
 
@@ -130,14 +130,14 @@ public sealed class AutoFixtureTests
     {
         // Yoga fixture: auto_margin
         Element root = new() { Name = "root" };
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Width = 50;
-        root.Style.Height = 50;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Width = 50;
+        root.Inline.Height = 50;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Margin.Left = Length.Auto;
-        child0.Style.Width = 25;
-        child0.Style.Height = 25;
+        child0.Inline.Margin = child0.Inline.Margin with { Left = Length.Auto };
+        child0.Inline.Width = 25;
+        child0.Inline.Height = 25;
 
         LayoutFixture.Calculate(root);
 

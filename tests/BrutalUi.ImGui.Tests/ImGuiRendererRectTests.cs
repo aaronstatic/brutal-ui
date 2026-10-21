@@ -50,13 +50,13 @@ public sealed class ImGuiRendererRectTests
 
         UiContext context = new() { ViewportSize = new float2(400, 300) };
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Column;
-        root.Style.Width = 200;
-        root.Style.Height = 100;
-        root.Style.Padding = LengthEdges.All(10);
-        root.Style.BorderWidth = LengthEdges.All(2);
-        root.Style.Overflow = Overflow.Hidden;
-        root.Style.BackgroundColor = new Rgba8(10, 20, 30);
+        root.Inline.FlexDirection = FlexDirection.Column;
+        root.Inline.Width = 200;
+        root.Inline.Height = 100;
+        root.Inline.Padding = LengthEdges.All(10);
+        root.Inline.BorderWidth = LengthEdges.All(2);
+        root.Inline.Overflow = Overflow.Hidden;
+        root.Inline.BackgroundColor = new Rgba8(10, 20, 30);
         context.AddRoot(root);
         AddBox(root, 50, 20, Red);
         AddBox(root, 300, 20, Green);
@@ -948,9 +948,9 @@ public sealed class ImGuiRendererRectTests
     private static Element AddBox(Element parent, float width, float height, Rgba8 color)
     {
         Element child = new();
-        child.Style.Width = width;
-        child.Style.Height = height;
-        child.Style.BackgroundColor = color;
+        child.Inline.Width = width;
+        child.Inline.Height = height;
+        child.Inline.BackgroundColor = color;
         parent.Children.Add(child);
         return child;
     }

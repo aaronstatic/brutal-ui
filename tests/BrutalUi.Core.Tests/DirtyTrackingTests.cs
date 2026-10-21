@@ -562,8 +562,8 @@ public sealed class DirtyTrackingTests
 
         parent.Children.Add(child);
 
-        Assert.Equal(DirtyFlags.Paint, grandchild.Dirty);
-        Assert.Equal(DirtyFlags.Style | DirtyFlags.DescendantPaint, child.Dirty);
+        Assert.Equal(DirtyFlags.Style | DirtyFlags.Paint, grandchild.Dirty);
+        Assert.Equal(DirtyFlags.Style | DirtyFlags.DescendantStyle | DirtyFlags.DescendantPaint, child.Dirty);
         Assert.Equal(DirtyFlags.Layout | DirtyFlags.DescendantStyle | DirtyFlags.DescendantPaint, parent.Dirty);
         Assert.Equal(DirtyFlags.DescendantStyle | DirtyFlags.DescendantLayout | DirtyFlags.DescendantPaint, root.Dirty);
     }
@@ -763,7 +763,9 @@ public sealed class DirtyTrackingTests
 
         Assert.Equal(DirtyFlags.Layout, tree.Root.Dirty);
         Assert.Equal(DirtyFlags.None, tree.ATop.Dirty);
-        Assert.Equal(DirtyFlags.None, tree.BTop.Dirty);
+        Assert.Equal(DirtyFlags.Style | DirtyFlags.DescendantStyle, tree.BTop.Dirty);
+        Assert.Equal(DirtyFlags.Style, tree.BLeaf.Dirty);
+        Assert.Equal(DirtyFlags.Style, tree.BOther.Dirty);
     }
 
     /// <summary>

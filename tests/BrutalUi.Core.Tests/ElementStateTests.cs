@@ -99,8 +99,17 @@ public sealed class ElementStateTests
         Element first = new();
         Element second = new();
 
-        Assert.True(Unsafe.AreSame(ref first.Style, ref first.Style));
-        Assert.False(Unsafe.AreSame(ref first.Style, ref second.Style));
+        Assert.True(Unsafe.AreSame(ref Unsafe.AsRef(in first.Style), ref Unsafe.AsRef(in first.Style)));
+        Assert.False(Unsafe.AreSame(ref Unsafe.AsRef(in first.Style), ref Unsafe.AsRef(in second.Style)));
+    }
+
+    [Fact]
+    public void StyleIsReadOnly()
+    {
+        object[] attributes = typeof(Element).GetProperty("Style")!.GetMethod!.ReturnParameter
+            .GetCustomAttributes(false);
+
+        Assert.Contains(attributes, attribute => attribute.GetType().Name == "IsReadOnlyAttribute");
     }
 
     [Fact]
@@ -114,11 +123,10 @@ public sealed class ElementStateTests
     }
 
     [Fact]
-    public void WriteThroughStyleOrLayoutMarksNothing()
+    public void WriteThroughLayoutMarksNothing()
     {
         Element element = CleanElement();
 
-        element.Style = default;
         element.Layout = default;
 
         Assert.Equal(DirtyFlags.None, element.Dirty);

@@ -27,30 +27,30 @@ public sealed class LayoutCacheTests
         Element root = new() { Name = "root" };
 
         Element header = AddChild(root, "header");
-        header.Style.FlexDirection = FlexDirection.Row;
-        header.Style.Height = 40;
+        header.Inline.FlexDirection = FlexDirection.Row;
+        header.Inline.Height = 40;
         MeasureStub title = new(MeasureStub.ClampedText);
         Element titleLeaf = AddLeaf(header, "title", title);
-        titleLeaf.Style.FlexGrow = 1;
+        titleLeaf.Inline.FlexGrow = 1;
         MeasureStub badge = new(MeasureStub.WrappingText);
         AddLeaf(header, "badge", badge);
 
         Element body = AddChild(root, "body");
-        body.Style.FlexDirection = FlexDirection.Row;
-        body.Style.FlexWrap = FlexWrap.Wrap;
-        body.Style.FlexGrow = 1;
+        body.Inline.FlexDirection = FlexDirection.Row;
+        body.Inline.FlexWrap = FlexWrap.Wrap;
+        body.Inline.FlexGrow = 1;
         MeasureStub[] tiles = new MeasureStub[6];
         for (int i = 0; i < tiles.Length; i++)
         {
             tiles[i] = new MeasureStub(30, 20);
             Element tile = AddLeaf(body, "tile" + i, tiles[i]);
-            tile.Style.Margin = LengthEdges.All(5);
+            tile.Inline.Margin = LengthEdges.All(5);
         }
 
         MeasureStub overlay = new(10, 10);
         Element overlayLeaf = AddLeaf(root, "overlay", overlay);
-        overlayLeaf.Style.Position = PositionType.Absolute;
-        overlayLeaf.Style.Right = 4;
+        overlayLeaf.Inline.Position = PositionType.Absolute;
+        overlayLeaf.Inline.Right = 4;
 
         MeasureStub[] stubs = [title, badge, .. tiles, overlay];
 
@@ -85,10 +85,10 @@ public sealed class LayoutCacheTests
         // (AtMost 400, AtMost 300), and a layout with (Exactly 60, AtMost 300). The exact width 60 is the old
         // measured width, so the layout hits the measurement entry: 1 call for each leaf in the first pass.
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.AlignItems = Align.FlexStart;
-        root.Style.Width = 400;
-        root.Style.Height = 300;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.AlignItems = Align.FlexStart;
+        root.Inline.Width = 400;
+        root.Inline.Height = 300;
 
         MeasureStub[] stubs = new MeasureStub[4];
         Element[] leaves = new Element[4];
@@ -139,22 +139,22 @@ public sealed class LayoutCacheTests
     {
         // A row of 200 by 100: a fixed child A, a text leaf B that can shrink, and a fixed-size box C with a leaf L.
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.AlignItems = Align.FlexStart;
-        root.Style.Width = 200;
-        root.Style.Height = 100;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.AlignItems = Align.FlexStart;
+        root.Inline.Width = 200;
+        root.Inline.Height = 100;
 
         Element a = AddChild(root, "a");
-        a.Style.Width = 50;
-        a.Style.Height = 10;
+        a.Inline.Width = 50;
+        a.Inline.Height = 10;
 
         MeasureStub textStub = new(MeasureStub.WrappingText);
         Element b = AddLeaf(root, "b", textStub);
-        b.Style.FlexShrink = 1;
+        b.Inline.FlexShrink = 1;
 
         Element c = AddChild(root, "c");
-        c.Style.Width = 30;
-        c.Style.Height = 30;
+        c.Inline.Width = 30;
+        c.Inline.Height = 30;
         MeasureStub innerStub = new(10, 10);
         AddLeaf(c, "l", innerStub);
 
@@ -170,7 +170,7 @@ public sealed class LayoutCacheTests
 
         // A grows to 150. The free space is 200 - 150 - 68 - 30 = -48, so B shrinks to 68 - 48 = 20. The text
         // wraps at a width under 68 and gives a height of 32. C keeps its constraints (Exactly 30, Exactly 30).
-        a.Style.Width = 150;
+        a.Inline.Width = 150;
         a.MarkDirty(DirtyFlags.Layout);
         context.Update(0f);
         LayoutFixture.AssertNoLayoutBits(root);
@@ -190,8 +190,8 @@ public sealed class LayoutCacheTests
         Element root = new() { Name = "root" };
 
         Element p = AddChild(root, "p");
-        p.Style.Width = 100;
-        p.Style.Height = 50;
+        p.Inline.Width = 100;
+        p.Inline.Height = 50;
         MeasureStub fixedStub = new(10, 10);
         AddLeaf(p, "fixed", fixedStub);
 
@@ -223,15 +223,15 @@ public sealed class LayoutCacheTests
     public void NewViewportSizeWithFixedSizeRootCallsNoCallback()
     {
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.Width = 400;
-        root.Style.Height = 300;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.Width = 400;
+        root.Inline.Height = 300;
 
         MeasureStub[] stubs = new MeasureStub[3];
         for (int i = 0; i < stubs.Length; i++)
         {
             Element column = AddChild(root, "column" + i);
-            column.Style.Width = 100;
+            column.Inline.Width = 100;
             stubs[i] = new MeasureStub(MeasureStub.ClampedText);
             AddLeaf(column, "leaf" + i, stubs[i]);
         }
@@ -261,21 +261,17 @@ public sealed class LayoutCacheTests
         Element a = new() { Name = "a" };
 
         Element b = AddChild(a, "b");
-        b.Style.Width = 23;
-        b.Style.Height = 128;
-        b.Style.Padding.Left = 5;
-        b.Style.Padding.Right = 7;
-        b.Style.Padding.Top = 4;
+        b.Inline.Width = 23;
+        b.Inline.Height = 128;
+        b.Inline.Padding = b.Inline.Padding with { Left = 5, Right = 7, Top = 4 };
 
         Element c = AddChild(b, "c");
-        c.Style.Padding.Left = 0;
-        c.Style.Padding.Top = 6;
-        c.Style.BorderWidth.Top = 10;
+        c.Inline.Padding = c.Inline.Padding with { Left = 0, Top = 6 };
+        c.Inline.BorderWidth = c.Inline.BorderWidth with { Top = 10 };
 
         Element d = AddChild(c, "d");
-        d.Style.Margin.Left = 0;
-        d.Style.Margin.Top = 9;
-        d.Style.Padding.Top = 4;
+        d.Inline.Margin = d.Inline.Margin with { Left = 0, Top = 9 };
+        d.Inline.Padding = d.Inline.Padding with { Top = 4 };
         d.Layout.Measure = MeasureStub.ClampedText;
 
         UiContext context = new() { ViewportSize = new float2(391f, float.NaN) };
@@ -283,7 +279,7 @@ public sealed class LayoutCacheTests
         context.Update(0f);
         LayoutFixture.AssertNoLayoutBits(a);
 
-        b.Style.Height = Length.Undefined;
+        b.Inline.Height = Length.Undefined;
         b.MarkDirty(DirtyFlags.Layout);
         context.Update(0f);
         LayoutFixture.AssertNoLayoutBits(a);
@@ -306,11 +302,11 @@ public sealed class LayoutCacheTests
         Element c = AddChild(b, "c");
         Element d = AddChild(c, "d");
         Element f = AddChild(d, "f");
-        f.Style.FlexDirection = FlexDirection.Row;
+        f.Inline.FlexDirection = FlexDirection.Row;
         Element g = AddChild(f, "g");
         Element h = AddChild(g, "h");
-        h.Style.Position = PositionType.Absolute;
-        h.Style.MaxWidth = 0;
+        h.Inline.Position = PositionType.Absolute;
+        h.Inline.MaxWidth = 0;
         h.Layout.Measure = MeasureStub.ClampedText;
 
         UiContext context = new() { ViewportSize = new float2(413f, 268f) };
@@ -318,7 +314,7 @@ public sealed class LayoutCacheTests
         context.Update(0f);
         LayoutFixture.AssertNoLayoutBits(a);
 
-        g.Style.FlexBasis = 25;
+        g.Inline.FlexBasis = 25;
         g.MarkDirty(DirtyFlags.Layout);
         context.Update(0f);
         LayoutFixture.AssertNoLayoutBits(a);
@@ -336,25 +332,25 @@ public sealed class LayoutCacheTests
         // Regression (a new owner size resets the cache). The child keeps the same constraints, but its percent
         // padding resolves against the new width of its parent.
         Element root = new() { Name = "root" };
-        root.Style.Width = 200;
-        root.Style.Height = 200;
-        root.Style.AlignItems = Align.FlexStart;
+        root.Inline.Width = 200;
+        root.Inline.Height = 200;
+        root.Inline.AlignItems = Align.FlexStart;
 
         Element child = AddChild(root, "child");
-        child.Style.Width = 100;
-        child.Style.Height = 100;
-        child.Style.Padding.Left = Length.Percent(10);
+        child.Inline.Width = 100;
+        child.Inline.Height = 100;
+        child.Inline.Padding = child.Inline.Padding with { Left = Length.Percent(10) };
 
         Element grand = AddChild(child, "grand");
-        grand.Style.Width = 10;
-        grand.Style.Height = 10;
+        grand.Inline.Width = 10;
+        grand.Inline.Height = 10;
 
         UiContext context = new() { ViewportSize = new float2(1000f, 1000f) };
         context.AddRoot(root);
         context.Update(0f);
         LayoutFixture.AssertRect(grand, 20, 0, 10, 10);
 
-        root.Style.Width = 300;
+        root.Inline.Width = 300;
         root.MarkDirty(DirtyFlags.Layout);
         context.Update(0f);
         LayoutFixture.AssertNoLayoutBits(root);
@@ -369,13 +365,13 @@ public sealed class LayoutCacheTests
     {
         // Regression (a new owner size resets the cache). The root resolves its percent padding against the viewport.
         Element root = new() { Name = "root" };
-        root.Style.Width = 100;
-        root.Style.Height = 100;
-        root.Style.Padding.Left = Length.Percent(10);
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
+        root.Inline.Padding = root.Inline.Padding with { Left = Length.Percent(10) };
 
         Element grand = AddChild(root, "grand");
-        grand.Style.Width = 10;
-        grand.Style.Height = 10;
+        grand.Inline.Width = 10;
+        grand.Inline.Height = 10;
 
         UiContext context = new() { ViewportSize = new float2(200f, 200f) };
         context.AddRoot(root);
@@ -397,9 +393,9 @@ public sealed class LayoutCacheTests
         // Regression (the root position on each pass). The root hits the cache, but its percent offset resolves
         // against the new viewport.
         Element root = new() { Name = "root" };
-        root.Style.Width = 100;
-        root.Style.Height = 100;
-        root.Style.Left = Length.Percent(10);
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
+        root.Inline.Left = Length.Percent(10);
 
         UiContext context = new() { ViewportSize = new float2(200f, 200f) };
         context.AddRoot(root);
@@ -421,24 +417,24 @@ public sealed class LayoutCacheTests
         // Regression (the zero-out clears the cache). A clean descendant of a hidden element must not keep its cache.
         Element root = new() { Name = "root" };
         Element a = AddChild(root, "a");
-        a.Style.Height = 50;
+        a.Inline.Height = 50;
         Element b = AddChild(root, "b");
         Element inner = AddChild(b, "inner");
-        inner.Style.Width = 30;
-        inner.Style.Height = 30;
+        inner.Inline.Width = 30;
+        inner.Inline.Height = 30;
 
         UiContext context = new() { ViewportSize = new float2(300f, 300f) };
         context.AddRoot(root);
         context.Update(0f);
 
-        b.Style.Display = Display.None;
+        b.Inline.Display = Display.None;
         b.MarkDirty(DirtyFlags.Layout);
         context.Update(0f);
         LayoutFixture.AssertNoLayoutBits(root);
         LayoutFixture.AssertRect(b, 0, 0, 0, 0);
         LayoutFixture.AssertRect(inner, 0, 0, 0, 0);
 
-        b.Style.Display = Display.Flex;
+        b.Inline.Display = Display.Flex;
         b.MarkDirty(DirtyFlags.Layout);
         context.Update(0f);
         LayoutFixture.AssertNoLayoutBits(root);
@@ -466,8 +462,8 @@ public sealed class LayoutCacheTests
         for (int i = 0; i < Depth; i++)
         {
             Element level = AddChild(current, "level" + i);
-            level.Style.FlexDirection = (i % 2 == 0) ? FlexDirection.Row : FlexDirection.Column;
-            level.Style.Padding = LengthEdges.All(Length.Percent(1));
+            level.Inline.FlexDirection = (i % 2 == 0) ? FlexDirection.Row : FlexDirection.Column;
+            level.Inline.Padding = LengthEdges.All(Length.Percent(1));
             current = level;
         }
 

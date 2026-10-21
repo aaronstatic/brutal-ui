@@ -20,15 +20,15 @@ public sealed class FlexFixtureTests
         // Yoga fixture: flex_basis_flex_grow_column
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexGrow = 1;
-        child0.Style.FlexBasis = 50;
+        child0.Inline.FlexGrow = 1;
+        child0.Inline.FlexBasis = 50;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.FlexGrow = 1;
+        child1.Inline.FlexGrow = 1;
 
         LayoutFixture.Calculate(root);
 
@@ -43,20 +43,20 @@ public sealed class FlexFixtureTests
     {
         // Yoga fixture: flex_shrink_flex_grow_row
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
+        root.Inline.FlexDirection = FlexDirection.Row;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 500;
-        root.Style.Height = 500;
+        root.Inline.Width = 500;
+        root.Inline.Height = 500;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexShrink = 1;
-        child0.Style.Width = 500;
-        child0.Style.Height = 100;
+        child0.Inline.FlexShrink = 1;
+        child0.Inline.Width = 500;
+        child0.Inline.Height = 100;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.FlexShrink = 1;
-        child1.Style.Width = 500;
-        child1.Style.Height = 100;
+        child1.Inline.FlexShrink = 1;
+        child1.Inline.Width = 500;
+        child1.Inline.Height = 100;
 
         LayoutFixture.Calculate(root);
 
@@ -71,21 +71,21 @@ public sealed class FlexFixtureTests
     {
         // Yoga fixture: flex_shrink_flex_grow_child_flex_shrink_other_child
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
+        root.Inline.FlexDirection = FlexDirection.Row;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 500;
-        root.Style.Height = 500;
+        root.Inline.Width = 500;
+        root.Inline.Height = 500;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexShrink = 1;
-        child0.Style.Width = 500;
-        child0.Style.Height = 100;
+        child0.Inline.FlexShrink = 1;
+        child0.Inline.Width = 500;
+        child0.Inline.Height = 100;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.FlexGrow = 1;
-        child1.Style.FlexShrink = 1;
-        child1.Style.Width = 500;
-        child1.Style.Height = 100;
+        child1.Inline.FlexGrow = 1;
+        child1.Inline.FlexShrink = 1;
+        child1.Inline.Width = 500;
+        child1.Inline.Height = 100;
 
         LayoutFixture.Calculate(root);
 
@@ -100,17 +100,17 @@ public sealed class FlexFixtureTests
     {
         // Yoga fixture: flex_basis_flex_grow_row
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
+        root.Inline.FlexDirection = FlexDirection.Row;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexGrow = 1;
-        child0.Style.FlexBasis = 50;
+        child0.Inline.FlexGrow = 1;
+        child0.Inline.FlexBasis = 50;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.FlexGrow = 1;
+        child1.Inline.FlexGrow = 1;
 
         LayoutFixture.Calculate(root);
 
@@ -126,15 +126,15 @@ public sealed class FlexFixtureTests
         // Yoga fixture: flex_basis_flex_shrink_column
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexShrink = 1;
-        child0.Style.FlexBasis = 100;
+        child0.Inline.FlexShrink = 1;
+        child0.Inline.FlexBasis = 100;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.FlexBasis = 50;
+        child1.Inline.FlexBasis = 50;
 
         LayoutFixture.Calculate(root);
 
@@ -149,17 +149,17 @@ public sealed class FlexFixtureTests
     {
         // Yoga fixture: flex_basis_flex_shrink_row
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
+        root.Inline.FlexDirection = FlexDirection.Row;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexShrink = 1;
-        child0.Style.FlexBasis = 100;
+        child0.Inline.FlexShrink = 1;
+        child0.Inline.FlexBasis = 100;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.FlexBasis = 50;
+        child1.Inline.FlexBasis = 50;
 
         LayoutFixture.Calculate(root);
 
@@ -175,20 +175,20 @@ public sealed class FlexFixtureTests
         // Yoga fixture: flex_shrink_to_zero
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Height = 75;
+        root.Inline.Height = 75;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 50;
-        child0.Style.Height = 50;
+        child0.Inline.Width = 50;
+        child0.Inline.Height = 50;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.FlexShrink = 1;
-        child1.Style.Width = 50;
-        child1.Style.Height = 50;
+        child1.Inline.FlexShrink = 1;
+        child1.Inline.Width = 50;
+        child1.Inline.Height = 50;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 50;
-        child2.Style.Height = 50;
+        child2.Inline.Width = 50;
+        child2.Inline.Height = 50;
 
         LayoutFixture.Calculate(root);
 
@@ -205,21 +205,21 @@ public sealed class FlexFixtureTests
         // Yoga fixture: flex_basis_overrides_main_size
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexGrow = 1;
-        child0.Style.FlexBasis = 50;
-        child0.Style.Height = 20;
+        child0.Inline.FlexGrow = 1;
+        child0.Inline.FlexBasis = 50;
+        child0.Inline.Height = 20;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.FlexGrow = 1;
-        child1.Style.Height = 10;
+        child1.Inline.FlexGrow = 1;
+        child1.Inline.Height = 10;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.FlexGrow = 1;
-        child2.Style.Height = 10;
+        child2.Inline.FlexGrow = 1;
+        child2.Inline.Height = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -236,14 +236,14 @@ public sealed class FlexFixtureTests
         // Yoga fixture: flex_grow_shrink_at_most
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
 
         Element child0Child0 = AddChild(child0, "root_child0_child0");
-        child0Child0.Style.FlexGrow = 1;
-        child0Child0.Style.FlexShrink = 1;
+        child0Child0.Inline.FlexGrow = 1;
+        child0Child0.Inline.FlexShrink = 1;
 
         LayoutFixture.Calculate(root);
 
@@ -259,18 +259,18 @@ public sealed class FlexFixtureTests
         // Yoga fixture: flex_grow_less_than_factor_one
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 200;
-        root.Style.Height = 500;
+        root.Inline.Width = 200;
+        root.Inline.Height = 500;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexGrow = 0.2f;
-        child0.Style.FlexBasis = 40;
+        child0.Inline.FlexGrow = 0.2f;
+        child0.Inline.FlexBasis = 40;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.FlexGrow = 0.2f;
+        child1.Inline.FlexGrow = 0.2f;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.FlexGrow = 0.4f;
+        child2.Inline.FlexGrow = 0.4f;
 
         LayoutFixture.Calculate(root);
 

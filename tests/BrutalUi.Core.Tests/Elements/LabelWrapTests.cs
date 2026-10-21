@@ -182,7 +182,7 @@ public sealed class LabelWrapTests
         RecordingRenderer renderer = new();
         UiContext context = CreateContext(renderer, 100f);
         Label label = AddLabel(context, Align.FlexStart);
-        label.Style.MinWidth = 150;
+        label.Inline.MinWidth = 150;
 
         context.Update(0f);
         context.Draw(renderer);
@@ -241,7 +241,7 @@ public sealed class LabelWrapTests
         RecordingRenderer renderer = new();
         UiContext context = CreateContext(renderer, 100f);
         Label label = AddLabel(context, Align.FlexStart);
-        label.Style.MinHeight = 50;
+        label.Inline.MinHeight = 50;
 
         context.Update(0f);
 
@@ -303,9 +303,11 @@ public sealed class LabelWrapTests
     private static Label AddLabel(UiContext context, Align align)
     {
         Element root = new();
-        root.Style.AlignItems = align;
+        root.Inline.AlignItems = align;
         context.AddRoot(root);
-        Label label = new(new Label.CreateInfo { Color = White, Size = Size, Text = Sentence });
+        Label label = new(new Label.CreateInfo { Text = Sentence });
+        label.Inline.Color = White;
+        label.Inline.FontSize = Size;
         root.Children.Add(label);
         return label;
     }

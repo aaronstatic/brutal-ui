@@ -22,8 +22,8 @@ public sealed class DimensionFixtureTests
         // Phase 5: root position type absolute. It does not change the layout of a root.
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 100;
-        child0.Style.Height = 100;
+        child0.Inline.Width = 100;
+        child0.Inline.Height = 100;
 
         LayoutFixture.Calculate(root);
 
@@ -42,8 +42,8 @@ public sealed class DimensionFixtureTests
         Element child0 = AddChild(root, "root_child0");
 
         Element child0Child0 = AddChild(child0, "root_child0_child0");
-        child0Child0.Style.Width = 100;
-        child0Child0.Style.Height = 100;
+        child0Child0.Inline.Width = 100;
+        child0Child0.Inline.Height = 100;
 
         LayoutFixture.Calculate(root);
 

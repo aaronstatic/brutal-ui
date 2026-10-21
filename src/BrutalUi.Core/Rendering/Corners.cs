@@ -9,8 +9,10 @@ namespace BrutalUi.Core;
 /// </para>
 /// <para>
 /// The order of the fields goes clockwise from the top-left corner.
-/// The fields are public, so a nested write such as <c>element.Style.CornerRadius.TopLeft = 4f;</c> goes to the field and compiles.
-/// A property gives a copy and error CS1612.
+/// The fields are public, so a write to a field of a local variable compiles:
+/// <c>Corners c = el.Inline.CornerRadius; c.TopLeft = 4f; el.Inline.CornerRadius = c;</c>.
+/// A nested write through a property, such as <c>el.Inline.CornerRadius.TopLeft = 4f;</c>, gives a copy and error CS1612.
+/// Write the whole value through <c>Element.Inline</c>, or use a <c>with</c> expression.
 /// </para>
 /// </remarks>
 public struct Corners

@@ -30,13 +30,13 @@ public sealed class PaintWalkTests
         UiContext context = new() { ViewportSize = new float2(400, 300) };
 
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Column;
-        root.Style.Width = 200;
-        root.Style.Height = 100;
-        root.Style.Padding = LengthEdges.All(10);
-        root.Style.BorderWidth = LengthEdges.All(2);
-        root.Style.Overflow = Overflow.Hidden;
-        root.Style.BackgroundColor = new Rgba8(10, 20, 30);
+        root.Inline.FlexDirection = FlexDirection.Column;
+        root.Inline.Width = 200;
+        root.Inline.Height = 100;
+        root.Inline.Padding = LengthEdges.All(10);
+        root.Inline.BorderWidth = LengthEdges.All(2);
+        root.Inline.Overflow = Overflow.Hidden;
+        root.Inline.BackgroundColor = new Rgba8(10, 20, 30);
         context.AddRoot(root);
 
         AddBox(root, 50, 20, Red);
@@ -69,20 +69,18 @@ public sealed class PaintWalkTests
         UiContext context = new() { ViewportSize = new float2(400, 300) };
 
         Element root = new() { Name = "root" };
-        root.Style.Width = 300;
-        root.Style.Height = 200;
-        root.Style.Padding = LengthEdges.All(5);
-        root.Style.BackgroundColor = Blue;
+        root.Inline.Width = 300;
+        root.Inline.Height = 200;
+        root.Inline.Padding = LengthEdges.All(5);
+        root.Inline.BackgroundColor = Blue;
         context.AddRoot(root);
 
         Element middle = AddBox(root, 100, 100, Green);
-        middle.Style.Margin.Left = 7;
-        middle.Style.Margin.Top = 3;
-        middle.Style.Padding = LengthEdges.All(4);
+        middle.Inline.Margin = middle.Inline.Margin with { Left = 7, Top = 3 };
+        middle.Inline.Padding = LengthEdges.All(4);
 
         Element leaf = AddBox(middle, 10, 10, Red);
-        leaf.Style.Margin.Left = 2;
-        leaf.Style.Margin.Top = 6;
+        leaf.Inline.Margin = leaf.Inline.Margin with { Left = 2, Top = 6 };
 
         RecordingRenderer renderer = new();
         context.Update(0f);
@@ -114,34 +112,33 @@ public sealed class PaintWalkTests
         UiContext context = new() { ViewportSize = new float2(400, 300) };
 
         Element root = new() { Name = "root" };
-        root.Style.Width = 200;
-        root.Style.Height = 100;
-        root.Style.Overflow = Overflow.Hidden;
+        root.Inline.Width = 200;
+        root.Inline.Height = 100;
+        root.Inline.Overflow = Overflow.Hidden;
         context.AddRoot(root);
 
         // Child A: (50, 20, 300, 50) overflows the root on the right.
         Element childA = AddBox(root, 300, 50, Red);
-        childA.Style.Margin.Left = 50;
-        childA.Style.Margin.Top = 20;
-        childA.Style.Overflow = Overflow.Hidden;
+        childA.Inline.Margin = childA.Inline.Margin with { Left = 50, Top = 20 };
+        childA.Inline.Overflow = Overflow.Hidden;
 
         // Child B: (250, 10, 40, 40) lies right of the root clip.
         Element childB = AddBox(root, 40, 40, Green);
-        childB.Style.Position = PositionType.Absolute;
-        childB.Style.Left = 250;
-        childB.Style.Top = 10;
-        childB.Style.Overflow = Overflow.Hidden;
+        childB.Inline.Position = PositionType.Absolute;
+        childB.Inline.Left = 250;
+        childB.Inline.Top = 10;
+        childB.Inline.Overflow = Overflow.Hidden;
 
         // The child of B: (250, 10, 100, 10) in the viewport, inside the zero clip of B.
         Element childOfB = AddBox(childB, 100, 10, Blue);
-        childOfB.Style.Overflow = Overflow.Hidden;
+        childOfB.Inline.Overflow = Overflow.Hidden;
 
         // Child C: (10, 150, 20, 20) lies below the root clip.
         Element childC = AddBox(root, 20, 20, Blue);
-        childC.Style.Position = PositionType.Absolute;
-        childC.Style.Left = 10;
-        childC.Style.Top = 150;
-        childC.Style.Overflow = Overflow.Hidden;
+        childC.Inline.Position = PositionType.Absolute;
+        childC.Inline.Left = 10;
+        childC.Inline.Top = 150;
+        childC.Inline.Overflow = Overflow.Hidden;
 
         RecordingRenderer renderer = new();
         context.Update(0f);
@@ -174,12 +171,12 @@ public sealed class PaintWalkTests
         UiContext context = new() { ViewportSize = new float2(400, 300) };
 
         Element root = new() { Name = "root" };
-        root.Style.Width = 300;
-        root.Style.Height = 200;
+        root.Inline.Width = 300;
+        root.Inline.Height = 200;
         context.AddRoot(root);
 
         Element clipped = AddBox(root, 100, 100, Blue);
-        clipped.Style.Overflow = Overflow.Hidden;
+        clipped.Inline.Overflow = Overflow.Hidden;
         AddBox(clipped, 20, 20, Red);
         Element second = AddBox(clipped, 20, 20, Green);
         AddBox(second, 5, 5, Red);
@@ -211,9 +208,9 @@ public sealed class PaintWalkTests
         UiContext context = new() { ViewportSize = new float2(400, 300) };
 
         Element root = new() { Name = "root" };
-        root.Style.Width = 100;
-        root.Style.Height = 100;
-        root.Style.BackgroundColor = new Rgba8(255, 0, 0, 0);
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
+        root.Inline.BackgroundColor = new Rgba8(255, 0, 0, 0);
         context.AddRoot(root);
 
         Element middle = AddBox(root, 50, 50, Rgba8.Transparent);
@@ -335,10 +332,10 @@ public sealed class PaintWalkTests
         context.AddRoot(root);
 
         Element hidden = AddBox(root, 50, 50, Red);
-        hidden.Style.Display = Display.None;
-        hidden.Style.Overflow = Overflow.Hidden;
+        hidden.Inline.Display = Display.None;
+        hidden.Inline.Overflow = Overflow.Hidden;
         Element inner = AddBox(hidden, 10, 10, Green);
-        inner.Style.Overflow = Overflow.Hidden;
+        inner.Inline.Overflow = Overflow.Hidden;
 
         AddBox(root, 20, 20, Green);
 
@@ -367,10 +364,10 @@ public sealed class PaintWalkTests
         context.AddRoot(root);
 
         Element faded = AddBox(root, 50, 50, Red);
-        faded.Style.Opacity = 0f;
-        faded.Style.Overflow = Overflow.Hidden;
+        faded.Inline.Opacity = 0f;
+        faded.Inline.Overflow = Overflow.Hidden;
         Element inner = AddBox(faded, 10, 10, Green);
-        inner.Style.Overflow = Overflow.Hidden;
+        inner.Inline.Overflow = Overflow.Hidden;
 
         AddBox(root, 20, 20, Green);
 
@@ -396,8 +393,8 @@ public sealed class PaintWalkTests
         UiContext context = new() { ViewportSize = new float2(400, 300) };
 
         Element hidden = NewRoot(100, Blue);
-        hidden.Style.Display = Display.None;
-        hidden.Style.Overflow = Overflow.Hidden;
+        hidden.Inline.Display = Display.None;
+        hidden.Inline.Overflow = Overflow.Hidden;
         context.AddRoot(hidden);
         AddBox(hidden, 10, 10, Green);
 
@@ -424,8 +421,8 @@ public sealed class PaintWalkTests
         UiContext context = new() { ViewportSize = new float2(400, 300) };
 
         Element root = NewRoot(100, Blue);
-        root.Style.Opacity = -0.5f;
-        root.Style.Overflow = Overflow.Hidden;
+        root.Inline.Opacity = -0.5f;
+        root.Inline.Overflow = Overflow.Hidden;
         context.AddRoot(root);
         AddBox(root, 10, 10, Green);
 
@@ -444,7 +441,7 @@ public sealed class PaintWalkTests
         UiContext context = new() { ViewportSize = new float2(400, 300) };
 
         Element root = NewRoot(100, Blue);
-        root.Style.Opacity = float.NaN;
+        root.Inline.Opacity = float.NaN;
         context.AddRoot(root);
 
         RecordingRenderer renderer = new();
@@ -470,13 +467,13 @@ public sealed class PaintWalkTests
         UiContext context = new() { ViewportSize = new float2(400, 300) };
 
         Element root = NewRoot(100, Red);
-        root.Style.Opacity = 0.5f;
+        root.Inline.Opacity = 0.5f;
         context.AddRoot(root);
 
         Element child = AddBox(root, 50, 50, Green);
-        child.Style.Opacity = 0.5f;
-        child.Style.BorderColor = Blue;
-        child.Style.BorderWidth = LengthEdges.All(2);
+        child.Inline.Opacity = 0.5f;
+        child.Inline.BorderColor = Blue;
+        child.Inline.BorderWidth = LengthEdges.All(2);
 
         RecordingRenderer renderer = new();
         context.Update(0f);
@@ -499,8 +496,8 @@ public sealed class PaintWalkTests
         UiContext context = new() { ViewportSize = new float2(400, 300) };
 
         Element root = NewRoot(100, Rgba8.Transparent);
-        root.Style.BorderColor = Red;
-        root.Style.BorderWidth = LengthEdges.All(3);
+        root.Inline.BorderColor = Red;
+        root.Inline.BorderWidth = LengthEdges.All(3);
         context.AddRoot(root);
 
         RecordingRenderer renderer = new();
@@ -523,9 +520,8 @@ public sealed class PaintWalkTests
         UiContext context = new() { ViewportSize = new float2(400, 300) };
 
         Element root = NewRoot(100, Rgba8.Transparent);
-        root.Style.BorderColor = Red;
-        root.Style.BorderWidth.Left = 3;
-        root.Style.BorderWidth.Top = 1;
+        root.Inline.BorderColor = Red;
+        root.Inline.BorderWidth = root.Inline.BorderWidth with { Left = 3, Top = 1 };
         context.AddRoot(root);
 
         RecordingRenderer renderer = new();
@@ -545,8 +541,8 @@ public sealed class PaintWalkTests
         UiContext context = new() { ViewportSize = new float2(400, 300) };
 
         Element root = NewRoot(100, Rgba8.Transparent);
-        root.Style.BorderColor = Red;
-        root.Style.BorderWidth = LengthEdges.All(Length.Percent(50));
+        root.Inline.BorderColor = Red;
+        root.Inline.BorderWidth = LengthEdges.All(Length.Percent(50));
         context.AddRoot(root);
 
         RecordingRenderer renderer = new();
@@ -566,15 +562,15 @@ public sealed class PaintWalkTests
         UiContext context = new() { ViewportSize = new float2(400, 300) };
 
         Element noFill = NewRoot(100, Rgba8.Transparent);
-        noFill.Style.BorderWidth = LengthEdges.All(2);
+        noFill.Inline.BorderWidth = LengthEdges.All(2);
         context.AddRoot(noFill);
 
         Element withFill = NewRoot(50, Green);
-        withFill.Style.BorderWidth = LengthEdges.All(2);
+        withFill.Inline.BorderWidth = LengthEdges.All(2);
         context.AddRoot(withFill);
 
         Element zeroWidth = NewRoot(20, Rgba8.Transparent);
-        zeroWidth.Style.BorderColor = Red;
+        zeroWidth.Inline.BorderColor = Red;
         context.AddRoot(zeroWidth);
 
         RecordingRenderer renderer = new();
@@ -597,7 +593,7 @@ public sealed class PaintWalkTests
         UiContext context = new() { ViewportSize = new float2(400, 300) };
 
         Element root = NewRoot(100, Red);
-        root.Style.CornerRadius = new Corners(1f, 2f, 3f, 4f);
+        root.Inline.CornerRadius = new Corners(1f, 2f, 3f, 4f);
         context.AddRoot(root);
 
         RecordingRenderer renderer = new();
@@ -620,8 +616,8 @@ public sealed class PaintWalkTests
         UiContext context = new() { ViewportSize = new float2(400, 300) };
 
         Element root = NewRoot(100, Blue);
-        root.Style.Overflow = Overflow.Scroll;
-        root.Style.BorderWidth = LengthEdges.All(2);
+        root.Inline.Overflow = Overflow.Scroll;
+        root.Inline.BorderWidth = LengthEdges.All(2);
         context.AddRoot(root);
         AddBox(root, 20, 20, Green);
 
@@ -674,9 +670,9 @@ public sealed class PaintWalkTests
     }
 
     /// <summary>
-    /// A chain of 5000 elements draws with no stack overflow (A8). The test runs no update, so the layout recursion does
-    /// not run. Each element has a fill, so the walk emits 5000 rects. The draw runs on a thread with a 64 KB stack,
-    /// so a recursive walk stops the test host.
+    /// A chain of 5000 elements draws with no stack overflow (A8). The test runs the style pass only, so the inline fill
+    /// reaches the computed style, and the layout recursion does not run. Each element has a fill, so the walk emits
+    /// 5000 rects. The draw runs on a thread with a 64 KB stack, so a recursive walk stops the test host.
     /// </summary>
     [Fact]
     public void DrawsAChainOf5000LevelsWithNoOverflow()
@@ -684,20 +680,22 @@ public sealed class PaintWalkTests
         UiContext context = new() { ViewportSize = new float2(400, 300) };
 
         Element top = new();
-        top.Style.BackgroundColor = Red;
+        top.Inline.BackgroundColor = Red;
         context.AddRoot(top);
 
         Element parent = top;
         for (int i = 1; i < 5000; i++)
         {
             Element child = new();
-            child.Style.BackgroundColor = Red;
+            child.Inline.BackgroundColor = Red;
             parent.Children.Add(child);
             parent = child;
         }
 
         // A8: the small stack (64 KB) is the proof. The default stack of a test thread holds a recursive walk of 5000
         // levels too, but 64 KB does not.
+        // The inline write reaches the computed style only in the style pass, so the pass runs before the draw.
+        context.UpdateStyles();
         RecordingRenderer renderer = new();
         Exception? failure = null;
         Thread thread = new(
@@ -735,14 +733,14 @@ public sealed class PaintWalkTests
         UiContext context = new() { ViewportSize = new float2(400, 300) };
 
         Element root = NewRoot(100, Red);
-        root.Style.Opacity = 0.5f;
+        root.Inline.Opacity = 0.5f;
         context.AddRoot(root);
 
         Element above = AddBox(root, 50, 50, Green);
-        above.Style.Opacity = 2f;
+        above.Inline.Opacity = 2f;
 
         Element notANumber = AddBox(root, 20, 20, Blue);
-        notANumber.Style.Opacity = float.NaN;
+        notANumber.Inline.Opacity = float.NaN;
 
         RecordingRenderer renderer = new();
         context.Update(0f);
@@ -795,14 +793,14 @@ public sealed class PaintWalkTests
         UiContext context = new() { ViewportSize = new float2(400, 300) };
 
         Element root = NewRoot(200, Blue);
-        root.Style.Overflow = Overflow.Hidden;
+        root.Inline.Overflow = Overflow.Hidden;
         context.AddRoot(root);
 
         ThrowingHookElement probe = new() { ThrowOnPaint = true };
-        probe.Style.Width = 100;
-        probe.Style.Height = 100;
-        probe.Style.BackgroundColor = Green;
-        probe.Style.Overflow = Overflow.Hidden;
+        probe.Inline.Width = 100;
+        probe.Inline.Height = 100;
+        probe.Inline.BackgroundColor = Green;
+        probe.Inline.Overflow = Overflow.Hidden;
         root.Children.Add(probe);
         AddBox(probe, 10, 10, Red);
         AddBox(root, 20, 20, Red);
@@ -859,9 +857,9 @@ public sealed class PaintWalkTests
     private static WeakReference DrawAndRemoveARoot(UiContext context)
     {
         Element root = NewRoot(100, Blue);
-        root.Style.Overflow = Overflow.Hidden;
+        root.Inline.Overflow = Overflow.Hidden;
         context.AddRoot(root);
-        AddBox(root, 50, 50, Green).Style.Overflow = Overflow.Hidden;
+        AddBox(root, 50, 50, Green).Inline.Overflow = Overflow.Hidden;
         context.Update(0f);
 
         RecordingRenderer renderer = new();
@@ -878,13 +876,13 @@ public sealed class PaintWalkTests
     private static Element BuildClippedChain(int levels)
     {
         Element top = NewRoot(200, Blue);
-        top.Style.Overflow = Overflow.Hidden;
+        top.Inline.Overflow = Overflow.Hidden;
 
         Element parent = top;
         for (int i = 1; i < levels; i++)
         {
             Element level = AddBox(parent, 100, 100, Green);
-            level.Style.Overflow = Overflow.Hidden;
+            level.Inline.Overflow = Overflow.Hidden;
             parent = level;
         }
 
@@ -907,7 +905,7 @@ public sealed class PaintWalkTests
         for (int i = 0; i < 100; i++)
         {
             Element level = AddBox(parent, 100, 100, Green);
-            level.Style.Overflow = Overflow.Hidden;
+            level.Inline.Overflow = Overflow.Hidden;
             parent = level;
         }
 
@@ -954,14 +952,14 @@ public sealed class PaintWalkTests
         context.AddRoot(root);
 
         Element hidden = AddBox(root, 50, 50, Red);
-        hidden.Style.Display = Display.None;
+        hidden.Inline.Display = Display.None;
         AddBox(hidden, 10, 10, Green);
 
         Element panel = AddBox(root, 100, 100, Green);
-        panel.Style.Opacity = 0.5f;
+        panel.Inline.Opacity = 0.5f;
 
         Element faded = AddBox(panel, 40, 40, Red);
-        faded.Style.Opacity = 0.5f;
+        faded.Inline.Opacity = 0.5f;
 
         RecordingRenderer renderer = new();
         context.Update(0f);
@@ -1008,9 +1006,9 @@ public sealed class PaintWalkTests
     private static Element AddBox(Element parent, float width, float height, Rgba8 color)
     {
         Element child = new();
-        child.Style.Width = width;
-        child.Style.Height = height;
-        child.Style.BackgroundColor = color;
+        child.Inline.Width = width;
+        child.Inline.Height = height;
+        child.Inline.BackgroundColor = color;
         parent.Children.Add(child);
         return child;
     }
@@ -1022,9 +1020,9 @@ public sealed class PaintWalkTests
     private static Element NewRoot(float size, Rgba8 color)
     {
         Element root = new();
-        root.Style.Width = size;
-        root.Style.Height = size;
-        root.Style.BackgroundColor = color;
+        root.Inline.Width = size;
+        root.Inline.Height = size;
+        root.Inline.BackgroundColor = color;
         return root;
     }
 

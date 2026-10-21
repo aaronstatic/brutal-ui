@@ -20,13 +20,13 @@ public sealed class AlignSelfFixtureTests
         // Yoga fixture: align_self_center
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.AlignSelf = Align.Center;
-        child0.Style.Width = 10;
-        child0.Style.Height = 10;
+        child0.Inline.AlignSelf = Align.Center;
+        child0.Inline.Width = 10;
+        child0.Inline.Height = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -41,13 +41,13 @@ public sealed class AlignSelfFixtureTests
         // Yoga fixture: align_self_flex_end
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.AlignSelf = Align.FlexEnd;
-        child0.Style.Width = 10;
-        child0.Style.Height = 10;
+        child0.Inline.AlignSelf = Align.FlexEnd;
+        child0.Inline.Width = 10;
+        child0.Inline.Height = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -62,13 +62,13 @@ public sealed class AlignSelfFixtureTests
         // Yoga fixture: align_self_flex_start
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.AlignSelf = Align.FlexStart;
-        child0.Style.Width = 10;
-        child0.Style.Height = 10;
+        child0.Inline.AlignSelf = Align.FlexStart;
+        child0.Inline.Width = 10;
+        child0.Inline.Height = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -82,15 +82,15 @@ public sealed class AlignSelfFixtureTests
     {
         // Yoga fixture: align_self_flex_end_override_flex_start
         Element root = new() { Name = "root" };
-        root.Style.AlignItems = Align.FlexStart;
+        root.Inline.AlignItems = Align.FlexStart;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.AlignSelf = Align.FlexEnd;
-        child0.Style.Width = 10;
-        child0.Style.Height = 10;
+        child0.Inline.AlignSelf = Align.FlexEnd;
+        child0.Inline.Width = 10;
+        child0.Inline.Height = 10;
 
         LayoutFixture.Calculate(root);
 

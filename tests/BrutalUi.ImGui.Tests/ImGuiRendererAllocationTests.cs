@@ -327,21 +327,19 @@ public sealed unsafe class ImGuiRendererAllocationTests
         };
 
         Element root = new();
-        root.Style.FlexDirection = FlexDirection.Column;
-        root.Style.AlignItems = Align.FlexStart;
+        root.Inline.FlexDirection = FlexDirection.Column;
+        root.Inline.AlignItems = Align.FlexStart;
+        // The labels set no text value at creation. They inherit the color and the size of the root.
+        root.Inline.Color = white;
+        root.Inline.FontSize = LabelSceneFontSize;
         context.AddRoot(root);
 
         Label[] labels = new Label[LabelSceneCount];
         for (int i = 0; i < labels.Length; i++)
         {
-            Label label = new(new Label.CreateInfo
-            {
-                Color = white,
-                Size = LabelSceneFontSize,
-                Text = "A label that wraps in its box",
-            });
-            label.Style.Width = LabelSceneLabelWidth;
-            label.Style.Padding = LengthEdges.All(LabelScenePadding);
+            Label label = new(new Label.CreateInfo { Text = "A label that wraps in its box" });
+            label.Inline.Width = LabelSceneLabelWidth;
+            label.Inline.Padding = LengthEdges.All(LabelScenePadding);
             root.Children.Add(label);
             labels[i] = label;
         }
@@ -350,19 +348,14 @@ public sealed unsafe class ImGuiRendererAllocationTests
         for (int i = 0; i < images.Length; i++)
         {
             BrutalUi.Core.Image image = new(new BrutalUi.Core.Image.CreateInfo { Texture = texture });
-            image.Style.Width = LabelSceneImageWidth;
+            image.Inline.Width = LabelSceneImageWidth;
             root.Children.Add(image);
             images[i] = image;
         }
 
         Brutal.Localization.LString hello = new("imgui-renderer-allocation-tests.localized", "Hello");
         Brutal.Localization.LString world = new("imgui-renderer-allocation-tests.other-localized", "World");
-        Label localized = new(new Label.CreateInfo
-        {
-            Color = white,
-            Size = LabelSceneFontSize,
-            LocalizedText = hello,
-        });
+        Label localized = new(new Label.CreateInfo { LocalizedText = hello });
         root.Children.Add(localized);
 
         return new LabelScene
@@ -400,8 +393,8 @@ public sealed unsafe class ImGuiRendererAllocationTests
         {
             Label label = labels[i];
             label.SetText(text);
-            label.Color = color;
-            label.Size = size;
+            label.Inline.Color = color;
+            label.Inline.FontSize = size;
 
             BrutalUi.Core.Image image = images[i];
             image.Tint = tint;
@@ -437,8 +430,8 @@ public sealed unsafe class ImGuiRendererAllocationTests
         Assert.True(
             label.Text.SequenceEqual(odd ? SecondLabelText : FirstLabelText),
             "Frame " + frame + " shows the old text.");
-        Assert.Equal(odd ? SecondColor : FirstColor, label.Color);
-        Assert.Equal(size, label.Size);
+        Assert.Equal(odd ? SecondColor : FirstColor, label.Style.Color);
+        Assert.Equal(size, label.Style.FontSize);
 
         // The text wraps to two lines in both sizes.
         Assert.Equal((2 * size) + (2 * LabelScenePadding), label.Layout.Rect.W);

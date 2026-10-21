@@ -1,28 +1,35 @@
 namespace BrutalUi.Core;
 
 /// <summary>
-/// The computed style of an element. The struct lives inline in the element and holds the layout inputs and the paint members.
+/// The computed style of an element. The struct lives inline in the element and holds the layout inputs, the paint
+/// members, and the text members.
 /// </summary>
 /// <remarks>
 /// <para>
 /// <c>default(ComputedStyle)</c> gives the Yoga defaults: a column direction and auto sizes.
-/// A new <see cref="Element"/> holds the default style. Each field doc gives the default and the units.
+/// Each field doc gives the default and the units. A new <see cref="Element"/> holds the default style until the
+/// first <see cref="UiContext.Update(float)"/>.
 /// </para>
 /// <para>
-/// Code writes the fields through the <c>ref</c> that <see cref="Element.Style"/> returns.
-/// A write sets no dirty bit. After a write of a layout field, call
-/// <see cref="Element.MarkDirty(DirtyFlags)"/> with <see cref="DirtyFlags.Layout"/>.
+/// The style pass writes the fields. <see cref="Element.Style"/> gives a read-only reference. The pass computes each
+/// member from the rules of the sheets of the context and from the inline set of the element. An inline value wins
+/// over each rule. The game writes the inline set through <see cref="Element.Inline"/>, for example
+/// <c>element.Inline.Width = 120;</c>, and the next <see cref="UiContext.Update(float)"/> writes the result here.
 /// </para>
 /// <para>
-/// The members are public fields and not properties, so a nested write such as
-/// <c>element.Style.Width = 120;</c> goes to the field and compiles. A property gives a copy and error CS1612.
-/// The one exception is <see cref="Opacity"/>, which is a property because its default is 1.
+/// A write marks the dirty bits itself. An inline write marks the element with <see cref="DirtyFlags.Style"/>. The
+/// style pass then compares the old style and the new style. A changed layout member marks
+/// <see cref="DirtyFlags.Layout"/>. A changed paint member or text member marks <see cref="DirtyFlags.Paint"/>.
+/// Do not call <see cref="Element.MarkDirty(DirtyFlags)"/> for a style change.
 /// </para>
 /// <para>
-/// The imgui-renderer epic adds the paint fields, for example <see cref="BackgroundColor"/>. Code sets them inline
-/// in this release. The style-system epic writes them from the cascade later.
-/// After a write of a paint field, call <see cref="Element.MarkDirty(DirtyFlags)"/> with <see cref="DirtyFlags.Paint"/>.
-/// The draw walk of this release draws the whole tree each frame, so the mark has no effect yet.
+/// The text members <see cref="Color"/>, <see cref="Font"/>, and <see cref="FontSize"/> inherit. When no rule and no
+/// inline value set a text member, the element gets the value of its parent. A root gets the value of the text
+/// defaults of its context (<see cref="UiContext.CreateInfo"/>). The other members do not inherit.
+/// </para>
+/// <para>
+/// The members are public fields and not properties, so a read of a nested value, such as the top margin, reads the
+/// field with no copy. The one exception is <see cref="Opacity"/>, which is a property because its default is 1.
 /// </para>
 /// </remarks>
 public struct ComputedStyle
@@ -197,9 +204,8 @@ public struct ComputedStyle
     /// </summary>
     /// <remarks>
     /// With <see cref="Display.None"/>, the element and its subtree take no space, and the layout pass sets each
-    /// rect of the subtree to zeros. The pass does this only when the element holds a layout bit, so call
-    /// <see cref="Element.MarkDirty(DirtyFlags)"/> with <see cref="DirtyFlags.Layout"/> after a change of this field.
-    /// The value has no effect on a root element.
+    /// rect of the subtree to zeros. A change of this value marks <see cref="DirtyFlags.Layout"/> in the style pass,
+    /// so the layout pass sees the change. The value has no effect on a root element.
     /// </remarks>
     public Display Display;
 
@@ -281,8 +287,7 @@ public struct ComputedStyle
     /// The fill color of the border box. The default is <see cref="Rgba8.Transparent"/>, which draws no fill.
     /// </summary>
     /// <remarks>
-    /// The value is a paint field. It has no effect on the layout. After a write, call
-    /// <see cref="Element.MarkDirty(DirtyFlags)"/> with <see cref="DirtyFlags.Paint"/>.
+    /// The value is a paint field. It has no effect on the layout. A change marks <see cref="DirtyFlags.Paint"/>.
     /// </remarks>
     public Rgba8 BackgroundColor;
 
@@ -291,8 +296,7 @@ public struct ComputedStyle
     /// </summary>
     /// <remarks>
     /// The draw walk uses the left edge of <see cref="BorderWidth"/> as the width of the border (pixels only).
-    /// The value is a paint field. It has no effect on the layout. After a write, call
-    /// <see cref="Element.MarkDirty(DirtyFlags)"/> with <see cref="DirtyFlags.Paint"/>.
+    /// The value is a paint field. It has no effect on the layout. A change marks <see cref="DirtyFlags.Paint"/>.
     /// </remarks>
     public Rgba8 BorderColor;
 
@@ -300,10 +304,55 @@ public struct ComputedStyle
     /// The radius of each corner of the fill and the border, in pixels. The default is 0 on each corner.
     /// </summary>
     /// <remarks>
-    /// The value is a paint field. It has no effect on the layout. After a write, call
-    /// <see cref="Element.MarkDirty(DirtyFlags)"/> with <see cref="DirtyFlags.Paint"/>.
+    /// The value is a paint field. It has no effect on the layout. A change marks <see cref="DirtyFlags.Paint"/>.
     /// </remarks>
     public Corners CornerRadius;
+
+    /// <summary>
+    /// The text color. The value inherits: with no rule and no inline value, the element gets the color of its parent,
+    /// and a root gets <see cref="UiContext.CreateInfo.DefaultColor"/>. The context default is opaque white.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <see cref="Rgba8.Transparent"/> draws no text. <c>default(ComputedStyle)</c> holds transparent black, but the
+    /// style pass gives each element a value, so an element with no rule gets the color of the context.
+    /// </para>
+    /// <para>
+    /// The value is a text field. A change marks <see cref="DirtyFlags.Paint"/> and restyles each child, so the new
+    /// value flows down to each descendant with no own value. A <see cref="Label"/> draws its text in this color.
+    /// </para>
+    /// </remarks>
+    public Rgba8 Color;
+
+    /// <summary>
+    /// The font, as an id of the renderer. The id 0 is the default font of the renderer. The value inherits: with no
+    /// rule and no inline value, the element gets the font of its parent, and a root gets
+    /// <see cref="UiContext.CreateInfo.DefaultFont"/>. The context default is the id 0.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The measurer of the context and the renderer of <see cref="UiContext.Draw(IUiRenderer)"/> must use the same
+    /// font ids. The ids have a meaning for one renderer only.
+    /// </para>
+    /// <para>
+    /// The value is a text field. A change marks <see cref="DirtyFlags.Paint"/> and restyles each child. A
+    /// <see cref="Label"/> measures and draws its text in this font, so a change on a label also marks
+    /// <see cref="DirtyFlags.Layout"/>.
+    /// </para>
+    /// </remarks>
+    public FontHandle Font;
+
+    /// <summary>
+    /// The font size, in pixels. A size of 0 means the default size of the font. The value inherits: with no rule and
+    /// no inline value, the element gets the size of its parent, and a root gets
+    /// <see cref="UiContext.CreateInfo.DefaultFontSize"/>. The context default is 0.
+    /// </summary>
+    /// <remarks>
+    /// The value is a text field. A change marks <see cref="DirtyFlags.Paint"/> and restyles each child. The compare
+    /// uses <see cref="float.Equals(float)"/>, so <c>NaN</c> to <c>NaN</c> is no change. A <see cref="Label"/>
+    /// measures and draws its text at this size, so a change on a label also marks <see cref="DirtyFlags.Layout"/>.
+    /// </remarks>
+    public float FontSize;
 
     private float _opacity;
     private bool _hasOpacity;
@@ -321,8 +370,7 @@ public struct ComputedStyle
     /// The draw walk clamps a value below 0 to 0 and a value above 1 to 1. <c>NaN</c> counts as 1.
     /// An opacity of 0 hides the element and its subtree: the walk draws nothing for them.
     /// The walk multiplies the opacity down the subtree, and the product scales the alpha of each color.
-    /// The value has no effect on the layout. After a write, call <see cref="Element.MarkDirty(DirtyFlags)"/> with
-    /// <see cref="DirtyFlags.Paint"/>.
+    /// The value has no effect on the layout. A change marks <see cref="DirtyFlags.Paint"/>.
     /// </para>
     /// </remarks>
     public float Opacity

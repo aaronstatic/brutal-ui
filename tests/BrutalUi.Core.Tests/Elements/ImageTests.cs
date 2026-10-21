@@ -30,8 +30,8 @@ public sealed class ImageTests
         Element root = AddRoot(context);
         Image natural = new(new Image.CreateInfo { Texture = DemoTexture });
         Image fit = new(new Image.CreateInfo { Texture = DemoTexture, ScaleMode = ImageScaleMode.ScaleToFit });
-        fit.Style.Width = 100;
-        fit.Style.Height = 100;
+        fit.Inline.Width = 100;
+        fit.Inline.Height = 100;
         root.Children.Add(natural);
         root.Children.Add(fit);
 
@@ -94,7 +94,7 @@ public sealed class ImageTests
     {
         UiContext context = CreateContext();
         Element root = AddRoot(context);
-        root.Style.Width = 40;
+        root.Inline.Width = 40;
         Image image = new(new Image.CreateInfo { Texture = DemoTexture });
         root.Children.Add(image);
 
@@ -177,10 +177,10 @@ public sealed class ImageTests
         Element root = AddRoot(context);
         Image none = new(new Image.CreateInfo { Texture = new TextureHandle(0, DemoSize) });
         Image noSize = new(new Image.CreateInfo { Texture = new TextureHandle(DemoId) });
-        none.Style.Width = 100;
-        none.Style.Height = 100;
-        noSize.Style.Width = 100;
-        noSize.Style.Height = 100;
+        none.Inline.Width = 100;
+        none.Inline.Height = 100;
+        noSize.Inline.Width = 100;
+        noSize.Inline.Height = 100;
         root.Children.Add(none);
         root.Children.Add(noSize);
 
@@ -197,7 +197,7 @@ public sealed class ImageTests
         RecordingRenderer renderer = new();
         Image image = AddImage(CreateContext(out UiContext context), FullUv);
         image.Tint = new Rgba8(255, 0, 0);
-        image.Style.Opacity = 0.5f;
+        image.Inline.Opacity = 0.5f;
 
         context.Update(0f);
         context.Draw(renderer);
@@ -232,8 +232,8 @@ public sealed class ImageTests
         RecordingRenderer renderer = new();
         Image image = AddImage(CreateContext(out UiContext context), FullUv);
         image.ScaleMode = mode;
-        image.Style.Width = 100;
-        image.Style.Height = 100;
+        image.Inline.Width = 100;
+        image.Inline.Height = 100;
 
         context.Update(0f);
         context.Draw(renderer);
@@ -259,8 +259,8 @@ public sealed class ImageTests
         RecordingRenderer renderer = new();
         Image image = AddImage(CreateContext(out UiContext context), new float4(u0, v0, u1, v1));
         image.ScaleMode = mode;
-        image.Style.Width = 100;
-        image.Style.Height = 50;
+        image.Inline.Width = 100;
+        image.Inline.Height = 50;
 
         context.Update(0f);
         context.Draw(renderer);
@@ -438,7 +438,7 @@ public sealed class ImageTests
         context.Update(0f);
         Assert.Equal("rect 0,0,0,32", RectLine(image.Layout.Rect));
 
-        image.Style.Width = 10;
+        image.Inline.Width = 10;
         image.MarkDirty(DirtyFlags.Layout);
         context.Update(0f);
         context.Draw(renderer);
@@ -470,7 +470,7 @@ public sealed class ImageTests
     private static Element AddRoot(UiContext context)
     {
         Element root = new();
-        root.Style.AlignItems = Align.FlexStart;
+        root.Inline.AlignItems = Align.FlexStart;
         context.AddRoot(root);
         return root;
     }

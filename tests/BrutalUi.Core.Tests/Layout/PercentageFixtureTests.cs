@@ -20,14 +20,14 @@ public sealed class PercentageFixtureTests
     {
         // Yoga fixture: percentage_width_height
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Width = 200;
-        root.Style.Height = 200;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Width = 200;
+        root.Inline.Height = 200;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = Length.Percent(30);
-        child0.Style.Height = Length.Percent(30);
+        child0.Inline.Width = Length.Percent(30);
+        child0.Inline.Height = Length.Percent(30);
 
         LayoutFixture.Calculate(root);
 
@@ -41,16 +41,16 @@ public sealed class PercentageFixtureTests
     {
         // Yoga fixture: percentage_position_left_top
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Width = 400;
-        root.Style.Height = 400;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Width = 400;
+        root.Inline.Height = 400;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Left = Length.Percent(10);
-        child0.Style.Top = Length.Percent(20);
-        child0.Style.Width = Length.Percent(45);
-        child0.Style.Height = Length.Percent(55);
+        child0.Inline.Left = Length.Percent(10);
+        child0.Inline.Top = Length.Percent(20);
+        child0.Inline.Width = Length.Percent(45);
+        child0.Inline.Height = Length.Percent(55);
 
         LayoutFixture.Calculate(root);
 
@@ -64,16 +64,16 @@ public sealed class PercentageFixtureTests
     {
         // Yoga fixture: percentage_position_bottom_right
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Width = 500;
-        root.Style.Height = 500;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Width = 500;
+        root.Inline.Height = 500;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Right = Length.Percent(20);
-        child0.Style.Bottom = Length.Percent(10);
-        child0.Style.Width = Length.Percent(55);
-        child0.Style.Height = Length.Percent(15);
+        child0.Inline.Right = Length.Percent(20);
+        child0.Inline.Bottom = Length.Percent(10);
+        child0.Inline.Width = Length.Percent(55);
+        child0.Inline.Height = Length.Percent(15);
 
         LayoutFixture.Calculate(root);
 
@@ -87,18 +87,18 @@ public sealed class PercentageFixtureTests
     {
         // Yoga fixture: percentage_flex_basis
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Width = 200;
-        root.Style.Height = 200;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Width = 200;
+        root.Inline.Height = 200;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexGrow = 1;
-        child0.Style.FlexBasis = Length.Percent(50);
+        child0.Inline.FlexGrow = 1;
+        child0.Inline.FlexBasis = Length.Percent(50);
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.FlexGrow = 1;
-        child1.Style.FlexBasis = Length.Percent(25);
+        child1.Inline.FlexGrow = 1;
+        child1.Inline.FlexBasis = Length.Percent(25);
 
         LayoutFixture.Calculate(root);
 
@@ -113,17 +113,17 @@ public sealed class PercentageFixtureTests
     {
         // Yoga fixture: percentage_flex_basis_cross
         Element root = new() { Name = "root" };
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Width = 200;
-        root.Style.Height = 200;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Width = 200;
+        root.Inline.Height = 200;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexGrow = 1;
-        child0.Style.FlexBasis = Length.Percent(50);
+        child0.Inline.FlexGrow = 1;
+        child0.Inline.FlexBasis = Length.Percent(50);
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.FlexGrow = 1;
-        child1.Style.FlexBasis = Length.Percent(25);
+        child1.Inline.FlexGrow = 1;
+        child1.Inline.FlexBasis = Length.Percent(25);
 
         LayoutFixture.Calculate(root);
 
@@ -138,20 +138,20 @@ public sealed class PercentageFixtureTests
     {
         // Yoga fixture: percentage_flex_basis_main_max_height
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Width = 200;
-        root.Style.Height = 200;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Width = 200;
+        root.Inline.Height = 200;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexGrow = 1;
-        child0.Style.FlexBasis = Length.Percent(10);
-        child0.Style.MaxHeight = Length.Percent(60);
+        child0.Inline.FlexGrow = 1;
+        child0.Inline.FlexBasis = Length.Percent(10);
+        child0.Inline.MaxHeight = Length.Percent(60);
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.FlexGrow = 4;
-        child1.Style.FlexBasis = Length.Percent(10);
-        child1.Style.MaxHeight = Length.Percent(20);
+        child1.Inline.FlexGrow = 4;
+        child1.Inline.FlexBasis = Length.Percent(10);
+        child1.Inline.MaxHeight = Length.Percent(20);
 
         LayoutFixture.Calculate(root);
 
@@ -166,19 +166,19 @@ public sealed class PercentageFixtureTests
     {
         // Yoga fixture: percentage_flex_basis_cross_max_height
         Element root = new() { Name = "root" };
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Width = 200;
-        root.Style.Height = 200;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Width = 200;
+        root.Inline.Height = 200;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexGrow = 1;
-        child0.Style.FlexBasis = Length.Percent(10);
-        child0.Style.MaxHeight = Length.Percent(60);
+        child0.Inline.FlexGrow = 1;
+        child0.Inline.FlexBasis = Length.Percent(10);
+        child0.Inline.MaxHeight = Length.Percent(60);
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.FlexGrow = 4;
-        child1.Style.FlexBasis = Length.Percent(10);
-        child1.Style.MaxHeight = Length.Percent(20);
+        child1.Inline.FlexGrow = 4;
+        child1.Inline.FlexBasis = Length.Percent(10);
+        child1.Inline.MaxHeight = Length.Percent(20);
 
         LayoutFixture.Calculate(root);
 
@@ -193,20 +193,20 @@ public sealed class PercentageFixtureTests
     {
         // Yoga fixture: percentage_flex_basis_main_max_width
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Width = 200;
-        root.Style.Height = 200;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Width = 200;
+        root.Inline.Height = 200;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexGrow = 1;
-        child0.Style.FlexBasis = Length.Percent(15);
-        child0.Style.MaxWidth = Length.Percent(60);
+        child0.Inline.FlexGrow = 1;
+        child0.Inline.FlexBasis = Length.Percent(15);
+        child0.Inline.MaxWidth = Length.Percent(60);
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.FlexGrow = 4;
-        child1.Style.FlexBasis = Length.Percent(10);
-        child1.Style.MaxWidth = Length.Percent(20);
+        child1.Inline.FlexGrow = 4;
+        child1.Inline.FlexBasis = Length.Percent(10);
+        child1.Inline.MaxWidth = Length.Percent(20);
 
         LayoutFixture.Calculate(root);
 
@@ -221,19 +221,19 @@ public sealed class PercentageFixtureTests
     {
         // Yoga fixture: percentage_flex_basis_cross_max_width
         Element root = new() { Name = "root" };
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Width = 200;
-        root.Style.Height = 200;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Width = 200;
+        root.Inline.Height = 200;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexGrow = 1;
-        child0.Style.FlexBasis = Length.Percent(10);
-        child0.Style.MaxWidth = Length.Percent(60);
+        child0.Inline.FlexGrow = 1;
+        child0.Inline.FlexBasis = Length.Percent(10);
+        child0.Inline.MaxWidth = Length.Percent(60);
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.FlexGrow = 4;
-        child1.Style.FlexBasis = Length.Percent(15);
-        child1.Style.MaxWidth = Length.Percent(20);
+        child1.Inline.FlexGrow = 4;
+        child1.Inline.FlexBasis = Length.Percent(15);
+        child1.Inline.MaxWidth = Length.Percent(20);
 
         LayoutFixture.Calculate(root);
 
@@ -248,20 +248,20 @@ public sealed class PercentageFixtureTests
     {
         // Yoga fixture: percentage_flex_basis_main_min_width
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Width = 200;
-        root.Style.Height = 200;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Width = 200;
+        root.Inline.Height = 200;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexGrow = 1;
-        child0.Style.FlexBasis = Length.Percent(15);
-        child0.Style.MinWidth = Length.Percent(60);
+        child0.Inline.FlexGrow = 1;
+        child0.Inline.FlexBasis = Length.Percent(15);
+        child0.Inline.MinWidth = Length.Percent(60);
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.FlexGrow = 4;
-        child1.Style.FlexBasis = Length.Percent(10);
-        child1.Style.MinWidth = Length.Percent(20);
+        child1.Inline.FlexGrow = 4;
+        child1.Inline.FlexBasis = Length.Percent(10);
+        child1.Inline.MinWidth = Length.Percent(20);
 
         LayoutFixture.Calculate(root);
 
@@ -276,19 +276,19 @@ public sealed class PercentageFixtureTests
     {
         // Yoga fixture: percentage_flex_basis_cross_min_width
         Element root = new() { Name = "root" };
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Width = 200;
-        root.Style.Height = 200;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Width = 200;
+        root.Inline.Height = 200;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexGrow = 1;
-        child0.Style.FlexBasis = Length.Percent(10);
-        child0.Style.MinWidth = Length.Percent(60);
+        child0.Inline.FlexGrow = 1;
+        child0.Inline.FlexBasis = Length.Percent(10);
+        child0.Inline.MinWidth = Length.Percent(60);
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.FlexGrow = 4;
-        child1.Style.FlexBasis = Length.Percent(15);
-        child1.Style.MinWidth = Length.Percent(20);
+        child1.Inline.FlexGrow = 4;
+        child1.Inline.FlexBasis = Length.Percent(15);
+        child1.Inline.MinWidth = Length.Percent(20);
 
         LayoutFixture.Calculate(root);
 
@@ -303,20 +303,17 @@ public sealed class PercentageFixtureTests
     {
         // Yoga fixture: percentage_margin_should_calculate_based_only_on_width
         Element root = new() { Name = "root" };
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Width = 200;
-        root.Style.Height = 100;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Width = 200;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexGrow = 1;
-        child0.Style.Margin.Left = Length.Percent(10);
-        child0.Style.Margin.Top = Length.Percent(10);
-        child0.Style.Margin.Right = Length.Percent(10);
-        child0.Style.Margin.Bottom = Length.Percent(10);
+        child0.Inline.FlexGrow = 1;
+        child0.Inline.Margin = LengthEdges.All(Length.Percent(10));
 
         Element child0Child0 = AddChild(child0, "root_child0_child0");
-        child0Child0.Style.Width = 10;
-        child0Child0.Style.Height = 10;
+        child0Child0.Inline.Width = 10;
+        child0Child0.Inline.Height = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -331,20 +328,17 @@ public sealed class PercentageFixtureTests
     {
         // Yoga fixture: percentage_padding_should_calculate_based_only_on_width
         Element root = new() { Name = "root" };
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Width = 200;
-        root.Style.Height = 100;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Width = 200;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexGrow = 1;
-        child0.Style.Padding.Left = Length.Percent(10);
-        child0.Style.Padding.Top = Length.Percent(10);
-        child0.Style.Padding.Right = Length.Percent(10);
-        child0.Style.Padding.Bottom = Length.Percent(10);
+        child0.Inline.FlexGrow = 1;
+        child0.Inline.Padding = LengthEdges.All(Length.Percent(10));
 
         Element child0Child0 = AddChild(child0, "root_child0_child0");
-        child0Child0.Style.Width = 10;
-        child0Child0.Style.Height = 10;
+        child0Child0.Inline.Width = 10;
+        child0Child0.Inline.Height = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -359,16 +353,16 @@ public sealed class PercentageFixtureTests
     {
         // Yoga fixture: percentage_absolute_position
         Element root = new() { Name = "root" };
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Width = 200;
-        root.Style.Height = 100;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Width = 200;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Position = PositionType.Absolute;
-        child0.Style.Left = Length.Percent(30);
-        child0.Style.Top = Length.Percent(10);
-        child0.Style.Width = 10;
-        child0.Style.Height = 10;
+        child0.Inline.Position = PositionType.Absolute;
+        child0.Inline.Left = Length.Percent(30);
+        child0.Inline.Top = Length.Percent(10);
+        child0.Inline.Width = 10;
+        child0.Inline.Height = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -382,11 +376,11 @@ public sealed class PercentageFixtureTests
     {
         // Yoga fixture: percentage_width_height_undefined_parent_size
         Element root = new() { Name = "root" };
-        root.Style.Position = PositionType.Absolute;
+        root.Inline.Position = PositionType.Absolute;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = Length.Percent(50);
-        child0.Style.Height = Length.Percent(50);
+        child0.Inline.Width = Length.Percent(50);
+        child0.Inline.Height = Length.Percent(50);
 
         LayoutFixture.Calculate(root);
 
@@ -400,22 +394,22 @@ public sealed class PercentageFixtureTests
     {
         // Yoga fixture: percent_within_flex_grow
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Width = 350;
-        root.Style.Height = 100;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Width = 350;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 100;
+        child0.Inline.Width = 100;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.FlexGrow = 1;
+        child1.Inline.FlexGrow = 1;
 
         Element child1Child0 = AddChild(child1, "root_child1_child0");
-        child1Child0.Style.Width = Length.Percent(100);
+        child1Child0.Inline.Width = Length.Percent(100);
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 100;
+        child2.Inline.Width = 100;
 
         LayoutFixture.Calculate(root);
 
@@ -432,26 +426,26 @@ public sealed class PercentageFixtureTests
     {
         // Yoga fixture: percentage_container_in_wrapping_container
         Element root = new() { Name = "root" };
-        root.Style.JustifyContent = Justify.Center;
-        root.Style.AlignItems = Align.Center;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Width = 200;
-        root.Style.Height = 200;
+        root.Inline.JustifyContent = Justify.Center;
+        root.Inline.AlignItems = Align.Center;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Width = 200;
+        root.Inline.Height = 200;
 
         Element child0 = AddChild(root, "root_child0");
 
         Element child0Child0 = AddChild(child0, "root_child0_child0");
-        child0Child0.Style.FlexDirection = FlexDirection.Row;
-        child0Child0.Style.JustifyContent = Justify.Center;
-        child0Child0.Style.Width = Length.Percent(100);
+        child0Child0.Inline.FlexDirection = FlexDirection.Row;
+        child0Child0.Inline.JustifyContent = Justify.Center;
+        child0Child0.Inline.Width = Length.Percent(100);
 
         Element child0Child0Child0 = AddChild(child0Child0, "root_child0_child0_child0");
-        child0Child0Child0.Style.Width = 50;
-        child0Child0Child0.Style.Height = 50;
+        child0Child0Child0.Inline.Width = 50;
+        child0Child0Child0.Inline.Height = 50;
 
         Element child0Child0Child1 = AddChild(child0Child0, "root_child0_child0_child1");
-        child0Child0Child1.Style.Width = 50;
-        child0Child0Child1.Style.Height = 50;
+        child0Child0Child1.Inline.Width = 50;
+        child0Child0Child1.Inline.Height = 50;
 
         LayoutFixture.Calculate(root);
 
@@ -468,22 +462,22 @@ public sealed class PercentageFixtureTests
     {
         // Yoga fixture: percent_absolute_position
         Element root = new() { Name = "root" };
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Width = 60;
-        root.Style.Height = 50;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Width = 60;
+        root.Inline.Height = 50;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexDirection = FlexDirection.Row;
-        child0.Style.Position = PositionType.Absolute;
-        child0.Style.Left = Length.Percent(50);
-        child0.Style.Width = Length.Percent(100);
-        child0.Style.Height = 50;
+        child0.Inline.FlexDirection = FlexDirection.Row;
+        child0.Inline.Position = PositionType.Absolute;
+        child0.Inline.Left = Length.Percent(50);
+        child0.Inline.Width = Length.Percent(100);
+        child0.Inline.Height = 50;
 
         Element child0Child0 = AddChild(child0, "root_child0_child0");
-        child0Child0.Style.Width = Length.Percent(100);
+        child0Child0.Inline.Width = Length.Percent(100);
 
         Element child0Child1 = AddChild(child0, "root_child0_child1");
-        child0Child1.Style.Width = Length.Percent(100);
+        child0Child1.Inline.Width = Length.Percent(100);
 
         LayoutFixture.Calculate(root);
 
@@ -499,15 +493,15 @@ public sealed class PercentageFixtureTests
     {
         // Yoga fixture: percent_of_minmax_main
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.MinWidth = 60;
-        root.Style.MaxWidth = 60;
-        root.Style.Height = 50;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.MinWidth = 60;
+        root.Inline.MaxWidth = 60;
+        root.Inline.Height = 50;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = Length.Percent(50);
-        child0.Style.Height = 20;
+        child0.Inline.Width = Length.Percent(50);
+        child0.Inline.Height = 20;
 
         LayoutFixture.Calculate(root);
 
@@ -521,14 +515,14 @@ public sealed class PercentageFixtureTests
     {
         // Yoga fixture: percent_of_minmax_cross_stretched
         Element root = new() { Name = "root" };
-        root.Style.Position = PositionType.Absolute;
-        root.Style.MinWidth = 60;
-        root.Style.MaxWidth = 60;
-        root.Style.Height = 50;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.MinWidth = 60;
+        root.Inline.MaxWidth = 60;
+        root.Inline.Height = 50;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = Length.Percent(50);
-        child0.Style.Height = 20;
+        child0.Inline.Width = Length.Percent(50);
+        child0.Inline.Height = 20;
 
         LayoutFixture.Calculate(root);
 
@@ -542,15 +536,15 @@ public sealed class PercentageFixtureTests
     {
         // Yoga fixture: percent_absolute_of_minmax_cross_stretched
         Element root = new() { Name = "root" };
-        root.Style.Position = PositionType.Absolute;
-        root.Style.MinWidth = 60;
-        root.Style.MaxWidth = 60;
-        root.Style.Height = 50;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.MinWidth = 60;
+        root.Inline.MaxWidth = 60;
+        root.Inline.Height = 50;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Position = PositionType.Absolute;
-        child0.Style.Width = Length.Percent(50);
-        child0.Style.Height = 20;
+        child0.Inline.Position = PositionType.Absolute;
+        child0.Inline.Width = Length.Percent(50);
+        child0.Inline.Height = 20;
 
         LayoutFixture.Calculate(root);
 
@@ -564,15 +558,15 @@ public sealed class PercentageFixtureTests
     {
         // Yoga fixture: percent_of_minmax_cross_unstretched
         Element root = new() { Name = "root" };
-        root.Style.AlignItems = Align.FlexStart;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.MinWidth = 60;
-        root.Style.MaxWidth = 60;
-        root.Style.Height = 50;
+        root.Inline.AlignItems = Align.FlexStart;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.MinWidth = 60;
+        root.Inline.MaxWidth = 60;
+        root.Inline.Height = 50;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = Length.Percent(50);
-        child0.Style.Height = 20;
+        child0.Inline.Width = Length.Percent(50);
+        child0.Inline.Height = 20;
 
         LayoutFixture.Calculate(root);
 
@@ -586,14 +580,14 @@ public sealed class PercentageFixtureTests
     {
         // Yoga fixture: percent_of_max_cross_unstretched
         Element root = new() { Name = "root" };
-        root.Style.AlignItems = Align.FlexStart;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.MaxWidth = 60;
-        root.Style.Height = 50;
+        root.Inline.AlignItems = Align.FlexStart;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.MaxWidth = 60;
+        root.Inline.Height = 50;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = Length.Percent(50);
-        child0.Style.Height = 20;
+        child0.Inline.Width = Length.Percent(50);
+        child0.Inline.Height = 20;
 
         LayoutFixture.Calculate(root);
 

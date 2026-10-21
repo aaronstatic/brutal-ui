@@ -10,8 +10,10 @@ namespace BrutalUi.Core;
 /// </para>
 /// <para>
 /// The edges are physical. There is no start edge and no end edge, because the layout has no text direction.
-/// The fields are public, so a nested write such as <c>element.Style.Margin.Left = 4;</c> goes to the field and compiles.
-/// A property gives a copy and error CS1612.
+/// The fields are public, so a write to a field of a local variable compiles:
+/// <c>LengthEdges m = el.Inline.Margin; m.Top = Length.Px(12); el.Inline.Margin = m;</c>.
+/// A nested write through a property, such as <c>el.Inline.Margin.Top = 12;</c>, gives a copy and error CS1612.
+/// Write the whole value through <c>Element.Inline</c>, or use a <c>with</c> expression.
 /// </para>
 /// </remarks>
 public struct LengthEdges

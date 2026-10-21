@@ -23,16 +23,16 @@ public sealed class FlexDirectionFixtureTests
         // Yoga fixture: flex_direction_column_no_height
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 100;
+        root.Inline.Width = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Height = 10;
+        child0.Inline.Height = 10;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Height = 10;
+        child1.Inline.Height = 10;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Height = 10;
+        child2.Inline.Height = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -48,18 +48,18 @@ public sealed class FlexDirectionFixtureTests
     {
         // Yoga fixture: flex_direction_row_no_width
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
+        root.Inline.FlexDirection = FlexDirection.Row;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Height = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 10;
+        child0.Inline.Width = 10;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 10;
+        child1.Inline.Width = 10;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 10;
+        child2.Inline.Width = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -76,17 +76,17 @@ public sealed class FlexDirectionFixtureTests
         // Yoga fixture: flex_direction_column
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Height = 10;
+        child0.Inline.Height = 10;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Height = 10;
+        child1.Inline.Height = 10;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Height = 10;
+        child2.Inline.Height = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -102,19 +102,19 @@ public sealed class FlexDirectionFixtureTests
     {
         // Yoga fixture: flex_direction_row
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
+        root.Inline.FlexDirection = FlexDirection.Row;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 10;
+        child0.Inline.Width = 10;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 10;
+        child1.Inline.Width = 10;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 10;
+        child2.Inline.Width = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -130,19 +130,19 @@ public sealed class FlexDirectionFixtureTests
     {
         // Yoga fixture: flex_direction_column_reverse
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.ColumnReverse;
+        root.Inline.FlexDirection = FlexDirection.ColumnReverse;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Height = 10;
+        child0.Inline.Height = 10;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Height = 10;
+        child1.Inline.Height = 10;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Height = 10;
+        child2.Inline.Height = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -158,19 +158,19 @@ public sealed class FlexDirectionFixtureTests
     {
         // Yoga fixture: flex_direction_row_reverse
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.RowReverse;
+        root.Inline.FlexDirection = FlexDirection.RowReverse;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 10;
+        child0.Inline.Width = 10;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 10;
+        child1.Inline.Width = 10;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 10;
+        child2.Inline.Width = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -186,20 +186,20 @@ public sealed class FlexDirectionFixtureTests
     {
         // Yoga fixture: flex_direction_row_reverse_margin_left
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.RowReverse;
+        root.Inline.FlexDirection = FlexDirection.RowReverse;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Margin.Left = 100;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Margin = root.Inline.Margin with { Left = 100 };
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 10;
+        child0.Inline.Width = 10;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 10;
+        child1.Inline.Width = 10;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 10;
+        child2.Inline.Width = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -215,20 +215,20 @@ public sealed class FlexDirectionFixtureTests
     {
         // Yoga fixture: flex_direction_row_reverse_margin_right
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.RowReverse;
+        root.Inline.FlexDirection = FlexDirection.RowReverse;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Margin.Right = 100;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Margin = root.Inline.Margin with { Right = 100 };
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 10;
+        child0.Inline.Width = 10;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 10;
+        child1.Inline.Width = 10;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 10;
+        child2.Inline.Width = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -244,20 +244,20 @@ public sealed class FlexDirectionFixtureTests
     {
         // Yoga fixture: flex_direction_column_reverse_margin_top
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.ColumnReverse;
+        root.Inline.FlexDirection = FlexDirection.ColumnReverse;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Margin.Top = 100;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Margin = root.Inline.Margin with { Top = 100 };
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 10;
+        child0.Inline.Width = 10;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 10;
+        child1.Inline.Width = 10;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 10;
+        child2.Inline.Width = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -273,20 +273,20 @@ public sealed class FlexDirectionFixtureTests
     {
         // Yoga fixture: flex_direction_column_reverse_margin_bottom
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.ColumnReverse;
+        root.Inline.FlexDirection = FlexDirection.ColumnReverse;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Margin.Bottom = 100;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Margin = root.Inline.Margin with { Bottom = 100 };
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 10;
+        child0.Inline.Width = 10;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 10;
+        child1.Inline.Width = 10;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 10;
+        child2.Inline.Width = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -302,20 +302,20 @@ public sealed class FlexDirectionFixtureTests
     {
         // Yoga fixture: flex_direction_row_reverse_padding_left
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.RowReverse;
+        root.Inline.FlexDirection = FlexDirection.RowReverse;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Padding.Left = 100;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Padding = root.Inline.Padding with { Left = 100 };
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 10;
+        child0.Inline.Width = 10;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 10;
+        child1.Inline.Width = 10;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 10;
+        child2.Inline.Width = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -331,20 +331,20 @@ public sealed class FlexDirectionFixtureTests
     {
         // Yoga fixture: flex_direction_row_reverse_padding_right
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.RowReverse;
+        root.Inline.FlexDirection = FlexDirection.RowReverse;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Padding.Right = 100;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Padding = root.Inline.Padding with { Right = 100 };
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 10;
+        child0.Inline.Width = 10;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 10;
+        child1.Inline.Width = 10;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 10;
+        child2.Inline.Width = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -360,20 +360,20 @@ public sealed class FlexDirectionFixtureTests
     {
         // Yoga fixture: flex_direction_column_reverse_padding_top
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.ColumnReverse;
+        root.Inline.FlexDirection = FlexDirection.ColumnReverse;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Padding.Top = 100;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Padding = root.Inline.Padding with { Top = 100 };
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 10;
+        child0.Inline.Width = 10;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 10;
+        child1.Inline.Width = 10;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 10;
+        child2.Inline.Width = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -389,20 +389,20 @@ public sealed class FlexDirectionFixtureTests
     {
         // Yoga fixture: flex_direction_column_reverse_padding_bottom
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.ColumnReverse;
+        root.Inline.FlexDirection = FlexDirection.ColumnReverse;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Padding.Bottom = 100;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Padding = root.Inline.Padding with { Bottom = 100 };
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 10;
+        child0.Inline.Width = 10;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 10;
+        child1.Inline.Width = 10;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 10;
+        child2.Inline.Width = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -418,20 +418,20 @@ public sealed class FlexDirectionFixtureTests
     {
         // Yoga fixture: flex_direction_row_reverse_border_left
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.RowReverse;
+        root.Inline.FlexDirection = FlexDirection.RowReverse;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.BorderWidth.Left = 100;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.BorderWidth = root.Inline.BorderWidth with { Left = 100 };
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 10;
+        child0.Inline.Width = 10;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 10;
+        child1.Inline.Width = 10;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 10;
+        child2.Inline.Width = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -447,20 +447,20 @@ public sealed class FlexDirectionFixtureTests
     {
         // Yoga fixture: flex_direction_row_reverse_border_right
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.RowReverse;
+        root.Inline.FlexDirection = FlexDirection.RowReverse;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.BorderWidth.Right = 100;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.BorderWidth = root.Inline.BorderWidth with { Right = 100 };
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 10;
+        child0.Inline.Width = 10;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 10;
+        child1.Inline.Width = 10;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 10;
+        child2.Inline.Width = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -476,20 +476,20 @@ public sealed class FlexDirectionFixtureTests
     {
         // Yoga fixture: flex_direction_column_reverse_border_top
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.ColumnReverse;
+        root.Inline.FlexDirection = FlexDirection.ColumnReverse;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.BorderWidth.Top = 100;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.BorderWidth = root.Inline.BorderWidth with { Top = 100 };
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 10;
+        child0.Inline.Width = 10;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 10;
+        child1.Inline.Width = 10;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 10;
+        child2.Inline.Width = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -505,20 +505,20 @@ public sealed class FlexDirectionFixtureTests
     {
         // Yoga fixture: flex_direction_column_reverse_border_bottom
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.ColumnReverse;
+        root.Inline.FlexDirection = FlexDirection.ColumnReverse;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.BorderWidth.Bottom = 100;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.BorderWidth = root.Inline.BorderWidth with { Bottom = 100 };
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 10;
+        child0.Inline.Width = 10;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 10;
+        child1.Inline.Width = 10;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 10;
+        child2.Inline.Width = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -535,25 +535,25 @@ public sealed class FlexDirectionFixtureTests
         // Yoga fixture: flex_direction_row_reverse_inner_pos_left
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexDirection = FlexDirection.RowReverse;
-        child0.Style.Width = 100;
-        child0.Style.Height = 100;
+        child0.Inline.FlexDirection = FlexDirection.RowReverse;
+        child0.Inline.Width = 100;
+        child0.Inline.Height = 100;
 
         Element child0Child0 = AddChild(child0, "root_child0_child0");
-        child0Child0.Style.Position = PositionType.Absolute;
-        child0Child0.Style.Left = 10;
-        child0Child0.Style.Width = 10;
-        child0Child0.Style.Height = 10;
+        child0Child0.Inline.Position = PositionType.Absolute;
+        child0Child0.Inline.Left = 10;
+        child0Child0.Inline.Width = 10;
+        child0Child0.Inline.Height = 10;
 
         Element child0Child1 = AddChild(child0, "root_child0_child1");
-        child0Child1.Style.Width = 10;
+        child0Child1.Inline.Width = 10;
 
         Element child0Child2 = AddChild(child0, "root_child0_child2");
-        child0Child2.Style.Width = 10;
+        child0Child2.Inline.Width = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -571,25 +571,25 @@ public sealed class FlexDirectionFixtureTests
         // Yoga fixture: flex_direction_row_reverse_inner_pos_right
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexDirection = FlexDirection.RowReverse;
-        child0.Style.Width = 100;
-        child0.Style.Height = 100;
+        child0.Inline.FlexDirection = FlexDirection.RowReverse;
+        child0.Inline.Width = 100;
+        child0.Inline.Height = 100;
 
         Element child0Child0 = AddChild(child0, "root_child0_child0");
-        child0Child0.Style.Position = PositionType.Absolute;
-        child0Child0.Style.Right = 10;
-        child0Child0.Style.Width = 10;
-        child0Child0.Style.Height = 10;
+        child0Child0.Inline.Position = PositionType.Absolute;
+        child0Child0.Inline.Right = 10;
+        child0Child0.Inline.Width = 10;
+        child0Child0.Inline.Height = 10;
 
         Element child0Child1 = AddChild(child0, "root_child0_child1");
-        child0Child1.Style.Width = 10;
+        child0Child1.Inline.Width = 10;
 
         Element child0Child2 = AddChild(child0, "root_child0_child2");
-        child0Child2.Style.Width = 10;
+        child0Child2.Inline.Width = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -607,25 +607,25 @@ public sealed class FlexDirectionFixtureTests
         // Yoga fixture: flex_direction_col_reverse_inner_pos_top
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexDirection = FlexDirection.ColumnReverse;
-        child0.Style.Width = 100;
-        child0.Style.Height = 100;
+        child0.Inline.FlexDirection = FlexDirection.ColumnReverse;
+        child0.Inline.Width = 100;
+        child0.Inline.Height = 100;
 
         Element child0Child0 = AddChild(child0, "root_child0_child0");
-        child0Child0.Style.Position = PositionType.Absolute;
-        child0Child0.Style.Top = 10;
-        child0Child0.Style.Width = 10;
-        child0Child0.Style.Height = 10;
+        child0Child0.Inline.Position = PositionType.Absolute;
+        child0Child0.Inline.Top = 10;
+        child0Child0.Inline.Width = 10;
+        child0Child0.Inline.Height = 10;
 
         Element child0Child1 = AddChild(child0, "root_child0_child1");
-        child0Child1.Style.Width = 10;
+        child0Child1.Inline.Width = 10;
 
         Element child0Child2 = AddChild(child0, "root_child0_child2");
-        child0Child2.Style.Width = 10;
+        child0Child2.Inline.Width = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -643,25 +643,25 @@ public sealed class FlexDirectionFixtureTests
         // Yoga fixture: flex_direction_col_reverse_inner_pos_bottom
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexDirection = FlexDirection.ColumnReverse;
-        child0.Style.Width = 100;
-        child0.Style.Height = 100;
+        child0.Inline.FlexDirection = FlexDirection.ColumnReverse;
+        child0.Inline.Width = 100;
+        child0.Inline.Height = 100;
 
         Element child0Child0 = AddChild(child0, "root_child0_child0");
-        child0Child0.Style.Position = PositionType.Absolute;
-        child0Child0.Style.Bottom = 10;
-        child0Child0.Style.Width = 10;
-        child0Child0.Style.Height = 10;
+        child0Child0.Inline.Position = PositionType.Absolute;
+        child0Child0.Inline.Bottom = 10;
+        child0Child0.Inline.Width = 10;
+        child0Child0.Inline.Height = 10;
 
         Element child0Child1 = AddChild(child0, "root_child0_child1");
-        child0Child1.Style.Width = 10;
+        child0Child1.Inline.Width = 10;
 
         Element child0Child2 = AddChild(child0, "root_child0_child2");
-        child0Child2.Style.Width = 10;
+        child0Child2.Inline.Width = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -679,25 +679,25 @@ public sealed class FlexDirectionFixtureTests
         // Yoga fixture: flex_direction_row_reverse_inner_margin_left
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexDirection = FlexDirection.RowReverse;
-        child0.Style.Width = 100;
-        child0.Style.Height = 100;
+        child0.Inline.FlexDirection = FlexDirection.RowReverse;
+        child0.Inline.Width = 100;
+        child0.Inline.Height = 100;
 
         Element child0Child0 = AddChild(child0, "root_child0_child0");
-        child0Child0.Style.Position = PositionType.Absolute;
-        child0Child0.Style.Margin.Left = 10;
-        child0Child0.Style.Width = 10;
-        child0Child0.Style.Height = 10;
+        child0Child0.Inline.Position = PositionType.Absolute;
+        child0Child0.Inline.Margin = child0Child0.Inline.Margin with { Left = 10 };
+        child0Child0.Inline.Width = 10;
+        child0Child0.Inline.Height = 10;
 
         Element child0Child1 = AddChild(child0, "root_child0_child1");
-        child0Child1.Style.Width = 10;
+        child0Child1.Inline.Width = 10;
 
         Element child0Child2 = AddChild(child0, "root_child0_child2");
-        child0Child2.Style.Width = 10;
+        child0Child2.Inline.Width = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -715,25 +715,25 @@ public sealed class FlexDirectionFixtureTests
         // Yoga fixture: flex_direction_row_reverse_inner_margin_right
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexDirection = FlexDirection.RowReverse;
-        child0.Style.Width = 100;
-        child0.Style.Height = 100;
+        child0.Inline.FlexDirection = FlexDirection.RowReverse;
+        child0.Inline.Width = 100;
+        child0.Inline.Height = 100;
 
         Element child0Child0 = AddChild(child0, "root_child0_child0");
-        child0Child0.Style.Position = PositionType.Absolute;
-        child0Child0.Style.Margin.Right = 10;
-        child0Child0.Style.Width = 10;
-        child0Child0.Style.Height = 10;
+        child0Child0.Inline.Position = PositionType.Absolute;
+        child0Child0.Inline.Margin = child0Child0.Inline.Margin with { Right = 10 };
+        child0Child0.Inline.Width = 10;
+        child0Child0.Inline.Height = 10;
 
         Element child0Child1 = AddChild(child0, "root_child0_child1");
-        child0Child1.Style.Width = 10;
+        child0Child1.Inline.Width = 10;
 
         Element child0Child2 = AddChild(child0, "root_child0_child2");
-        child0Child2.Style.Width = 10;
+        child0Child2.Inline.Width = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -751,25 +751,25 @@ public sealed class FlexDirectionFixtureTests
         // Yoga fixture: flex_direction_col_reverse_inner_margin_top
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexDirection = FlexDirection.ColumnReverse;
-        child0.Style.Width = 100;
-        child0.Style.Height = 100;
+        child0.Inline.FlexDirection = FlexDirection.ColumnReverse;
+        child0.Inline.Width = 100;
+        child0.Inline.Height = 100;
 
         Element child0Child0 = AddChild(child0, "root_child0_child0");
-        child0Child0.Style.Position = PositionType.Absolute;
-        child0Child0.Style.Margin.Top = 10;
-        child0Child0.Style.Width = 10;
-        child0Child0.Style.Height = 10;
+        child0Child0.Inline.Position = PositionType.Absolute;
+        child0Child0.Inline.Margin = child0Child0.Inline.Margin with { Top = 10 };
+        child0Child0.Inline.Width = 10;
+        child0Child0.Inline.Height = 10;
 
         Element child0Child1 = AddChild(child0, "root_child0_child1");
-        child0Child1.Style.Width = 10;
+        child0Child1.Inline.Width = 10;
 
         Element child0Child2 = AddChild(child0, "root_child0_child2");
-        child0Child2.Style.Width = 10;
+        child0Child2.Inline.Width = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -787,25 +787,25 @@ public sealed class FlexDirectionFixtureTests
         // Yoga fixture: flex_direction_col_reverse_inner_margin_bottom
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexDirection = FlexDirection.ColumnReverse;
-        child0.Style.Width = 100;
-        child0.Style.Height = 100;
+        child0.Inline.FlexDirection = FlexDirection.ColumnReverse;
+        child0.Inline.Width = 100;
+        child0.Inline.Height = 100;
 
         Element child0Child0 = AddChild(child0, "root_child0_child0");
-        child0Child0.Style.Position = PositionType.Absolute;
-        child0Child0.Style.Margin.Bottom = 10;
-        child0Child0.Style.Width = 10;
-        child0Child0.Style.Height = 10;
+        child0Child0.Inline.Position = PositionType.Absolute;
+        child0Child0.Inline.Margin = child0Child0.Inline.Margin with { Bottom = 10 };
+        child0Child0.Inline.Width = 10;
+        child0Child0.Inline.Height = 10;
 
         Element child0Child1 = AddChild(child0, "root_child0_child1");
-        child0Child1.Style.Width = 10;
+        child0Child1.Inline.Width = 10;
 
         Element child0Child2 = AddChild(child0, "root_child0_child2");
-        child0Child2.Style.Width = 10;
+        child0Child2.Inline.Width = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -823,25 +823,25 @@ public sealed class FlexDirectionFixtureTests
         // Yoga fixture: flex_direction_row_reverse_inner_border_left
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexDirection = FlexDirection.RowReverse;
-        child0.Style.Width = 100;
-        child0.Style.Height = 100;
+        child0.Inline.FlexDirection = FlexDirection.RowReverse;
+        child0.Inline.Width = 100;
+        child0.Inline.Height = 100;
 
         Element child0Child0 = AddChild(child0, "root_child0_child0");
-        child0Child0.Style.Position = PositionType.Absolute;
-        child0Child0.Style.BorderWidth.Left = 10;
-        child0Child0.Style.Width = 10;
-        child0Child0.Style.Height = 10;
+        child0Child0.Inline.Position = PositionType.Absolute;
+        child0Child0.Inline.BorderWidth = child0Child0.Inline.BorderWidth with { Left = 10 };
+        child0Child0.Inline.Width = 10;
+        child0Child0.Inline.Height = 10;
 
         Element child0Child1 = AddChild(child0, "root_child0_child1");
-        child0Child1.Style.Width = 10;
+        child0Child1.Inline.Width = 10;
 
         Element child0Child2 = AddChild(child0, "root_child0_child2");
-        child0Child2.Style.Width = 10;
+        child0Child2.Inline.Width = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -859,25 +859,25 @@ public sealed class FlexDirectionFixtureTests
         // Yoga fixture: flex_direction_row_reverse_inner_border_right
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexDirection = FlexDirection.RowReverse;
-        child0.Style.Width = 100;
-        child0.Style.Height = 100;
+        child0.Inline.FlexDirection = FlexDirection.RowReverse;
+        child0.Inline.Width = 100;
+        child0.Inline.Height = 100;
 
         Element child0Child0 = AddChild(child0, "root_child0_child0");
-        child0Child0.Style.Position = PositionType.Absolute;
-        child0Child0.Style.BorderWidth.Right = 10;
-        child0Child0.Style.Width = 10;
-        child0Child0.Style.Height = 10;
+        child0Child0.Inline.Position = PositionType.Absolute;
+        child0Child0.Inline.BorderWidth = child0Child0.Inline.BorderWidth with { Right = 10 };
+        child0Child0.Inline.Width = 10;
+        child0Child0.Inline.Height = 10;
 
         Element child0Child1 = AddChild(child0, "root_child0_child1");
-        child0Child1.Style.Width = 10;
+        child0Child1.Inline.Width = 10;
 
         Element child0Child2 = AddChild(child0, "root_child0_child2");
-        child0Child2.Style.Width = 10;
+        child0Child2.Inline.Width = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -895,25 +895,25 @@ public sealed class FlexDirectionFixtureTests
         // Yoga fixture: flex_direction_col_reverse_inner_border_top
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexDirection = FlexDirection.ColumnReverse;
-        child0.Style.Width = 100;
-        child0.Style.Height = 100;
+        child0.Inline.FlexDirection = FlexDirection.ColumnReverse;
+        child0.Inline.Width = 100;
+        child0.Inline.Height = 100;
 
         Element child0Child0 = AddChild(child0, "root_child0_child0");
-        child0Child0.Style.Position = PositionType.Absolute;
-        child0Child0.Style.BorderWidth.Top = 10;
-        child0Child0.Style.Width = 10;
-        child0Child0.Style.Height = 10;
+        child0Child0.Inline.Position = PositionType.Absolute;
+        child0Child0.Inline.BorderWidth = child0Child0.Inline.BorderWidth with { Top = 10 };
+        child0Child0.Inline.Width = 10;
+        child0Child0.Inline.Height = 10;
 
         Element child0Child1 = AddChild(child0, "root_child0_child1");
-        child0Child1.Style.Width = 10;
+        child0Child1.Inline.Width = 10;
 
         Element child0Child2 = AddChild(child0, "root_child0_child2");
-        child0Child2.Style.Width = 10;
+        child0Child2.Inline.Width = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -931,25 +931,25 @@ public sealed class FlexDirectionFixtureTests
         // Yoga fixture: flex_direction_col_reverse_inner_border_bottom
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexDirection = FlexDirection.ColumnReverse;
-        child0.Style.Width = 100;
-        child0.Style.Height = 100;
+        child0.Inline.FlexDirection = FlexDirection.ColumnReverse;
+        child0.Inline.Width = 100;
+        child0.Inline.Height = 100;
 
         Element child0Child0 = AddChild(child0, "root_child0_child0");
-        child0Child0.Style.Position = PositionType.Absolute;
-        child0Child0.Style.BorderWidth.Bottom = 10;
-        child0Child0.Style.Width = 10;
-        child0Child0.Style.Height = 10;
+        child0Child0.Inline.Position = PositionType.Absolute;
+        child0Child0.Inline.BorderWidth = child0Child0.Inline.BorderWidth with { Bottom = 10 };
+        child0Child0.Inline.Width = 10;
+        child0Child0.Inline.Height = 10;
 
         Element child0Child1 = AddChild(child0, "root_child0_child1");
-        child0Child1.Style.Width = 10;
+        child0Child1.Inline.Width = 10;
 
         Element child0Child2 = AddChild(child0, "root_child0_child2");
-        child0Child2.Style.Width = 10;
+        child0Child2.Inline.Width = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -968,25 +968,25 @@ public sealed class FlexDirectionFixtureTests
         // The generated test sets the left edge, not the start edge.
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexDirection = FlexDirection.RowReverse;
-        child0.Style.Width = 100;
-        child0.Style.Height = 100;
+        child0.Inline.FlexDirection = FlexDirection.RowReverse;
+        child0.Inline.Width = 100;
+        child0.Inline.Height = 100;
 
         Element child0Child0 = AddChild(child0, "root_child0_child0");
-        child0Child0.Style.Position = PositionType.Absolute;
-        child0Child0.Style.BorderWidth.Left = 10;
-        child0Child0.Style.Width = 10;
-        child0Child0.Style.Height = 10;
+        child0Child0.Inline.Position = PositionType.Absolute;
+        child0Child0.Inline.BorderWidth = child0Child0.Inline.BorderWidth with { Left = 10 };
+        child0Child0.Inline.Width = 10;
+        child0Child0.Inline.Height = 10;
 
         Element child0Child1 = AddChild(child0, "root_child0_child1");
-        child0Child1.Style.Width = 10;
+        child0Child1.Inline.Width = 10;
 
         Element child0Child2 = AddChild(child0, "root_child0_child2");
-        child0Child2.Style.Width = 10;
+        child0Child2.Inline.Width = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -1005,25 +1005,25 @@ public sealed class FlexDirectionFixtureTests
         // The generated test sets the right edge, not the end edge.
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexDirection = FlexDirection.RowReverse;
-        child0.Style.Width = 100;
-        child0.Style.Height = 100;
+        child0.Inline.FlexDirection = FlexDirection.RowReverse;
+        child0.Inline.Width = 100;
+        child0.Inline.Height = 100;
 
         Element child0Child0 = AddChild(child0, "root_child0_child0");
-        child0Child0.Style.Position = PositionType.Absolute;
-        child0Child0.Style.BorderWidth.Right = 10;
-        child0Child0.Style.Width = 10;
-        child0Child0.Style.Height = 10;
+        child0Child0.Inline.Position = PositionType.Absolute;
+        child0Child0.Inline.BorderWidth = child0Child0.Inline.BorderWidth with { Right = 10 };
+        child0Child0.Inline.Width = 10;
+        child0Child0.Inline.Height = 10;
 
         Element child0Child1 = AddChild(child0, "root_child0_child1");
-        child0Child1.Style.Width = 10;
+        child0Child1.Inline.Width = 10;
 
         Element child0Child2 = AddChild(child0, "root_child0_child2");
-        child0Child2.Style.Width = 10;
+        child0Child2.Inline.Width = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -1041,25 +1041,25 @@ public sealed class FlexDirectionFixtureTests
         // Yoga fixture: flex_direction_row_reverse_inner_padding_left
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexDirection = FlexDirection.RowReverse;
-        child0.Style.Width = 100;
-        child0.Style.Height = 100;
+        child0.Inline.FlexDirection = FlexDirection.RowReverse;
+        child0.Inline.Width = 100;
+        child0.Inline.Height = 100;
 
         Element child0Child0 = AddChild(child0, "root_child0_child0");
-        child0Child0.Style.Position = PositionType.Absolute;
-        child0Child0.Style.Padding.Left = 10;
-        child0Child0.Style.Width = 10;
-        child0Child0.Style.Height = 10;
+        child0Child0.Inline.Position = PositionType.Absolute;
+        child0Child0.Inline.Padding = child0Child0.Inline.Padding with { Left = 10 };
+        child0Child0.Inline.Width = 10;
+        child0Child0.Inline.Height = 10;
 
         Element child0Child1 = AddChild(child0, "root_child0_child1");
-        child0Child1.Style.Width = 10;
+        child0Child1.Inline.Width = 10;
 
         Element child0Child2 = AddChild(child0, "root_child0_child2");
-        child0Child2.Style.Width = 10;
+        child0Child2.Inline.Width = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -1077,25 +1077,25 @@ public sealed class FlexDirectionFixtureTests
         // Yoga fixture: flex_direction_row_reverse_inner_padding_right
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexDirection = FlexDirection.RowReverse;
-        child0.Style.Width = 100;
-        child0.Style.Height = 100;
+        child0.Inline.FlexDirection = FlexDirection.RowReverse;
+        child0.Inline.Width = 100;
+        child0.Inline.Height = 100;
 
         Element child0Child0 = AddChild(child0, "root_child0_child0");
-        child0Child0.Style.Position = PositionType.Absolute;
-        child0Child0.Style.Padding.Right = 10;
-        child0Child0.Style.Width = 10;
-        child0Child0.Style.Height = 10;
+        child0Child0.Inline.Position = PositionType.Absolute;
+        child0Child0.Inline.Padding = child0Child0.Inline.Padding with { Right = 10 };
+        child0Child0.Inline.Width = 10;
+        child0Child0.Inline.Height = 10;
 
         Element child0Child1 = AddChild(child0, "root_child0_child1");
-        child0Child1.Style.Width = 10;
+        child0Child1.Inline.Width = 10;
 
         Element child0Child2 = AddChild(child0, "root_child0_child2");
-        child0Child2.Style.Width = 10;
+        child0Child2.Inline.Width = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -1113,25 +1113,25 @@ public sealed class FlexDirectionFixtureTests
         // Yoga fixture: flex_direction_col_reverse_inner_padding_top
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexDirection = FlexDirection.ColumnReverse;
-        child0.Style.Width = 100;
-        child0.Style.Height = 100;
+        child0.Inline.FlexDirection = FlexDirection.ColumnReverse;
+        child0.Inline.Width = 100;
+        child0.Inline.Height = 100;
 
         Element child0Child0 = AddChild(child0, "root_child0_child0");
-        child0Child0.Style.Position = PositionType.Absolute;
-        child0Child0.Style.Padding.Top = 10;
-        child0Child0.Style.Width = 10;
-        child0Child0.Style.Height = 10;
+        child0Child0.Inline.Position = PositionType.Absolute;
+        child0Child0.Inline.Padding = child0Child0.Inline.Padding with { Top = 10 };
+        child0Child0.Inline.Width = 10;
+        child0Child0.Inline.Height = 10;
 
         Element child0Child1 = AddChild(child0, "root_child0_child1");
-        child0Child1.Style.Width = 10;
+        child0Child1.Inline.Width = 10;
 
         Element child0Child2 = AddChild(child0, "root_child0_child2");
-        child0Child2.Style.Width = 10;
+        child0Child2.Inline.Width = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -1149,25 +1149,25 @@ public sealed class FlexDirectionFixtureTests
         // Yoga fixture: flex_direction_col_reverse_inner_padding_bottom
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexDirection = FlexDirection.ColumnReverse;
-        child0.Style.Width = 100;
-        child0.Style.Height = 100;
+        child0.Inline.FlexDirection = FlexDirection.ColumnReverse;
+        child0.Inline.Width = 100;
+        child0.Inline.Height = 100;
 
         Element child0Child0 = AddChild(child0, "root_child0_child0");
-        child0Child0.Style.Position = PositionType.Absolute;
-        child0Child0.Style.Padding.Bottom = 10;
-        child0Child0.Style.Width = 10;
-        child0Child0.Style.Height = 10;
+        child0Child0.Inline.Position = PositionType.Absolute;
+        child0Child0.Inline.Padding = child0Child0.Inline.Padding with { Bottom = 10 };
+        child0Child0.Inline.Width = 10;
+        child0Child0.Inline.Height = 10;
 
         Element child0Child1 = AddChild(child0, "root_child0_child1");
-        child0Child1.Style.Width = 10;
+        child0Child1.Inline.Width = 10;
 
         Element child0Child2 = AddChild(child0, "root_child0_child2");
-        child0Child2.Style.Width = 10;
+        child0Child2.Inline.Width = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -1184,16 +1184,16 @@ public sealed class FlexDirectionFixtureTests
     {
         // Yoga fixture: flex_direction_alternating_with_percent
         Element root = new() { Name = "root" };
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Width = 200;
-        root.Style.Height = 300;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Width = 200;
+        root.Inline.Height = 300;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexDirection = FlexDirection.Row;
-        child0.Style.Left = Length.Percent(10);
-        child0.Style.Top = Length.Percent(10);
-        child0.Style.Width = Length.Percent(50);
-        child0.Style.Height = Length.Percent(50);
+        child0.Inline.FlexDirection = FlexDirection.Row;
+        child0.Inline.Left = Length.Percent(10);
+        child0.Inline.Top = Length.Percent(10);
+        child0.Inline.Width = Length.Percent(50);
+        child0.Inline.Height = Length.Percent(50);
 
         LayoutFixture.Calculate(root);
 

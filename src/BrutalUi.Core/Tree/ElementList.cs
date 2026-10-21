@@ -53,8 +53,8 @@ public readonly struct ElementList
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The owner gets the <see cref="DirtyFlags.Layout"/> bit. The child gets the <see cref="DirtyFlags.Style"/> bit.
-    /// The bits of the child go up the new parent chain as descendant bits.
+    /// The owner gets the <see cref="DirtyFlags.Layout"/> bit. The child and each descendant of the child get the
+    /// <see cref="DirtyFlags.Style"/> bit. The bits of the child go up the new parent chain as descendant bits.
     /// </para>
     /// <para>
     /// A child that has a parent leaves that parent first. The old parent gets the

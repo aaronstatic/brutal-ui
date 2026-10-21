@@ -20,7 +20,7 @@ public sealed class PaddingFixtureTests
         // Yoga fixture: padding_no_size
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Padding = LengthEdges.All(10);
+        root.Inline.Padding = LengthEdges.All(10);
 
         LayoutFixture.Calculate(root);
 
@@ -34,11 +34,11 @@ public sealed class PaddingFixtureTests
         // Yoga fixture: padding_container_match_child
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Padding = LengthEdges.All(10);
+        root.Inline.Padding = LengthEdges.All(10);
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 10;
-        child0.Style.Height = 10;
+        child0.Inline.Width = 10;
+        child0.Inline.Height = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -53,13 +53,13 @@ public sealed class PaddingFixtureTests
         // Yoga fixture: padding_flex_child
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Padding = LengthEdges.All(10);
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Padding = LengthEdges.All(10);
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexGrow = 1;
-        child0.Style.Width = 10;
+        child0.Inline.FlexGrow = 1;
+        child0.Inline.Width = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -74,12 +74,12 @@ public sealed class PaddingFixtureTests
         // Yoga fixture: padding_stretch_child
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Padding = LengthEdges.All(10);
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Padding = LengthEdges.All(10);
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Height = 10;
+        child0.Inline.Height = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -93,16 +93,16 @@ public sealed class PaddingFixtureTests
     {
         // Yoga fixture: child_with_padding_align_end
         Element root = new() { Name = "root" };
-        root.Style.JustifyContent = Justify.FlexEnd;
-        root.Style.AlignItems = Align.FlexEnd;
+        root.Inline.JustifyContent = Justify.FlexEnd;
+        root.Inline.AlignItems = Align.FlexEnd;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 200;
-        root.Style.Height = 200;
+        root.Inline.Width = 200;
+        root.Inline.Height = 200;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Padding = LengthEdges.All(20);
-        child0.Style.Width = 100;
-        child0.Style.Height = 100;
+        child0.Inline.Padding = LengthEdges.All(20);
+        child0.Inline.Width = 100;
+        child0.Inline.Height = 100;
 
         LayoutFixture.Calculate(root);
 

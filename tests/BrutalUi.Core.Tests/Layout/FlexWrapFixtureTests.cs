@@ -19,25 +19,25 @@ public sealed class FlexWrapFixtureTests
     {
         // Yoga fixture: wrap_column
         Element root = new() { Name = "root" };
-        root.Style.Position = PositionType.Absolute;
-        root.Style.FlexWrap = FlexWrap.Wrap;
-        root.Style.Height = 100;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.FlexWrap = FlexWrap.Wrap;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 30;
-        child0.Style.Height = 30;
+        child0.Inline.Width = 30;
+        child0.Inline.Height = 30;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 30;
-        child1.Style.Height = 30;
+        child1.Inline.Width = 30;
+        child1.Inline.Height = 30;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 30;
-        child2.Style.Height = 30;
+        child2.Inline.Width = 30;
+        child2.Inline.Height = 30;
 
         Element child3 = AddChild(root, "root_child3");
-        child3.Style.Width = 30;
-        child3.Style.Height = 30;
+        child3.Inline.Width = 30;
+        child3.Inline.Height = 30;
 
         LayoutFixture.Calculate(root);
 
@@ -54,26 +54,26 @@ public sealed class FlexWrapFixtureTests
     {
         // Yoga fixture: wrap_row
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.FlexWrap = FlexWrap.Wrap;
-        root.Style.Width = 100;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.FlexWrap = FlexWrap.Wrap;
+        root.Inline.Width = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 30;
-        child0.Style.Height = 30;
+        child0.Inline.Width = 30;
+        child0.Inline.Height = 30;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 30;
-        child1.Style.Height = 30;
+        child1.Inline.Width = 30;
+        child1.Inline.Height = 30;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 30;
-        child2.Style.Height = 30;
+        child2.Inline.Width = 30;
+        child2.Inline.Height = 30;
 
         Element child3 = AddChild(root, "root_child3");
-        child3.Style.Width = 30;
-        child3.Style.Height = 30;
+        child3.Inline.Width = 30;
+        child3.Inline.Height = 30;
 
         LayoutFixture.Calculate(root);
 
@@ -90,27 +90,27 @@ public sealed class FlexWrapFixtureTests
     {
         // Yoga fixture: wrap_row_align_items_flex_end
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.AlignItems = Align.FlexEnd;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.FlexWrap = FlexWrap.Wrap;
-        root.Style.Width = 100;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.AlignItems = Align.FlexEnd;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.FlexWrap = FlexWrap.Wrap;
+        root.Inline.Width = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 30;
-        child0.Style.Height = 10;
+        child0.Inline.Width = 30;
+        child0.Inline.Height = 10;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 30;
-        child1.Style.Height = 20;
+        child1.Inline.Width = 30;
+        child1.Inline.Height = 20;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 30;
-        child2.Style.Height = 30;
+        child2.Inline.Width = 30;
+        child2.Inline.Height = 30;
 
         Element child3 = AddChild(root, "root_child3");
-        child3.Style.Width = 30;
-        child3.Style.Height = 30;
+        child3.Inline.Width = 30;
+        child3.Inline.Height = 30;
 
         LayoutFixture.Calculate(root);
 
@@ -127,27 +127,27 @@ public sealed class FlexWrapFixtureTests
     {
         // Yoga fixture: wrap_row_align_items_center
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.AlignItems = Align.Center;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.FlexWrap = FlexWrap.Wrap;
-        root.Style.Width = 100;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.AlignItems = Align.Center;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.FlexWrap = FlexWrap.Wrap;
+        root.Inline.Width = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 30;
-        child0.Style.Height = 10;
+        child0.Inline.Width = 30;
+        child0.Inline.Height = 10;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 30;
-        child1.Style.Height = 20;
+        child1.Inline.Width = 30;
+        child1.Inline.Height = 20;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 30;
-        child2.Style.Height = 30;
+        child2.Inline.Width = 30;
+        child2.Inline.Height = 30;
 
         Element child3 = AddChild(root, "root_child3");
-        child3.Style.Width = 30;
-        child3.Style.Height = 30;
+        child3.Inline.Width = 30;
+        child3.Inline.Height = 30;
 
         LayoutFixture.Calculate(root);
 
@@ -164,20 +164,20 @@ public sealed class FlexWrapFixtureTests
     {
         // Yoga fixture: flex_wrap_children_with_min_main_overriding_flex_basis
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.FlexWrap = FlexWrap.Wrap;
-        root.Style.Width = 100;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.FlexWrap = FlexWrap.Wrap;
+        root.Inline.Width = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexBasis = 50;
-        child0.Style.MinWidth = 55;
-        child0.Style.Height = 50;
+        child0.Inline.FlexBasis = 50;
+        child0.Inline.MinWidth = 55;
+        child0.Inline.Height = 50;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.FlexBasis = 50;
-        child1.Style.MinWidth = 55;
-        child1.Style.Height = 50;
+        child1.Inline.FlexBasis = 50;
+        child1.Inline.MinWidth = 55;
+        child1.Inline.Height = 50;
 
         LayoutFixture.Calculate(root);
 
@@ -192,23 +192,23 @@ public sealed class FlexWrapFixtureTests
     {
         // Yoga fixture: flex_wrap_wrap_to_child_height
         Element root = new() { Name = "root" };
-        root.Style.Position = PositionType.Absolute;
+        root.Inline.Position = PositionType.Absolute;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexDirection = FlexDirection.Row;
-        child0.Style.AlignItems = Align.FlexStart;
-        child0.Style.FlexWrap = FlexWrap.Wrap;
+        child0.Inline.FlexDirection = FlexDirection.Row;
+        child0.Inline.AlignItems = Align.FlexStart;
+        child0.Inline.FlexWrap = FlexWrap.Wrap;
 
         Element child0Child0 = AddChild(child0, "root_child0_child0");
-        child0Child0.Style.Width = 100;
+        child0Child0.Inline.Width = 100;
 
         Element child0Child0Child0 = AddChild(child0Child0, "root_child0_child0_child0");
-        child0Child0Child0.Style.Width = 100;
-        child0Child0Child0.Style.Height = 100;
+        child0Child0Child0.Inline.Width = 100;
+        child0Child0Child0.Inline.Height = 100;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 100;
-        child1.Style.Height = 100;
+        child1.Inline.Width = 100;
+        child1.Inline.Height = 100;
 
         LayoutFixture.Calculate(root);
 
@@ -225,17 +225,17 @@ public sealed class FlexWrapFixtureTests
     {
         // Yoga fixture: flex_wrap_align_stretch_fits_one_row
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.FlexWrap = FlexWrap.Wrap;
-        root.Style.Width = 150;
-        root.Style.Height = 100;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.FlexWrap = FlexWrap.Wrap;
+        root.Inline.Width = 150;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 50;
+        child0.Inline.Width = 50;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 50;
+        child1.Inline.Width = 50;
 
         LayoutFixture.Calculate(root);
 
@@ -250,30 +250,30 @@ public sealed class FlexWrapFixtureTests
     {
         // Yoga fixture: wrap_reverse_row_align_content_flex_start
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.FlexWrap = FlexWrap.WrapReverse;
-        root.Style.Width = 100;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.FlexWrap = FlexWrap.WrapReverse;
+        root.Inline.Width = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 30;
-        child0.Style.Height = 10;
+        child0.Inline.Width = 30;
+        child0.Inline.Height = 10;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 30;
-        child1.Style.Height = 20;
+        child1.Inline.Width = 30;
+        child1.Inline.Height = 20;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 30;
-        child2.Style.Height = 30;
+        child2.Inline.Width = 30;
+        child2.Inline.Height = 30;
 
         Element child3 = AddChild(root, "root_child3");
-        child3.Style.Width = 30;
-        child3.Style.Height = 40;
+        child3.Inline.Width = 30;
+        child3.Inline.Height = 40;
 
         Element child4 = AddChild(root, "root_child4");
-        child4.Style.Width = 30;
-        child4.Style.Height = 50;
+        child4.Inline.Width = 30;
+        child4.Inline.Height = 50;
 
         LayoutFixture.Calculate(root);
 
@@ -291,31 +291,31 @@ public sealed class FlexWrapFixtureTests
     {
         // Yoga fixture: wrap_reverse_row_align_content_center
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.AlignContent = Align.Center;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.FlexWrap = FlexWrap.WrapReverse;
-        root.Style.Width = 100;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.AlignContent = Align.Center;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.FlexWrap = FlexWrap.WrapReverse;
+        root.Inline.Width = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 30;
-        child0.Style.Height = 10;
+        child0.Inline.Width = 30;
+        child0.Inline.Height = 10;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 30;
-        child1.Style.Height = 20;
+        child1.Inline.Width = 30;
+        child1.Inline.Height = 20;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 30;
-        child2.Style.Height = 30;
+        child2.Inline.Width = 30;
+        child2.Inline.Height = 30;
 
         Element child3 = AddChild(root, "root_child3");
-        child3.Style.Width = 30;
-        child3.Style.Height = 40;
+        child3.Inline.Width = 30;
+        child3.Inline.Height = 40;
 
         Element child4 = AddChild(root, "root_child4");
-        child4.Style.Width = 30;
-        child4.Style.Height = 50;
+        child4.Inline.Width = 30;
+        child4.Inline.Height = 50;
 
         LayoutFixture.Calculate(root);
 
@@ -333,30 +333,30 @@ public sealed class FlexWrapFixtureTests
     {
         // Yoga fixture: wrap_reverse_row_single_line_different_size
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.FlexWrap = FlexWrap.WrapReverse;
-        root.Style.Width = 300;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.FlexWrap = FlexWrap.WrapReverse;
+        root.Inline.Width = 300;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 30;
-        child0.Style.Height = 10;
+        child0.Inline.Width = 30;
+        child0.Inline.Height = 10;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 30;
-        child1.Style.Height = 20;
+        child1.Inline.Width = 30;
+        child1.Inline.Height = 20;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 30;
-        child2.Style.Height = 30;
+        child2.Inline.Width = 30;
+        child2.Inline.Height = 30;
 
         Element child3 = AddChild(root, "root_child3");
-        child3.Style.Width = 30;
-        child3.Style.Height = 40;
+        child3.Inline.Width = 30;
+        child3.Inline.Height = 40;
 
         Element child4 = AddChild(root, "root_child4");
-        child4.Style.Width = 30;
-        child4.Style.Height = 50;
+        child4.Inline.Width = 30;
+        child4.Inline.Height = 50;
 
         LayoutFixture.Calculate(root);
 
@@ -374,31 +374,31 @@ public sealed class FlexWrapFixtureTests
     {
         // Yoga fixture: wrap_reverse_row_align_content_stretch
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.AlignContent = Align.Stretch;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.FlexWrap = FlexWrap.WrapReverse;
-        root.Style.Width = 100;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.AlignContent = Align.Stretch;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.FlexWrap = FlexWrap.WrapReverse;
+        root.Inline.Width = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 30;
-        child0.Style.Height = 10;
+        child0.Inline.Width = 30;
+        child0.Inline.Height = 10;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 30;
-        child1.Style.Height = 20;
+        child1.Inline.Width = 30;
+        child1.Inline.Height = 20;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 30;
-        child2.Style.Height = 30;
+        child2.Inline.Width = 30;
+        child2.Inline.Height = 30;
 
         Element child3 = AddChild(root, "root_child3");
-        child3.Style.Width = 30;
-        child3.Style.Height = 40;
+        child3.Inline.Width = 30;
+        child3.Inline.Height = 40;
 
         Element child4 = AddChild(root, "root_child4");
-        child4.Style.Width = 30;
-        child4.Style.Height = 50;
+        child4.Inline.Width = 30;
+        child4.Inline.Height = 50;
 
         LayoutFixture.Calculate(root);
 
@@ -416,31 +416,31 @@ public sealed class FlexWrapFixtureTests
     {
         // Yoga fixture: wrap_reverse_row_align_content_space_around
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.AlignContent = Align.SpaceAround;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.FlexWrap = FlexWrap.WrapReverse;
-        root.Style.Width = 100;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.AlignContent = Align.SpaceAround;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.FlexWrap = FlexWrap.WrapReverse;
+        root.Inline.Width = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 30;
-        child0.Style.Height = 10;
+        child0.Inline.Width = 30;
+        child0.Inline.Height = 10;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 30;
-        child1.Style.Height = 20;
+        child1.Inline.Width = 30;
+        child1.Inline.Height = 20;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 30;
-        child2.Style.Height = 30;
+        child2.Inline.Width = 30;
+        child2.Inline.Height = 30;
 
         Element child3 = AddChild(root, "root_child3");
-        child3.Style.Width = 30;
-        child3.Style.Height = 40;
+        child3.Inline.Width = 30;
+        child3.Inline.Height = 40;
 
         Element child4 = AddChild(root, "root_child4");
-        child4.Style.Width = 30;
-        child4.Style.Height = 50;
+        child4.Inline.Width = 30;
+        child4.Inline.Height = 50;
 
         LayoutFixture.Calculate(root);
 
@@ -458,31 +458,31 @@ public sealed class FlexWrapFixtureTests
     {
         // Yoga fixture: wrap_reverse_column_fixed_size
         Element root = new() { Name = "root" };
-        root.Style.AlignItems = Align.Center;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.FlexWrap = FlexWrap.WrapReverse;
-        root.Style.Width = 200;
-        root.Style.Height = 100;
+        root.Inline.AlignItems = Align.Center;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.FlexWrap = FlexWrap.WrapReverse;
+        root.Inline.Width = 200;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 30;
-        child0.Style.Height = 10;
+        child0.Inline.Width = 30;
+        child0.Inline.Height = 10;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 30;
-        child1.Style.Height = 20;
+        child1.Inline.Width = 30;
+        child1.Inline.Height = 20;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 30;
-        child2.Style.Height = 30;
+        child2.Inline.Width = 30;
+        child2.Inline.Height = 30;
 
         Element child3 = AddChild(root, "root_child3");
-        child3.Style.Width = 30;
-        child3.Style.Height = 40;
+        child3.Inline.Width = 30;
+        child3.Inline.Height = 40;
 
         Element child4 = AddChild(root, "root_child4");
-        child4.Style.Width = 30;
-        child4.Style.Height = 50;
+        child4.Inline.Width = 30;
+        child4.Inline.Height = 50;
 
         LayoutFixture.Calculate(root);
 
@@ -500,22 +500,22 @@ public sealed class FlexWrapFixtureTests
     {
         // Yoga fixture: wrapped_row_within_align_items_center
         Element root = new() { Name = "root" };
-        root.Style.AlignItems = Align.Center;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Width = 200;
-        root.Style.Height = 200;
+        root.Inline.AlignItems = Align.Center;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Width = 200;
+        root.Inline.Height = 200;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexDirection = FlexDirection.Row;
-        child0.Style.FlexWrap = FlexWrap.Wrap;
+        child0.Inline.FlexDirection = FlexDirection.Row;
+        child0.Inline.FlexWrap = FlexWrap.Wrap;
 
         Element child0Child0 = AddChild(child0, "root_child0_child0");
-        child0Child0.Style.Width = 150;
-        child0Child0.Style.Height = 80;
+        child0Child0.Inline.Width = 150;
+        child0Child0.Inline.Height = 80;
 
         Element child0Child1 = AddChild(child0, "root_child0_child1");
-        child0Child1.Style.Width = 80;
-        child0Child1.Style.Height = 80;
+        child0Child1.Inline.Width = 80;
+        child0Child1.Inline.Height = 80;
 
         LayoutFixture.Calculate(root);
 
@@ -531,22 +531,22 @@ public sealed class FlexWrapFixtureTests
     {
         // Yoga fixture: wrapped_row_within_align_items_flex_start
         Element root = new() { Name = "root" };
-        root.Style.AlignItems = Align.FlexStart;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Width = 200;
-        root.Style.Height = 200;
+        root.Inline.AlignItems = Align.FlexStart;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Width = 200;
+        root.Inline.Height = 200;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexDirection = FlexDirection.Row;
-        child0.Style.FlexWrap = FlexWrap.Wrap;
+        child0.Inline.FlexDirection = FlexDirection.Row;
+        child0.Inline.FlexWrap = FlexWrap.Wrap;
 
         Element child0Child0 = AddChild(child0, "root_child0_child0");
-        child0Child0.Style.Width = 150;
-        child0Child0.Style.Height = 80;
+        child0Child0.Inline.Width = 150;
+        child0Child0.Inline.Height = 80;
 
         Element child0Child1 = AddChild(child0, "root_child0_child1");
-        child0Child1.Style.Width = 80;
-        child0Child1.Style.Height = 80;
+        child0Child1.Inline.Width = 80;
+        child0Child1.Inline.Height = 80;
 
         LayoutFixture.Calculate(root);
 
@@ -562,22 +562,22 @@ public sealed class FlexWrapFixtureTests
     {
         // Yoga fixture: wrapped_row_within_align_items_flex_end
         Element root = new() { Name = "root" };
-        root.Style.AlignItems = Align.FlexEnd;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Width = 200;
-        root.Style.Height = 200;
+        root.Inline.AlignItems = Align.FlexEnd;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Width = 200;
+        root.Inline.Height = 200;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexDirection = FlexDirection.Row;
-        child0.Style.FlexWrap = FlexWrap.Wrap;
+        child0.Inline.FlexDirection = FlexDirection.Row;
+        child0.Inline.FlexWrap = FlexWrap.Wrap;
 
         Element child0Child0 = AddChild(child0, "root_child0_child0");
-        child0Child0.Style.Width = 150;
-        child0Child0.Style.Height = 80;
+        child0Child0.Inline.Width = 150;
+        child0Child0.Inline.Height = 80;
 
         Element child0Child1 = AddChild(child0, "root_child0_child1");
-        child0Child1.Style.Width = 80;
-        child0Child1.Style.Height = 80;
+        child0Child1.Inline.Width = 80;
+        child0Child1.Inline.Height = 80;
 
         LayoutFixture.Calculate(root);
 
@@ -593,30 +593,27 @@ public sealed class FlexWrapFixtureTests
     {
         // Yoga fixture: wrapped_column_max_height
         Element root = new() { Name = "root" };
-        root.Style.JustifyContent = Justify.Center;
-        root.Style.AlignContent = Align.Center;
-        root.Style.AlignItems = Align.Center;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.FlexWrap = FlexWrap.Wrap;
-        root.Style.Width = 700;
-        root.Style.Height = 500;
+        root.Inline.JustifyContent = Justify.Center;
+        root.Inline.AlignContent = Align.Center;
+        root.Inline.AlignItems = Align.Center;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.FlexWrap = FlexWrap.Wrap;
+        root.Inline.Width = 700;
+        root.Inline.Height = 500;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 100;
-        child0.Style.Height = 500;
-        child0.Style.MaxHeight = 200;
+        child0.Inline.Width = 100;
+        child0.Inline.Height = 500;
+        child0.Inline.MaxHeight = 200;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Margin.Left = 20;
-        child1.Style.Margin.Top = 20;
-        child1.Style.Margin.Right = 20;
-        child1.Style.Margin.Bottom = 20;
-        child1.Style.Width = 200;
-        child1.Style.Height = 200;
+        child1.Inline.Margin = LengthEdges.All(20);
+        child1.Inline.Width = 200;
+        child1.Inline.Height = 200;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 100;
-        child2.Style.Height = 100;
+        child2.Inline.Width = 100;
+        child2.Inline.Height = 100;
 
         LayoutFixture.Calculate(root);
 
@@ -632,36 +629,33 @@ public sealed class FlexWrapFixtureTests
     {
         // Yoga fixture: wrapped_column_max_height_flex
         Element root = new() { Name = "root" };
-        root.Style.JustifyContent = Justify.Center;
-        root.Style.AlignContent = Align.Center;
-        root.Style.AlignItems = Align.Center;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.FlexWrap = FlexWrap.Wrap;
-        root.Style.Width = 700;
-        root.Style.Height = 500;
+        root.Inline.JustifyContent = Justify.Center;
+        root.Inline.AlignContent = Align.Center;
+        root.Inline.AlignItems = Align.Center;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.FlexWrap = FlexWrap.Wrap;
+        root.Inline.Width = 700;
+        root.Inline.Height = 500;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexGrow = 1;
-        child0.Style.FlexShrink = 1;
-        child0.Style.FlexBasis = Length.Percent(0);
-        child0.Style.Width = 100;
-        child0.Style.Height = 500;
-        child0.Style.MaxHeight = 200;
+        child0.Inline.FlexGrow = 1;
+        child0.Inline.FlexShrink = 1;
+        child0.Inline.FlexBasis = Length.Percent(0);
+        child0.Inline.Width = 100;
+        child0.Inline.Height = 500;
+        child0.Inline.MaxHeight = 200;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.FlexGrow = 1;
-        child1.Style.FlexShrink = 1;
-        child1.Style.FlexBasis = Length.Percent(0);
-        child1.Style.Margin.Left = 20;
-        child1.Style.Margin.Top = 20;
-        child1.Style.Margin.Right = 20;
-        child1.Style.Margin.Bottom = 20;
-        child1.Style.Width = 200;
-        child1.Style.Height = 200;
+        child1.Inline.FlexGrow = 1;
+        child1.Inline.FlexShrink = 1;
+        child1.Inline.FlexBasis = Length.Percent(0);
+        child1.Inline.Margin = LengthEdges.All(20);
+        child1.Inline.Width = 200;
+        child1.Inline.Height = 200;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 100;
-        child2.Style.Height = 100;
+        child2.Inline.Width = 100;
+        child2.Inline.Height = 100;
 
         LayoutFixture.Calculate(root);
 
@@ -677,27 +671,27 @@ public sealed class FlexWrapFixtureTests
     {
         // Yoga fixture: wrap_nodes_with_content_sizing_overflowing_margin
         Element root = new() { Name = "root" };
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Width = 500;
-        root.Style.Height = 500;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Width = 500;
+        root.Inline.Height = 500;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexDirection = FlexDirection.Row;
-        child0.Style.FlexWrap = FlexWrap.Wrap;
-        child0.Style.Width = 85;
+        child0.Inline.FlexDirection = FlexDirection.Row;
+        child0.Inline.FlexWrap = FlexWrap.Wrap;
+        child0.Inline.Width = 85;
 
         Element child0Child0 = AddChild(child0, "root_child0_child0");
 
         Element child0Child0Child0 = AddChild(child0Child0, "root_child0_child0_child0");
-        child0Child0Child0.Style.Width = 40;
-        child0Child0Child0.Style.Height = 40;
+        child0Child0Child0.Inline.Width = 40;
+        child0Child0Child0.Inline.Height = 40;
 
         Element child0Child1 = AddChild(child0, "root_child0_child1");
-        child0Child1.Style.Margin.Right = 10;
+        child0Child1.Inline.Margin = child0Child1.Inline.Margin with { Right = 10 };
 
         Element child0Child1Child0 = AddChild(child0Child1, "root_child0_child1_child0");
-        child0Child1Child0.Style.Width = 40;
-        child0Child1Child0.Style.Height = 40;
+        child0Child1Child0.Inline.Width = 40;
+        child0Child1Child0.Inline.Height = 40;
 
         LayoutFixture.Calculate(root);
 
@@ -715,27 +709,27 @@ public sealed class FlexWrapFixtureTests
     {
         // Yoga fixture: wrap_nodes_with_content_sizing_margin_cross
         Element root = new() { Name = "root" };
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Width = 500;
-        root.Style.Height = 500;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Width = 500;
+        root.Inline.Height = 500;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexDirection = FlexDirection.Row;
-        child0.Style.FlexWrap = FlexWrap.Wrap;
-        child0.Style.Width = 70;
+        child0.Inline.FlexDirection = FlexDirection.Row;
+        child0.Inline.FlexWrap = FlexWrap.Wrap;
+        child0.Inline.Width = 70;
 
         Element child0Child0 = AddChild(child0, "root_child0_child0");
 
         Element child0Child0Child0 = AddChild(child0Child0, "root_child0_child0_child0");
-        child0Child0Child0.Style.Width = 40;
-        child0Child0Child0.Style.Height = 40;
+        child0Child0Child0.Inline.Width = 40;
+        child0Child0Child0.Inline.Height = 40;
 
         Element child0Child1 = AddChild(child0, "root_child0_child1");
-        child0Child1.Style.Margin.Top = 10;
+        child0Child1.Inline.Margin = child0Child1.Inline.Margin with { Top = 10 };
 
         Element child0Child1Child0 = AddChild(child0Child1, "root_child0_child1_child0");
-        child0Child1Child0.Style.Width = 40;
-        child0Child1Child0.Style.Height = 40;
+        child0Child1Child0.Inline.Width = 40;
+        child0Child1Child0.Inline.Height = 40;
 
         LayoutFixture.Calculate(root);
 
@@ -753,19 +747,19 @@ public sealed class FlexWrapFixtureTests
     {
         // Yoga fixture: wrap_with_min_cross_axis
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.FlexWrap = FlexWrap.Wrap;
-        root.Style.Width = 500;
-        root.Style.MinHeight = 500;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.FlexWrap = FlexWrap.Wrap;
+        root.Inline.Width = 500;
+        root.Inline.MinHeight = 500;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 400;
-        child0.Style.Height = 200;
+        child0.Inline.Width = 400;
+        child0.Inline.Height = 200;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 400;
-        child1.Style.Height = 200;
+        child1.Inline.Width = 400;
+        child1.Inline.Height = 200;
 
         LayoutFixture.Calculate(root);
 
@@ -780,19 +774,19 @@ public sealed class FlexWrapFixtureTests
     {
         // Yoga fixture: wrap_with_max_cross_axis
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.FlexWrap = FlexWrap.Wrap;
-        root.Style.Width = 500;
-        root.Style.MaxHeight = 500;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.FlexWrap = FlexWrap.Wrap;
+        root.Inline.Width = 500;
+        root.Inline.MaxHeight = 500;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 400;
-        child0.Style.Height = 200;
+        child0.Inline.Width = 400;
+        child0.Inline.Height = 200;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 400;
-        child1.Style.Height = 200;
+        child1.Inline.Width = 400;
+        child1.Inline.Height = 200;
 
         LayoutFixture.Calculate(root);
 
@@ -807,14 +801,14 @@ public sealed class FlexWrapFixtureTests
     {
         // Yoga fixture: nowrap_expands_flexline_box_to_min_cross
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.MinHeight = 400;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.MinHeight = 400;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexGrow = 1;
-        child0.Style.FlexShrink = 1;
-        child0.Style.FlexBasis = Length.Percent(0);
+        child0.Inline.FlexGrow = 1;
+        child0.Inline.FlexShrink = 1;
+        child0.Inline.FlexBasis = Length.Percent(0);
 
         LayoutFixture.Calculate(root);
 
@@ -828,15 +822,15 @@ public sealed class FlexWrapFixtureTests
     {
         // Yoga fixture: wrap_does_not_impose_min_cross_onto_single_flexline
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.FlexWrap = FlexWrap.Wrap;
-        root.Style.MinHeight = 400;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.FlexWrap = FlexWrap.Wrap;
+        root.Inline.MinHeight = 400;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexGrow = 1;
-        child0.Style.FlexShrink = 1;
-        child0.Style.FlexBasis = Length.Percent(0);
+        child0.Inline.FlexGrow = 1;
+        child0.Inline.FlexShrink = 1;
+        child0.Inline.FlexBasis = Length.Percent(0);
 
         LayoutFixture.Calculate(root);
 

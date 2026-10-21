@@ -20,12 +20,12 @@ public sealed class MinMaxDimensionFixtureTests
         // Yoga fixture: max_width
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.MaxWidth = 50;
-        child0.Style.Height = 10;
+        child0.Inline.MaxWidth = 50;
+        child0.Inline.Height = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -39,14 +39,14 @@ public sealed class MinMaxDimensionFixtureTests
     {
         // Yoga fixture: max_height
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
+        root.Inline.FlexDirection = FlexDirection.Row;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 10;
-        child0.Style.MaxHeight = 50;
+        child0.Inline.Width = 10;
+        child0.Inline.MaxHeight = 50;
 
         LayoutFixture.Calculate(root);
 
@@ -60,15 +60,15 @@ public sealed class MinMaxDimensionFixtureTests
     {
         // Yoga fixture: justify_content_min_max
         Element root = new() { Name = "root" };
-        root.Style.JustifyContent = Justify.Center;
+        root.Inline.JustifyContent = Justify.Center;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 100;
-        root.Style.MinHeight = 100;
-        root.Style.MaxHeight = 200;
+        root.Inline.Width = 100;
+        root.Inline.MinHeight = 100;
+        root.Inline.MaxHeight = 200;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 60;
-        child0.Style.Height = 60;
+        child0.Inline.Width = 60;
+        child0.Inline.Height = 60;
 
         LayoutFixture.Calculate(root);
 
@@ -82,22 +82,22 @@ public sealed class MinMaxDimensionFixtureTests
     {
         // Yoga fixture: justify_content_overflow_min_max
         Element root = new() { Name = "root" };
-        root.Style.JustifyContent = Justify.Center;
+        root.Inline.JustifyContent = Justify.Center;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.MinHeight = 100;
-        root.Style.MaxHeight = 110;
+        root.Inline.MinHeight = 100;
+        root.Inline.MaxHeight = 110;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 50;
-        child0.Style.Height = 50;
+        child0.Inline.Width = 50;
+        child0.Inline.Height = 50;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 50;
-        child1.Style.Height = 50;
+        child1.Inline.Width = 50;
+        child1.Inline.Height = 50;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Width = 50;
-        child2.Style.Height = 50;
+        child2.Inline.Width = 50;
+        child2.Inline.Height = 50;
 
         LayoutFixture.Calculate(root);
 
@@ -114,16 +114,16 @@ public sealed class MinMaxDimensionFixtureTests
         // Yoga fixture: flex_grow_to_min
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 100;
-        root.Style.MinHeight = 100;
-        root.Style.MaxHeight = 500;
+        root.Inline.Width = 100;
+        root.Inline.MinHeight = 100;
+        root.Inline.MaxHeight = 500;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexGrow = 1;
-        child0.Style.FlexShrink = 1;
+        child0.Inline.FlexGrow = 1;
+        child0.Inline.FlexShrink = 1;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Height = 50;
+        child1.Inline.Height = 50;
 
         LayoutFixture.Calculate(root);
 
@@ -138,13 +138,13 @@ public sealed class MinMaxDimensionFixtureTests
     {
         // Yoga fixture: flex_grow_child
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
+        root.Inline.FlexDirection = FlexDirection.Row;
         // Phase 5: root position type absolute. It does not change the layout of a root.
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexGrow = 1;
-        child0.Style.FlexBasis = 0;
-        child0.Style.Height = 100;
+        child0.Inline.FlexGrow = 1;
+        child0.Inline.FlexBasis = 0;
+        child0.Inline.Height = 100;
 
         LayoutFixture.Calculate(root);
 
@@ -159,14 +159,14 @@ public sealed class MinMaxDimensionFixtureTests
         // Yoga fixture: flex_grow_within_constrained_min_max_column
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.MinHeight = 100;
-        root.Style.MaxHeight = 200;
+        root.Inline.MinHeight = 100;
+        root.Inline.MaxHeight = 200;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexGrow = 1;
+        child0.Inline.FlexGrow = 1;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Height = 50;
+        child1.Inline.Height = 50;
 
         LayoutFixture.Calculate(root);
 
@@ -182,16 +182,16 @@ public sealed class MinMaxDimensionFixtureTests
         // Yoga fixture: flex_grow_within_max_width
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 200;
-        root.Style.Height = 100;
+        root.Inline.Width = 200;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexDirection = FlexDirection.Row;
-        child0.Style.MaxWidth = 100;
+        child0.Inline.FlexDirection = FlexDirection.Row;
+        child0.Inline.MaxWidth = 100;
 
         Element child0Child0 = AddChild(child0, "root_child0_child0");
-        child0Child0.Style.FlexGrow = 1;
-        child0Child0.Style.Height = 20;
+        child0Child0.Inline.FlexGrow = 1;
+        child0Child0.Inline.Height = 20;
 
         LayoutFixture.Calculate(root);
 
@@ -207,16 +207,16 @@ public sealed class MinMaxDimensionFixtureTests
         // Yoga fixture: flex_grow_within_constrained_max_width
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 200;
-        root.Style.Height = 100;
+        root.Inline.Width = 200;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexDirection = FlexDirection.Row;
-        child0.Style.MaxWidth = 300;
+        child0.Inline.FlexDirection = FlexDirection.Row;
+        child0.Inline.MaxWidth = 300;
 
         Element child0Child0 = AddChild(child0, "root_child0_child0");
-        child0Child0.Style.FlexGrow = 1;
-        child0Child0.Style.Height = 20;
+        child0Child0.Inline.FlexGrow = 1;
+        child0Child0.Inline.Height = 20;
 
         LayoutFixture.Calculate(root);
 
@@ -232,17 +232,17 @@ public sealed class MinMaxDimensionFixtureTests
         // Yoga fixture: flex_root_ignored
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.FlexGrow = 1;
-        root.Style.Width = 100;
-        root.Style.MinHeight = 100;
-        root.Style.MaxHeight = 500;
+        root.Inline.FlexGrow = 1;
+        root.Inline.Width = 100;
+        root.Inline.MinHeight = 100;
+        root.Inline.MaxHeight = 500;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexGrow = 1;
-        child0.Style.FlexBasis = 200;
+        child0.Inline.FlexGrow = 1;
+        child0.Inline.FlexBasis = 200;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Height = 100;
+        child1.Inline.Height = 100;
 
         LayoutFixture.Calculate(root);
 
@@ -258,21 +258,21 @@ public sealed class MinMaxDimensionFixtureTests
         // Yoga fixture: flex_grow_root_minimized
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 100;
-        root.Style.MinHeight = 100;
-        root.Style.MaxHeight = 500;
+        root.Inline.Width = 100;
+        root.Inline.MinHeight = 100;
+        root.Inline.MaxHeight = 500;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexGrow = 1;
-        child0.Style.MinHeight = 100;
-        child0.Style.MaxHeight = 500;
+        child0.Inline.FlexGrow = 1;
+        child0.Inline.MinHeight = 100;
+        child0.Inline.MaxHeight = 500;
 
         Element child0Child0 = AddChild(child0, "root_child0_child0");
-        child0Child0.Style.FlexGrow = 1;
-        child0Child0.Style.FlexBasis = 200;
+        child0Child0.Inline.FlexGrow = 1;
+        child0Child0.Inline.FlexBasis = 200;
 
         Element child0Child1 = AddChild(child0, "root_child0_child1");
-        child0Child1.Style.Height = 100;
+        child0Child1.Inline.Height = 100;
 
         LayoutFixture.Calculate(root);
 
@@ -289,20 +289,20 @@ public sealed class MinMaxDimensionFixtureTests
         // Yoga fixture: flex_grow_height_maximized
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 100;
-        root.Style.Height = 500;
+        root.Inline.Width = 100;
+        root.Inline.Height = 500;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexGrow = 1;
-        child0.Style.MinHeight = 100;
-        child0.Style.MaxHeight = 500;
+        child0.Inline.FlexGrow = 1;
+        child0.Inline.MinHeight = 100;
+        child0.Inline.MaxHeight = 500;
 
         Element child0Child0 = AddChild(child0, "root_child0_child0");
-        child0Child0.Style.FlexGrow = 1;
-        child0Child0.Style.FlexBasis = 200;
+        child0Child0.Inline.FlexGrow = 1;
+        child0Child0.Inline.FlexBasis = 200;
 
         Element child0Child1 = AddChild(child0, "root_child0_child1");
-        child0Child1.Style.Height = 100;
+        child0Child1.Inline.Height = 100;
 
         LayoutFixture.Calculate(root);
 
@@ -318,16 +318,16 @@ public sealed class MinMaxDimensionFixtureTests
     {
         // Yoga fixture: flex_grow_within_constrained_min_row
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
+        root.Inline.FlexDirection = FlexDirection.Row;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.MinWidth = 100;
-        root.Style.Height = 100;
+        root.Inline.MinWidth = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexGrow = 1;
+        child0.Inline.FlexGrow = 1;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Width = 50;
+        child1.Inline.Width = 50;
 
         LayoutFixture.Calculate(root);
 
@@ -343,13 +343,13 @@ public sealed class MinMaxDimensionFixtureTests
         // Yoga fixture: flex_grow_within_constrained_min_column
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.MinHeight = 100;
+        root.Inline.MinHeight = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexGrow = 1;
+        child0.Inline.FlexGrow = 1;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Height = 50;
+        child1.Inline.Height = 50;
 
         LayoutFixture.Calculate(root);
 
@@ -365,19 +365,19 @@ public sealed class MinMaxDimensionFixtureTests
         // Yoga fixture: flex_grow_within_constrained_max_row
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 200;
+        root.Inline.Width = 200;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexDirection = FlexDirection.Row;
-        child0.Style.MaxWidth = 100;
-        child0.Style.Height = 100;
+        child0.Inline.FlexDirection = FlexDirection.Row;
+        child0.Inline.MaxWidth = 100;
+        child0.Inline.Height = 100;
 
         Element child0Child0 = AddChild(child0, "root_child0_child0");
-        child0Child0.Style.FlexShrink = 1;
-        child0Child0.Style.FlexBasis = 100;
+        child0Child0.Inline.FlexShrink = 1;
+        child0Child0.Inline.FlexBasis = 100;
 
         Element child0Child1 = AddChild(child0, "root_child0_child1");
-        child0Child1.Style.Width = 50;
+        child0Child1.Inline.Width = 50;
 
         LayoutFixture.Calculate(root);
 
@@ -394,15 +394,15 @@ public sealed class MinMaxDimensionFixtureTests
         // Yoga fixture: flex_grow_within_constrained_max_column
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 100;
-        root.Style.MaxHeight = 100;
+        root.Inline.Width = 100;
+        root.Inline.MaxHeight = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexShrink = 1;
-        child0.Style.FlexBasis = 100;
+        child0.Inline.FlexShrink = 1;
+        child0.Inline.FlexBasis = 100;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Height = 50;
+        child1.Inline.Height = 50;
 
         LayoutFixture.Calculate(root);
 
@@ -418,8 +418,8 @@ public sealed class MinMaxDimensionFixtureTests
         // Yoga fixture: min_width_overrides_width
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 50;
-        root.Style.MinWidth = 100;
+        root.Inline.Width = 50;
+        root.Inline.MinWidth = 100;
 
         LayoutFixture.Calculate(root);
 
@@ -433,8 +433,8 @@ public sealed class MinMaxDimensionFixtureTests
         // Yoga fixture: max_width_overrides_width
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 200;
-        root.Style.MaxWidth = 100;
+        root.Inline.Width = 200;
+        root.Inline.MaxWidth = 100;
 
         LayoutFixture.Calculate(root);
 
@@ -448,8 +448,8 @@ public sealed class MinMaxDimensionFixtureTests
         // Yoga fixture: min_height_overrides_height
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Height = 50;
-        root.Style.MinHeight = 100;
+        root.Inline.Height = 50;
+        root.Inline.MinHeight = 100;
 
         LayoutFixture.Calculate(root);
 
@@ -463,8 +463,8 @@ public sealed class MinMaxDimensionFixtureTests
         // Yoga fixture: max_height_overrides_height
         Element root = new() { Name = "root" };
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Height = 200;
-        root.Style.MaxHeight = 100;
+        root.Inline.Height = 200;
+        root.Inline.MaxHeight = 100;
 
         LayoutFixture.Calculate(root);
 
@@ -477,15 +477,15 @@ public sealed class MinMaxDimensionFixtureTests
     {
         // Yoga fixture: align_items_min_max
         Element root = new() { Name = "root" };
-        root.Style.AlignItems = Align.Center;
+        root.Inline.AlignItems = Align.Center;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.MinWidth = 100;
-        root.Style.MaxWidth = 200;
-        root.Style.Height = 100;
+        root.Inline.MinWidth = 100;
+        root.Inline.MaxWidth = 200;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 60;
-        child0.Style.Height = 60;
+        child0.Inline.Width = 60;
+        child0.Inline.Height = 60;
 
         LayoutFixture.Calculate(root);
 
@@ -499,18 +499,18 @@ public sealed class MinMaxDimensionFixtureTests
     {
         // Yoga fixture: flex_grow_in_at_most_container
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.AlignItems = Align.FlexStart;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.AlignItems = Align.FlexStart;
         // Phase 5: root position type absolute. It does not change the layout of a root.
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexDirection = FlexDirection.Row;
+        child0.Inline.FlexDirection = FlexDirection.Row;
 
         Element child0Child0 = AddChild(child0, "root_child0_child0");
-        child0Child0.Style.FlexGrow = 1;
-        child0Child0.Style.FlexBasis = 0;
+        child0Child0.Inline.FlexGrow = 1;
+        child0Child0.Inline.FlexBasis = 0;
 
         LayoutFixture.Calculate(root);
 
@@ -525,20 +525,20 @@ public sealed class MinMaxDimensionFixtureTests
     {
         // Yoga fixture: child_min_max_width_flexing
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Width = 120;
-        root.Style.Height = 50;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Width = 120;
+        root.Inline.Height = 50;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.FlexGrow = 1;
-        child0.Style.FlexBasis = 0;
-        child0.Style.MinWidth = 60;
+        child0.Inline.FlexGrow = 1;
+        child0.Inline.FlexBasis = 0;
+        child0.Inline.MinWidth = 60;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.FlexGrow = 1;
-        child1.Style.FlexBasis = Length.Percent(50);
-        child1.Style.MaxWidth = 20;
+        child1.Inline.FlexGrow = 1;
+        child1.Inline.FlexBasis = Length.Percent(50);
+        child1.Inline.MaxWidth = 20;
 
         LayoutFixture.Calculate(root);
 
@@ -553,16 +553,16 @@ public sealed class MinMaxDimensionFixtureTests
     {
         // Yoga fixture: min_max_percent_no_width_height
         Element root = new() { Name = "root" };
-        root.Style.AlignItems = Align.FlexStart;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.AlignItems = Align.FlexStart;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.MinWidth = Length.Percent(10);
-        child0.Style.MaxWidth = Length.Percent(10);
-        child0.Style.MinHeight = Length.Percent(10);
-        child0.Style.MaxHeight = Length.Percent(10);
+        child0.Inline.MinWidth = Length.Percent(10);
+        child0.Inline.MaxWidth = Length.Percent(10);
+        child0.Inline.MinHeight = Length.Percent(10);
+        child0.Inline.MaxHeight = Length.Percent(10);
 
         LayoutFixture.Calculate(root);
 

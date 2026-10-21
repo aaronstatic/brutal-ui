@@ -20,16 +20,16 @@ public sealed class AbsolutePositionFixtureTests
     {
         // Yoga fixture: absolute_layout_width_height_left_auto_right
         Element root = new() { Name = "root" };
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Position = PositionType.Absolute;
-        child0.Style.Left = Length.Auto;
-        child0.Style.Right = 10;
-        child0.Style.Width = 10;
-        child0.Style.Height = 10;
+        child0.Inline.Position = PositionType.Absolute;
+        child0.Inline.Left = Length.Auto;
+        child0.Inline.Right = 10;
+        child0.Inline.Width = 10;
+        child0.Inline.Height = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -43,16 +43,16 @@ public sealed class AbsolutePositionFixtureTests
     {
         // Yoga fixture: absolute_layout_width_height_left_right_auto
         Element root = new() { Name = "root" };
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Position = PositionType.Absolute;
-        child0.Style.Left = 10;
-        child0.Style.Right = Length.Auto;
-        child0.Style.Width = 10;
-        child0.Style.Height = 10;
+        child0.Inline.Position = PositionType.Absolute;
+        child0.Inline.Left = 10;
+        child0.Inline.Right = Length.Auto;
+        child0.Inline.Width = 10;
+        child0.Inline.Height = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -66,16 +66,16 @@ public sealed class AbsolutePositionFixtureTests
     {
         // Yoga fixture: absolute_layout_width_height_left_auto_right_auto
         Element root = new() { Name = "root" };
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Position = PositionType.Absolute;
-        child0.Style.Left = Length.Auto;
-        child0.Style.Right = Length.Auto;
-        child0.Style.Width = 10;
-        child0.Style.Height = 10;
+        child0.Inline.Position = PositionType.Absolute;
+        child0.Inline.Left = Length.Auto;
+        child0.Inline.Right = Length.Auto;
+        child0.Inline.Width = 10;
+        child0.Inline.Height = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -89,42 +89,42 @@ public sealed class AbsolutePositionFixtureTests
     {
         // Yoga fixture: absolute_layout_within_border
         Element root = new() { Name = "root" };
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Margin = LengthEdges.All(10);
-        root.Style.Padding = LengthEdges.All(10);
-        root.Style.BorderWidth = LengthEdges.All(10);
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Margin = LengthEdges.All(10);
+        root.Inline.Padding = LengthEdges.All(10);
+        root.Inline.BorderWidth = LengthEdges.All(10);
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Position = PositionType.Absolute;
-        child0.Style.Left = 0;
-        child0.Style.Top = 0;
-        child0.Style.Width = 50;
-        child0.Style.Height = 50;
+        child0.Inline.Position = PositionType.Absolute;
+        child0.Inline.Left = 0;
+        child0.Inline.Top = 0;
+        child0.Inline.Width = 50;
+        child0.Inline.Height = 50;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Position = PositionType.Absolute;
-        child1.Style.Right = 0;
-        child1.Style.Bottom = 0;
-        child1.Style.Width = 50;
-        child1.Style.Height = 50;
+        child1.Inline.Position = PositionType.Absolute;
+        child1.Inline.Right = 0;
+        child1.Inline.Bottom = 0;
+        child1.Inline.Width = 50;
+        child1.Inline.Height = 50;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Position = PositionType.Absolute;
-        child2.Style.Left = 0;
-        child2.Style.Top = 0;
-        child2.Style.Margin = LengthEdges.All(10);
-        child2.Style.Width = 50;
-        child2.Style.Height = 50;
+        child2.Inline.Position = PositionType.Absolute;
+        child2.Inline.Left = 0;
+        child2.Inline.Top = 0;
+        child2.Inline.Margin = LengthEdges.All(10);
+        child2.Inline.Width = 50;
+        child2.Inline.Height = 50;
 
         Element child3 = AddChild(root, "root_child3");
-        child3.Style.Position = PositionType.Absolute;
-        child3.Style.Right = 0;
-        child3.Style.Bottom = 0;
-        child3.Style.Margin = LengthEdges.All(10);
-        child3.Style.Width = 50;
-        child3.Style.Height = 50;
+        child3.Inline.Position = PositionType.Absolute;
+        child3.Inline.Right = 0;
+        child3.Inline.Bottom = 0;
+        child3.Inline.Margin = LengthEdges.All(10);
+        child3.Inline.Width = 50;
+        child3.Inline.Height = 50;
 
         LayoutFixture.Calculate(root);
 
@@ -141,17 +141,17 @@ public sealed class AbsolutePositionFixtureTests
     {
         // Yoga fixture: absolute_layout_align_items_and_justify_content_center
         Element root = new() { Name = "root" };
-        root.Style.JustifyContent = Justify.Center;
-        root.Style.AlignItems = Align.Center;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.FlexGrow = 1;
-        root.Style.Width = 110;
-        root.Style.Height = 100;
+        root.Inline.JustifyContent = Justify.Center;
+        root.Inline.AlignItems = Align.Center;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.FlexGrow = 1;
+        root.Inline.Width = 110;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Position = PositionType.Absolute;
-        child0.Style.Width = 60;
-        child0.Style.Height = 40;
+        child0.Inline.Position = PositionType.Absolute;
+        child0.Inline.Width = 60;
+        child0.Inline.Height = 40;
 
         LayoutFixture.Calculate(root);
 
@@ -165,17 +165,17 @@ public sealed class AbsolutePositionFixtureTests
     {
         // Yoga fixture: absolute_layout_align_items_and_justify_content_flex_end
         Element root = new() { Name = "root" };
-        root.Style.JustifyContent = Justify.FlexEnd;
-        root.Style.AlignItems = Align.FlexEnd;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.FlexGrow = 1;
-        root.Style.Width = 110;
-        root.Style.Height = 100;
+        root.Inline.JustifyContent = Justify.FlexEnd;
+        root.Inline.AlignItems = Align.FlexEnd;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.FlexGrow = 1;
+        root.Inline.Width = 110;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Position = PositionType.Absolute;
-        child0.Style.Width = 60;
-        child0.Style.Height = 40;
+        child0.Inline.Position = PositionType.Absolute;
+        child0.Inline.Width = 60;
+        child0.Inline.Height = 40;
 
         LayoutFixture.Calculate(root);
 
@@ -189,16 +189,16 @@ public sealed class AbsolutePositionFixtureTests
     {
         // Yoga fixture: absolute_layout_justify_content_center
         Element root = new() { Name = "root" };
-        root.Style.JustifyContent = Justify.Center;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.FlexGrow = 1;
-        root.Style.Width = 110;
-        root.Style.Height = 100;
+        root.Inline.JustifyContent = Justify.Center;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.FlexGrow = 1;
+        root.Inline.Width = 110;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Position = PositionType.Absolute;
-        child0.Style.Width = 60;
-        child0.Style.Height = 40;
+        child0.Inline.Position = PositionType.Absolute;
+        child0.Inline.Width = 60;
+        child0.Inline.Height = 40;
 
         LayoutFixture.Calculate(root);
 
@@ -212,16 +212,16 @@ public sealed class AbsolutePositionFixtureTests
     {
         // Yoga fixture: absolute_layout_align_items_center
         Element root = new() { Name = "root" };
-        root.Style.AlignItems = Align.Center;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.FlexGrow = 1;
-        root.Style.Width = 110;
-        root.Style.Height = 100;
+        root.Inline.AlignItems = Align.Center;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.FlexGrow = 1;
+        root.Inline.Width = 110;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Position = PositionType.Absolute;
-        child0.Style.Width = 60;
-        child0.Style.Height = 40;
+        child0.Inline.Position = PositionType.Absolute;
+        child0.Inline.Width = 60;
+        child0.Inline.Height = 40;
 
         LayoutFixture.Calculate(root);
 
@@ -235,16 +235,16 @@ public sealed class AbsolutePositionFixtureTests
     {
         // Yoga fixture: absolute_layout_align_items_center_on_child_only
         Element root = new() { Name = "root" };
-        root.Style.Position = PositionType.Absolute;
-        root.Style.FlexGrow = 1;
-        root.Style.Width = 110;
-        root.Style.Height = 100;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.FlexGrow = 1;
+        root.Inline.Width = 110;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.AlignSelf = Align.Center;
-        child0.Style.Position = PositionType.Absolute;
-        child0.Style.Width = 60;
-        child0.Style.Height = 40;
+        child0.Inline.AlignSelf = Align.Center;
+        child0.Inline.Position = PositionType.Absolute;
+        child0.Inline.Width = 60;
+        child0.Inline.Height = 40;
 
         LayoutFixture.Calculate(root);
 
@@ -258,18 +258,18 @@ public sealed class AbsolutePositionFixtureTests
     {
         // Yoga fixture: absolute_layout_align_items_and_justify_content_center_and_top_position
         Element root = new() { Name = "root" };
-        root.Style.JustifyContent = Justify.Center;
-        root.Style.AlignItems = Align.Center;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.FlexGrow = 1;
-        root.Style.Width = 110;
-        root.Style.Height = 100;
+        root.Inline.JustifyContent = Justify.Center;
+        root.Inline.AlignItems = Align.Center;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.FlexGrow = 1;
+        root.Inline.Width = 110;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Position = PositionType.Absolute;
-        child0.Style.Top = 10;
-        child0.Style.Width = 60;
-        child0.Style.Height = 40;
+        child0.Inline.Position = PositionType.Absolute;
+        child0.Inline.Top = 10;
+        child0.Inline.Width = 60;
+        child0.Inline.Height = 40;
 
         LayoutFixture.Calculate(root);
 
@@ -283,18 +283,18 @@ public sealed class AbsolutePositionFixtureTests
     {
         // Yoga fixture: absolute_layout_align_items_and_justify_content_center_and_bottom_position
         Element root = new() { Name = "root" };
-        root.Style.JustifyContent = Justify.Center;
-        root.Style.AlignItems = Align.Center;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.FlexGrow = 1;
-        root.Style.Width = 110;
-        root.Style.Height = 100;
+        root.Inline.JustifyContent = Justify.Center;
+        root.Inline.AlignItems = Align.Center;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.FlexGrow = 1;
+        root.Inline.Width = 110;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Position = PositionType.Absolute;
-        child0.Style.Bottom = 10;
-        child0.Style.Width = 60;
-        child0.Style.Height = 40;
+        child0.Inline.Position = PositionType.Absolute;
+        child0.Inline.Bottom = 10;
+        child0.Inline.Width = 60;
+        child0.Inline.Height = 40;
 
         LayoutFixture.Calculate(root);
 
@@ -308,18 +308,18 @@ public sealed class AbsolutePositionFixtureTests
     {
         // Yoga fixture: absolute_layout_align_items_and_justify_content_center_and_left_position
         Element root = new() { Name = "root" };
-        root.Style.JustifyContent = Justify.Center;
-        root.Style.AlignItems = Align.Center;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.FlexGrow = 1;
-        root.Style.Width = 110;
-        root.Style.Height = 100;
+        root.Inline.JustifyContent = Justify.Center;
+        root.Inline.AlignItems = Align.Center;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.FlexGrow = 1;
+        root.Inline.Width = 110;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Position = PositionType.Absolute;
-        child0.Style.Left = 5;
-        child0.Style.Width = 60;
-        child0.Style.Height = 40;
+        child0.Inline.Position = PositionType.Absolute;
+        child0.Inline.Left = 5;
+        child0.Inline.Width = 60;
+        child0.Inline.Height = 40;
 
         LayoutFixture.Calculate(root);
 
@@ -333,18 +333,18 @@ public sealed class AbsolutePositionFixtureTests
     {
         // Yoga fixture: absolute_layout_align_items_and_justify_content_center_and_right_position
         Element root = new() { Name = "root" };
-        root.Style.JustifyContent = Justify.Center;
-        root.Style.AlignItems = Align.Center;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.FlexGrow = 1;
-        root.Style.Width = 110;
-        root.Style.Height = 100;
+        root.Inline.JustifyContent = Justify.Center;
+        root.Inline.AlignItems = Align.Center;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.FlexGrow = 1;
+        root.Inline.Width = 110;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Position = PositionType.Absolute;
-        child0.Style.Right = 5;
-        child0.Style.Width = 60;
-        child0.Style.Height = 40;
+        child0.Inline.Position = PositionType.Absolute;
+        child0.Inline.Right = 5;
+        child0.Inline.Width = 60;
+        child0.Inline.Height = 40;
 
         LayoutFixture.Calculate(root);
 
@@ -358,10 +358,10 @@ public sealed class AbsolutePositionFixtureTests
     {
         // Yoga fixture: position_root_with_rtl_should_position_withoutdirection
         Element root = new() { Name = "root" };
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Left = 72;
-        root.Style.Width = 52;
-        root.Style.Height = 52;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Left = 72;
+        root.Inline.Width = 52;
+        root.Inline.Height = 52;
 
         LayoutFixture.Calculate(root);
 
@@ -374,15 +374,15 @@ public sealed class AbsolutePositionFixtureTests
     {
         // Yoga fixture: absolute_layout_padding_left
         Element root = new() { Name = "root" };
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Padding.Left = 100;
-        root.Style.Width = 200;
-        root.Style.Height = 200;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Padding = root.Inline.Padding with { Left = 100 };
+        root.Inline.Width = 200;
+        root.Inline.Height = 200;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Position = PositionType.Absolute;
-        child0.Style.Width = 50;
-        child0.Style.Height = 50;
+        child0.Inline.Position = PositionType.Absolute;
+        child0.Inline.Width = 50;
+        child0.Inline.Height = 50;
 
         LayoutFixture.Calculate(root);
 
@@ -396,15 +396,15 @@ public sealed class AbsolutePositionFixtureTests
     {
         // Yoga fixture: absolute_layout_padding_right
         Element root = new() { Name = "root" };
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Padding.Right = 100;
-        root.Style.Width = 200;
-        root.Style.Height = 200;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Padding = root.Inline.Padding with { Right = 100 };
+        root.Inline.Width = 200;
+        root.Inline.Height = 200;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Position = PositionType.Absolute;
-        child0.Style.Width = 50;
-        child0.Style.Height = 50;
+        child0.Inline.Position = PositionType.Absolute;
+        child0.Inline.Width = 50;
+        child0.Inline.Height = 50;
 
         LayoutFixture.Calculate(root);
 
@@ -418,15 +418,15 @@ public sealed class AbsolutePositionFixtureTests
     {
         // Yoga fixture: absolute_layout_padding_top
         Element root = new() { Name = "root" };
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Padding.Top = 100;
-        root.Style.Width = 200;
-        root.Style.Height = 200;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Padding = root.Inline.Padding with { Top = 100 };
+        root.Inline.Width = 200;
+        root.Inline.Height = 200;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Position = PositionType.Absolute;
-        child0.Style.Width = 50;
-        child0.Style.Height = 50;
+        child0.Inline.Position = PositionType.Absolute;
+        child0.Inline.Width = 50;
+        child0.Inline.Height = 50;
 
         LayoutFixture.Calculate(root);
 
@@ -440,15 +440,15 @@ public sealed class AbsolutePositionFixtureTests
     {
         // Yoga fixture: absolute_layout_padding_bottom
         Element root = new() { Name = "root" };
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Padding.Bottom = 100;
-        root.Style.Width = 200;
-        root.Style.Height = 200;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Padding = root.Inline.Padding with { Bottom = 100 };
+        root.Inline.Width = 200;
+        root.Inline.Height = 200;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Position = PositionType.Absolute;
-        child0.Style.Width = 50;
-        child0.Style.Height = 50;
+        child0.Inline.Position = PositionType.Absolute;
+        child0.Inline.Width = 50;
+        child0.Inline.Height = 50;
 
         LayoutFixture.Calculate(root);
 
@@ -462,21 +462,21 @@ public sealed class AbsolutePositionFixtureTests
     {
         // Yoga fixture: absolute_layout_column_reverse_margin_border
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.ColumnReverse;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Width = 200;
-        root.Style.Height = 200;
+        root.Inline.FlexDirection = FlexDirection.ColumnReverse;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Width = 200;
+        root.Inline.Height = 200;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Position = PositionType.Absolute;
-        child0.Style.Left = 5;
-        child0.Style.Right = 3;
-        child0.Style.Margin.Left = 3;
-        child0.Style.Margin.Right = 4;
-        child0.Style.BorderWidth.Left = 1;
-        child0.Style.BorderWidth.Right = 7;
-        child0.Style.Width = 50;
-        child0.Style.Height = 50;
+        child0.Inline.Position = PositionType.Absolute;
+        child0.Inline.Left = 5;
+        child0.Inline.Right = 3;
+        child0.Inline.Margin = child0.Inline.Margin with { Left = 3 };
+        child0.Inline.Margin = child0.Inline.Margin with { Right = 4 };
+        child0.Inline.BorderWidth = child0.Inline.BorderWidth with { Left = 1 };
+        child0.Inline.BorderWidth = child0.Inline.BorderWidth with { Right = 7 };
+        child0.Inline.Width = 50;
+        child0.Inline.Height = 50;
 
         LayoutFixture.Calculate(root);
 
@@ -490,27 +490,27 @@ public sealed class AbsolutePositionFixtureTests
     {
         // Yoga fixture: absolute_layout_percentage_bottom_based_on_parent_height
         Element root = new() { Name = "root" };
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Width = 100;
-        root.Style.Height = 200;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Width = 100;
+        root.Inline.Height = 200;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Position = PositionType.Absolute;
-        child0.Style.Top = Length.Percent(50);
-        child0.Style.Width = 10;
-        child0.Style.Height = 10;
+        child0.Inline.Position = PositionType.Absolute;
+        child0.Inline.Top = Length.Percent(50);
+        child0.Inline.Width = 10;
+        child0.Inline.Height = 10;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Position = PositionType.Absolute;
-        child1.Style.Bottom = Length.Percent(50);
-        child1.Style.Width = 10;
-        child1.Style.Height = 10;
+        child1.Inline.Position = PositionType.Absolute;
+        child1.Inline.Bottom = Length.Percent(50);
+        child1.Inline.Width = 10;
+        child1.Inline.Height = 10;
 
         Element child2 = AddChild(root, "root_child2");
-        child2.Style.Position = PositionType.Absolute;
-        child2.Style.Top = Length.Percent(10);
-        child2.Style.Bottom = Length.Percent(10);
-        child2.Style.Width = 10;
+        child2.Inline.Position = PositionType.Absolute;
+        child2.Inline.Top = Length.Percent(10);
+        child2.Inline.Bottom = Length.Percent(10);
+        child2.Inline.Width = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -526,18 +526,18 @@ public sealed class AbsolutePositionFixtureTests
     {
         // Yoga fixture: percent_absolute_position_infinite_height
         Element root = new() { Name = "root" };
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Width = 300;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Width = 300;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Width = 300;
+        child0.Inline.Width = 300;
 
         Element child1 = AddChild(root, "root_child1");
-        child1.Style.Position = PositionType.Absolute;
-        child1.Style.Left = Length.Percent(20);
-        child1.Style.Top = Length.Percent(20);
-        child1.Style.Width = Length.Percent(20);
-        child1.Style.Height = Length.Percent(20);
+        child1.Inline.Position = PositionType.Absolute;
+        child1.Inline.Left = Length.Percent(20);
+        child1.Inline.Top = Length.Percent(20);
+        child1.Inline.Width = Length.Percent(20);
+        child1.Inline.Height = Length.Percent(20);
 
         LayoutFixture.Calculate(root);
 
@@ -552,16 +552,16 @@ public sealed class AbsolutePositionFixtureTests
     {
         // Yoga fixture: absolute_layout_percentage_height_based_on_padded_parent
         Element root = new() { Name = "root" };
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Padding.Top = 10;
-        root.Style.BorderWidth.Top = 10;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Padding = root.Inline.Padding with { Top = 10 };
+        root.Inline.BorderWidth = root.Inline.BorderWidth with { Top = 10 };
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Position = PositionType.Absolute;
-        child0.Style.Width = 100;
-        child0.Style.Height = Length.Percent(50);
+        child0.Inline.Position = PositionType.Absolute;
+        child0.Inline.Width = 100;
+        child0.Inline.Height = Length.Percent(50);
 
         LayoutFixture.Calculate(root);
 
@@ -575,18 +575,18 @@ public sealed class AbsolutePositionFixtureTests
     {
         // Yoga fixture: absolute_layout_percentage_height_based_on_padded_parent_and_align_items_center
         Element root = new() { Name = "root" };
-        root.Style.JustifyContent = Justify.Center;
-        root.Style.AlignItems = Align.Center;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.Padding.Top = 20;
-        root.Style.Padding.Bottom = 20;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.JustifyContent = Justify.Center;
+        root.Inline.AlignItems = Align.Center;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.Padding = root.Inline.Padding with { Top = 20 };
+        root.Inline.Padding = root.Inline.Padding with { Bottom = 20 };
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Position = PositionType.Absolute;
-        child0.Style.Width = 100;
-        child0.Style.Height = Length.Percent(50);
+        child0.Inline.Position = PositionType.Absolute;
+        child0.Inline.Width = 100;
+        child0.Inline.Height = Length.Percent(50);
 
         LayoutFixture.Calculate(root);
 
@@ -600,15 +600,15 @@ public sealed class AbsolutePositionFixtureTests
     {
         // Yoga fixture: absolute_layout_in_wrap_reverse_column_container
         Element root = new() { Name = "root" };
-        root.Style.Position = PositionType.Absolute;
-        root.Style.FlexWrap = FlexWrap.WrapReverse;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.FlexWrap = FlexWrap.WrapReverse;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Position = PositionType.Absolute;
-        child0.Style.Width = 20;
-        child0.Style.Height = 20;
+        child0.Inline.Position = PositionType.Absolute;
+        child0.Inline.Width = 20;
+        child0.Inline.Height = 20;
 
         LayoutFixture.Calculate(root);
 
@@ -622,16 +622,16 @@ public sealed class AbsolutePositionFixtureTests
     {
         // Yoga fixture: absolute_layout_in_wrap_reverse_column_container_flex_end
         Element root = new() { Name = "root" };
-        root.Style.Position = PositionType.Absolute;
-        root.Style.FlexWrap = FlexWrap.WrapReverse;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.FlexWrap = FlexWrap.WrapReverse;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.AlignSelf = Align.FlexEnd;
-        child0.Style.Position = PositionType.Absolute;
-        child0.Style.Width = 20;
-        child0.Style.Height = 20;
+        child0.Inline.AlignSelf = Align.FlexEnd;
+        child0.Inline.Position = PositionType.Absolute;
+        child0.Inline.Width = 20;
+        child0.Inline.Height = 20;
 
         LayoutFixture.Calculate(root);
 
@@ -645,16 +645,16 @@ public sealed class AbsolutePositionFixtureTests
     {
         // Yoga fixture: absolute_layout_in_wrap_reverse_row_container
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.FlexWrap = FlexWrap.WrapReverse;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.FlexWrap = FlexWrap.WrapReverse;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.Position = PositionType.Absolute;
-        child0.Style.Width = 20;
-        child0.Style.Height = 20;
+        child0.Inline.Position = PositionType.Absolute;
+        child0.Inline.Width = 20;
+        child0.Inline.Height = 20;
 
         LayoutFixture.Calculate(root);
 
@@ -668,17 +668,17 @@ public sealed class AbsolutePositionFixtureTests
     {
         // Yoga fixture: absolute_layout_in_wrap_reverse_row_container_flex_end
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.Position = PositionType.Absolute;
-        root.Style.FlexWrap = FlexWrap.WrapReverse;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.Position = PositionType.Absolute;
+        root.Inline.FlexWrap = FlexWrap.WrapReverse;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         Element child0 = AddChild(root, "root_child0");
-        child0.Style.AlignSelf = Align.FlexEnd;
-        child0.Style.Position = PositionType.Absolute;
-        child0.Style.Width = 20;
-        child0.Style.Height = 20;
+        child0.Inline.AlignSelf = Align.FlexEnd;
+        child0.Inline.Position = PositionType.Absolute;
+        child0.Inline.Width = 20;
+        child0.Inline.Height = 20;
 
         LayoutFixture.Calculate(root);
 

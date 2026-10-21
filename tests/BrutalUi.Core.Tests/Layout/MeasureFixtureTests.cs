@@ -28,13 +28,13 @@ public sealed class MeasureFixtureTests
     {
         // Yoga fixture: dont_measure_single_grow_shrink_child
         Element root = new() { Name = "root" };
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         MeasureStub stub = new(10, 10);
         Element child0 = AddChild(root, "root_child0", stub.Callback);
-        child0.Style.FlexGrow = 1;
-        child0.Style.FlexShrink = 1;
+        child0.Inline.FlexGrow = 1;
+        child0.Inline.FlexShrink = 1;
 
         LayoutFixture.Calculate(root);
 
@@ -52,7 +52,7 @@ public sealed class MeasureFixtureTests
 
         MeasureStub stub = new(10, 10);
         Element child0Child0 = AddChild(child0, "root_child0_child0", stub.Callback);
-        child0Child0.Style.Position = PositionType.Absolute;
+        child0Child0.Inline.Position = PositionType.Absolute;
 
         LayoutFixture.Calculate(root);
 
@@ -65,16 +65,16 @@ public sealed class MeasureFixtureTests
     {
         // Yoga fixture: dont_measure_when_min_equals_max
         Element root = new() { Name = "root" };
-        root.Style.AlignItems = Align.FlexStart;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.AlignItems = Align.FlexStart;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         MeasureStub stub = new(10, 10);
         Element child0 = AddChild(root, "root_child0", stub.Callback);
-        child0.Style.MinWidth = 10;
-        child0.Style.MaxWidth = 10;
-        child0.Style.MinHeight = 10;
-        child0.Style.MaxHeight = 10;
+        child0.Inline.MinWidth = 10;
+        child0.Inline.MaxWidth = 10;
+        child0.Inline.MinHeight = 10;
+        child0.Inline.MaxHeight = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -88,16 +88,16 @@ public sealed class MeasureFixtureTests
     {
         // Yoga fixture: dont_measure_when_min_equals_max_percentages
         Element root = new() { Name = "root" };
-        root.Style.AlignItems = Align.FlexStart;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.AlignItems = Align.FlexStart;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         MeasureStub stub = new(10, 10);
         Element child0 = AddChild(root, "root_child0", stub.Callback);
-        child0.Style.MinWidth = Length.Percent(10);
-        child0.Style.MaxWidth = Length.Percent(10);
-        child0.Style.MinHeight = Length.Percent(10);
-        child0.Style.MaxHeight = Length.Percent(10);
+        child0.Inline.MinWidth = Length.Percent(10);
+        child0.Inline.MaxWidth = Length.Percent(10);
+        child0.Inline.MinHeight = Length.Percent(10);
+        child0.Inline.MaxHeight = Length.Percent(10);
 
         LayoutFixture.Calculate(root);
 
@@ -111,12 +111,12 @@ public sealed class MeasureFixtureTests
     {
         // Yoga fixture: measure_nodes_with_margin_auto_and_stretch
         Element root = new() { Name = "root" };
-        root.Style.Width = 500;
-        root.Style.Height = 500;
+        root.Inline.Width = 500;
+        root.Inline.Height = 500;
 
         MeasureStub stub = new(10, 10);
         Element child0 = AddChild(root, "root_child0", stub.Callback);
-        child0.Style.Margin.Left = Length.Auto;
+        child0.Inline.Margin = child0.Inline.Margin with { Left = Length.Auto };
 
         LayoutFixture.Calculate(root);
 
@@ -129,16 +129,16 @@ public sealed class MeasureFixtureTests
     {
         // Yoga fixture: dont_measure_when_min_equals_max_mixed_width_percent
         Element root = new() { Name = "root" };
-        root.Style.AlignItems = Align.FlexStart;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.AlignItems = Align.FlexStart;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         MeasureStub stub = new(10, 10);
         Element child0 = AddChild(root, "root_child0", stub.Callback);
-        child0.Style.MinWidth = Length.Percent(10);
-        child0.Style.MaxWidth = Length.Percent(10);
-        child0.Style.MinHeight = 10;
-        child0.Style.MaxHeight = 10;
+        child0.Inline.MinWidth = Length.Percent(10);
+        child0.Inline.MaxWidth = Length.Percent(10);
+        child0.Inline.MinHeight = 10;
+        child0.Inline.MaxHeight = 10;
 
         LayoutFixture.Calculate(root);
 
@@ -152,16 +152,16 @@ public sealed class MeasureFixtureTests
     {
         // Yoga fixture: dont_measure_when_min_equals_max_mixed_height_percent
         Element root = new() { Name = "root" };
-        root.Style.AlignItems = Align.FlexStart;
-        root.Style.Width = 100;
-        root.Style.Height = 100;
+        root.Inline.AlignItems = Align.FlexStart;
+        root.Inline.Width = 100;
+        root.Inline.Height = 100;
 
         MeasureStub stub = new(10, 10);
         Element child0 = AddChild(root, "root_child0", stub.Callback);
-        child0.Style.MinWidth = 10;
-        child0.Style.MaxWidth = 10;
-        child0.Style.MinHeight = Length.Percent(10);
-        child0.Style.MaxHeight = Length.Percent(10);
+        child0.Inline.MinWidth = 10;
+        child0.Inline.MaxWidth = 10;
+        child0.Inline.MinHeight = Length.Percent(10);
+        child0.Inline.MaxHeight = Length.Percent(10);
 
         LayoutFixture.Calculate(root);
 
@@ -175,10 +175,10 @@ public sealed class MeasureFixtureTests
     {
         // Yoga fixture: measure_enough_size_should_be_in_single_line
         Element root = new() { Name = "root" };
-        root.Style.Width = 100;
+        root.Inline.Width = 100;
 
         Element child0 = AddChild(root, "root_child0", MeasureStub.WrappingText);
-        child0.Style.AlignSelf = Align.FlexStart;
+        child0.Inline.AlignSelf = Align.FlexStart;
 
         LayoutFixture.Calculate(root);
 
@@ -192,10 +192,10 @@ public sealed class MeasureFixtureTests
     {
         // Yoga fixture: measure_not_enough_size_should_wrap
         Element root = new() { Name = "root" };
-        root.Style.Width = 55;
+        root.Inline.Width = 55;
 
         Element child0 = AddChild(root, "root_child0", MeasureStub.WrappingText);
-        child0.Style.AlignSelf = Align.FlexStart;
+        child0.Inline.AlignSelf = Align.FlexStart;
 
         LayoutFixture.Calculate(root);
 
@@ -209,14 +209,14 @@ public sealed class MeasureFixtureTests
     {
         // Yoga fixture: measure_zero_space_should_grow
         Element root = new() { Name = "root" };
-        root.Style.Height = 200;
-        root.Style.FlexDirection = FlexDirection.Column;
-        root.Style.FlexGrow = 0;
+        root.Inline.Height = 200;
+        root.Inline.FlexDirection = FlexDirection.Column;
+        root.Inline.FlexGrow = 0;
 
         MeasureStub stub = new(10, 10);
         Element child0 = AddChild(root, "root_child0", stub.Callback);
-        child0.Style.FlexDirection = FlexDirection.Column;
-        child0.Style.Padding = LengthEdges.All(100);
+        child0.Inline.FlexDirection = FlexDirection.Column;
+        child0.Inline.Padding = LengthEdges.All(100);
 
         UiContext context = new()
         {
@@ -237,16 +237,16 @@ public sealed class MeasureFixtureTests
     {
         // Yoga fixture: measure_flex_direction_row_and_padding
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.Padding = LengthEdges.All(25);
-        root.Style.Width = 50;
-        root.Style.Height = 50;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.Padding = LengthEdges.All(25);
+        root.Inline.Width = 50;
+        root.Inline.Height = 50;
 
         Element child0 = AddChild(root, "root_child0", MeasureStub.WrappingText);
 
         Element child1 = AddChild(root, "root_child1", null);
-        child1.Style.Width = 5;
-        child1.Style.Height = 5;
+        child1.Inline.Width = 5;
+        child1.Inline.Height = 5;
 
         LayoutFixture.Calculate(root);
 
@@ -261,16 +261,16 @@ public sealed class MeasureFixtureTests
     {
         // Yoga fixture: measure_flex_direction_column_and_padding
         Element root = new() { Name = "root" };
-        root.Style.Margin.Top = 20;
-        root.Style.Padding = LengthEdges.All(25);
-        root.Style.Width = 50;
-        root.Style.Height = 50;
+        root.Inline.Margin = root.Inline.Margin with { Top = 20 };
+        root.Inline.Padding = LengthEdges.All(25);
+        root.Inline.Width = 50;
+        root.Inline.Height = 50;
 
         Element child0 = AddChild(root, "root_child0", MeasureStub.WrappingText);
 
         Element child1 = AddChild(root, "root_child1", null);
-        child1.Style.Width = 5;
-        child1.Style.Height = 5;
+        child1.Inline.Width = 5;
+        child1.Inline.Height = 5;
 
         LayoutFixture.Calculate(root);
 
@@ -285,16 +285,16 @@ public sealed class MeasureFixtureTests
     {
         // Yoga fixture: measure_flex_direction_row_no_padding
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.Margin.Top = 20;
-        root.Style.Width = 50;
-        root.Style.Height = 50;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.Margin = root.Inline.Margin with { Top = 20 };
+        root.Inline.Width = 50;
+        root.Inline.Height = 50;
 
         Element child0 = AddChild(root, "root_child0", MeasureStub.WrappingText);
 
         Element child1 = AddChild(root, "root_child1", null);
-        child1.Style.Width = 5;
-        child1.Style.Height = 5;
+        child1.Inline.Width = 5;
+        child1.Inline.Height = 5;
 
         LayoutFixture.Calculate(root);
 
@@ -309,17 +309,17 @@ public sealed class MeasureFixtureTests
     {
         // Yoga fixture: measure_flex_direction_row_no_padding_align_items_flexstart
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.Margin.Top = 20;
-        root.Style.Width = 50;
-        root.Style.Height = 50;
-        root.Style.AlignItems = Align.FlexStart;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.Margin = root.Inline.Margin with { Top = 20 };
+        root.Inline.Width = 50;
+        root.Inline.Height = 50;
+        root.Inline.AlignItems = Align.FlexStart;
 
         Element child0 = AddChild(root, "root_child0", MeasureStub.WrappingText);
 
         Element child1 = AddChild(root, "root_child1", null);
-        child1.Style.Width = 5;
-        child1.Style.Height = 5;
+        child1.Inline.Width = 5;
+        child1.Inline.Height = 5;
 
         LayoutFixture.Calculate(root);
 
@@ -334,18 +334,18 @@ public sealed class MeasureFixtureTests
     {
         // Yoga fixture: measure_with_fixed_size
         Element root = new() { Name = "root" };
-        root.Style.Margin.Top = 20;
-        root.Style.Padding = LengthEdges.All(25);
-        root.Style.Width = 50;
-        root.Style.Height = 50;
+        root.Inline.Margin = root.Inline.Margin with { Top = 20 };
+        root.Inline.Padding = LengthEdges.All(25);
+        root.Inline.Width = 50;
+        root.Inline.Height = 50;
 
         Element child0 = AddChild(root, "root_child0", MeasureStub.WrappingText);
-        child0.Style.Width = 10;
-        child0.Style.Height = 10;
+        child0.Inline.Width = 10;
+        child0.Inline.Height = 10;
 
         Element child1 = AddChild(root, "root_child1", null);
-        child1.Style.Width = 5;
-        child1.Style.Height = 5;
+        child1.Inline.Width = 5;
+        child1.Inline.Height = 5;
 
         LayoutFixture.Calculate(root);
 
@@ -360,17 +360,17 @@ public sealed class MeasureFixtureTests
     {
         // Yoga fixture: measure_with_flex_shrink
         Element root = new() { Name = "root" };
-        root.Style.Margin.Top = 20;
-        root.Style.Padding = LengthEdges.All(25);
-        root.Style.Width = 50;
-        root.Style.Height = 50;
+        root.Inline.Margin = root.Inline.Margin with { Top = 20 };
+        root.Inline.Padding = LengthEdges.All(25);
+        root.Inline.Width = 50;
+        root.Inline.Height = 50;
 
         Element child0 = AddChild(root, "root_child0", MeasureStub.WrappingText);
-        child0.Style.FlexShrink = 1;
+        child0.Inline.FlexShrink = 1;
 
         Element child1 = AddChild(root, "root_child1", null);
-        child1.Style.Width = 5;
-        child1.Style.Height = 5;
+        child1.Inline.Width = 5;
+        child1.Inline.Height = 5;
 
         LayoutFixture.Calculate(root);
 
@@ -385,16 +385,16 @@ public sealed class MeasureFixtureTests
     {
         // Yoga fixture: measure_no_padding
         Element root = new() { Name = "root" };
-        root.Style.Margin.Top = 20;
-        root.Style.Width = 50;
-        root.Style.Height = 50;
+        root.Inline.Margin = root.Inline.Margin with { Top = 20 };
+        root.Inline.Width = 50;
+        root.Inline.Height = 50;
 
         Element child0 = AddChild(root, "root_child0", MeasureStub.WrappingText);
-        child0.Style.FlexShrink = 1;
+        child0.Inline.FlexShrink = 1;
 
         Element child1 = AddChild(root, "root_child1", null);
-        child1.Style.Width = 5;
-        child1.Style.Height = 5;
+        child1.Inline.Width = 5;
+        child1.Inline.Height = 5;
 
         LayoutFixture.Calculate(root);
 
@@ -409,12 +409,12 @@ public sealed class MeasureFixtureTests
     {
         // Yoga fixture: cant_call_negative_measure
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Column;
-        root.Style.Width = 50;
-        root.Style.Height = 10;
+        root.Inline.FlexDirection = FlexDirection.Column;
+        root.Inline.Width = 50;
+        root.Inline.Height = 10;
 
         Element child0 = AddChild(root, "root_child0", MeasureStub.AssertNotNegative);
-        child0.Style.Margin.Top = 20;
+        child0.Inline.Margin = child0.Inline.Margin with { Top = 20 };
 
         LayoutFixture.Calculate(root);
 
@@ -426,17 +426,17 @@ public sealed class MeasureFixtureTests
     {
         // Yoga fixture: percent_with_text_node
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.JustifyContent = Justify.SpaceBetween;
-        root.Style.AlignItems = Align.Center;
-        root.Style.Width = 100;
-        root.Style.Height = 80;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.JustifyContent = Justify.SpaceBetween;
+        root.Inline.AlignItems = Align.Center;
+        root.Inline.Width = 100;
+        root.Inline.Height = 80;
 
         Element child0 = AddChild(root, "root_child0", null);
 
         Element child1 = AddChild(root, "root_child1", MeasureStub.Size90By10);
-        child1.Style.MaxWidth = Length.Percent(50);
-        child1.Style.Padding.Top = Length.Percent(50);
+        child1.Inline.MaxWidth = Length.Percent(50);
+        child1.Inline.Padding = child1.Inline.Padding with { Top = Length.Percent(50) };
 
         LayoutFixture.Calculate(root);
 
@@ -451,29 +451,29 @@ public sealed class MeasureFixtureTests
     {
         // Yoga fixture: percent_margin_with_measure_func
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.Width = 500;
-        root.Style.Height = 500;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.Width = 500;
+        root.Inline.Height = 500;
 
         Element child0 = AddChild(root, "root_child0", MeasureStub.Size100By100);
-        child0.Style.Width = 100;
-        child0.Style.Height = 100;
-        child0.Style.Margin.Top = 0;
+        child0.Inline.Width = 100;
+        child0.Inline.Height = 100;
+        child0.Inline.Margin = child0.Inline.Margin with { Top = 0 };
 
         Element child1 = AddChild(root, "root_child1", MeasureStub.Size100By100);
-        child1.Style.Width = 100;
-        child1.Style.Height = 100;
-        child1.Style.Margin.Top = 100;
+        child1.Inline.Width = 100;
+        child1.Inline.Height = 100;
+        child1.Inline.Margin = child1.Inline.Margin with { Top = 100 };
 
         Element child2 = AddChild(root, "root_child2", MeasureStub.Size100By100);
-        child2.Style.Width = 100;
-        child2.Style.Height = 100;
-        child2.Style.Margin.Top = Length.Percent(10);
+        child2.Inline.Width = 100;
+        child2.Inline.Height = 100;
+        child2.Inline.Margin = child2.Inline.Margin with { Top = Length.Percent(10) };
 
         Element child3 = AddChild(root, "root_child3", MeasureStub.Size100By100);
-        child3.Style.Width = 100;
-        child3.Style.Height = 100;
-        child3.Style.Margin.Top = Length.Percent(20);
+        child3.Inline.Width = 100;
+        child3.Inline.Height = 100;
+        child3.Inline.Margin = child3.Inline.Margin with { Top = Length.Percent(20) };
 
         LayoutFixture.Calculate(root);
 
@@ -490,27 +490,27 @@ public sealed class MeasureFixtureTests
     {
         // Yoga fixture: percent_padding_with_measure_func
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.AlignItems = Align.FlexStart;
-        root.Style.AlignContent = Align.FlexStart;
-        root.Style.Width = 500;
-        root.Style.Height = 500;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.AlignItems = Align.FlexStart;
+        root.Inline.AlignContent = Align.FlexStart;
+        root.Inline.Width = 500;
+        root.Inline.Height = 500;
 
         Element child0 = AddChild(root, "root_child0", MeasureStub.Size100By100);
-        child0.Style.Width = 100;
-        child0.Style.Height = 100;
-        child0.Style.Padding.Top = 0;
+        child0.Inline.Width = 100;
+        child0.Inline.Height = 100;
+        child0.Inline.Padding = child0.Inline.Padding with { Top = 0 };
 
         Element child1 = AddChild(root, "root_child1", MeasureStub.Size100By100);
-        child1.Style.Width = 100;
-        child1.Style.Height = 100;
-        child1.Style.Padding.Top = 100;
+        child1.Inline.Width = 100;
+        child1.Inline.Height = 100;
+        child1.Inline.Padding = child1.Inline.Padding with { Top = 100 };
 
         Element child2 = AddChild(root, "root_child2", MeasureStub.Size100By100);
-        child2.Style.Padding.Top = Length.Percent(10);
+        child2.Inline.Padding = child2.Inline.Padding with { Top = Length.Percent(10) };
 
         Element child3 = AddChild(root, "root_child3", MeasureStub.Size100By100);
-        child3.Style.Padding.Top = Length.Percent(20);
+        child3.Inline.Padding = child3.Inline.Padding with { Top = Length.Percent(20) };
 
         LayoutFixture.Calculate(root);
 
@@ -527,29 +527,29 @@ public sealed class MeasureFixtureTests
     {
         // Yoga fixture: percent_padding_and_percent_margin_with_measure_func
         Element root = new() { Name = "root" };
-        root.Style.FlexDirection = FlexDirection.Row;
-        root.Style.AlignItems = Align.FlexStart;
-        root.Style.AlignContent = Align.FlexStart;
-        root.Style.Width = 500;
-        root.Style.Height = 500;
+        root.Inline.FlexDirection = FlexDirection.Row;
+        root.Inline.AlignItems = Align.FlexStart;
+        root.Inline.AlignContent = Align.FlexStart;
+        root.Inline.Width = 500;
+        root.Inline.Height = 500;
 
         Element child0 = AddChild(root, "root_child0", MeasureStub.Size100By100);
-        child0.Style.Width = 100;
-        child0.Style.Height = 100;
-        child0.Style.Padding.Top = 0;
+        child0.Inline.Width = 100;
+        child0.Inline.Height = 100;
+        child0.Inline.Padding = child0.Inline.Padding with { Top = 0 };
 
         Element child1 = AddChild(root, "root_child1", MeasureStub.Size100By100);
-        child1.Style.Width = 100;
-        child1.Style.Height = 100;
-        child1.Style.Padding.Top = 100;
+        child1.Inline.Width = 100;
+        child1.Inline.Height = 100;
+        child1.Inline.Padding = child1.Inline.Padding with { Top = 100 };
 
         Element child2 = AddChild(root, "root_child2", MeasureStub.Size100By100);
-        child2.Style.Padding.Top = Length.Percent(10);
-        child2.Style.Margin.Top = Length.Percent(10);
+        child2.Inline.Padding = child2.Inline.Padding with { Top = Length.Percent(10) };
+        child2.Inline.Margin = child2.Inline.Margin with { Top = Length.Percent(10) };
 
         Element child3 = AddChild(root, "root_child3", MeasureStub.Size100By100);
-        child3.Style.Padding.Top = Length.Percent(20);
-        child3.Style.Margin.Top = Length.Percent(20);
+        child3.Inline.Padding = child3.Inline.Padding with { Top = Length.Percent(20) };
+        child3.Inline.Margin = child3.Inline.Margin with { Top = Length.Percent(20) };
 
         LayoutFixture.Calculate(root);
 

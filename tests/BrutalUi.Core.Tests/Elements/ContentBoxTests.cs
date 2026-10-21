@@ -41,8 +41,8 @@ public sealed class ContentBoxTests
         UiContext firstContext = CreateContext(first);
         Element root = AddRoot(firstContext, Align.FlexStart);
         Label padded = AddLabel(root, "Hello");
-        padded.Style.Padding = LengthEdges.All(10);
-        padded.Style.BorderWidth = LengthEdges.All(2);
+        padded.Inline.Padding = LengthEdges.All(10);
+        padded.Inline.BorderWidth = LengthEdges.All(2);
 
         firstContext.Update(0f);
         firstContext.Draw(first);
@@ -50,7 +50,7 @@ public sealed class ContentBoxTests
         RecordingRenderer second = new();
         UiContext secondContext = CreateContext(second);
         Label rootLabel = CreateLabel("Hello");
-        rootLabel.Style.Padding = LengthEdges.All(Length.Percent(10));
+        rootLabel.Inline.Padding = LengthEdges.All(Length.Percent(10));
         secondContext.AddRoot(rootLabel);
 
         secondContext.Update(0f);
@@ -85,7 +85,7 @@ public sealed class ContentBoxTests
         UiContext context = CreateContext(renderer, 333f);
         Element root = AddRoot(context, Align.Stretch);
         Label label = AddLabel(root, LongText);
-        label.Style.Padding = LengthEdges.All(Length.Percent(7.3f));
+        label.Inline.Padding = LengthEdges.All(Length.Percent(7.3f));
 
         context.Update(0f);
         context.Draw(renderer);
@@ -128,7 +128,7 @@ public sealed class ContentBoxTests
             UiContext context = CreateContext(renderer, width);
             Element root = AddRoot(context, align);
             Label label = AddLabel(root, LongText);
-            label.Style.Padding = LengthEdges.All(Length.Percent(7.3f));
+            label.Inline.Padding = LengthEdges.All(Length.Percent(7.3f));
 
             context.Update(0f);
             context.Draw(renderer);
@@ -167,8 +167,10 @@ public sealed class ContentBoxTests
         {
             UiContext context = CreateContext(renderer, width);
             Element root = AddRoot(context, align);
-            Label label = new(new Label.CreateInfo { Color = White, Size = FractionalSize, Text = "Hello brutal world of the text" });
-            label.Style.Padding = LengthEdges.All(Length.Percent(7.3f));
+            Label label = new(new Label.CreateInfo { Text = "Hello brutal world of the text" });
+            label.Inline.Color = White;
+            label.Inline.FontSize = FractionalSize;
+            label.Inline.Padding = LengthEdges.All(Length.Percent(7.3f));
             root.Children.Add(label);
 
             context.Update(0f);
@@ -224,7 +226,7 @@ public sealed class ContentBoxTests
         UiContext context = CreateContext(renderer);
         Element root = AddRoot(context, Align.FlexStart);
         Image image = AddImage(root, ImageScaleMode.StretchToFill);
-        image.Style.BorderWidth = LengthEdges.All(2);
+        image.Inline.BorderWidth = LengthEdges.All(2);
 
         context.Update(0f);
         context.Draw(renderer);
@@ -244,9 +246,9 @@ public sealed class ContentBoxTests
         UiContext context = CreateContext(renderer);
         Element root = AddRoot(context, Align.FlexStart);
         Image image = AddImage(root, ImageScaleMode.ScaleToFit);
-        image.Style.Width = 100;
-        image.Style.Height = 100;
-        image.Style.Padding = LengthEdges.All(10);
+        image.Inline.Width = 100;
+        image.Inline.Height = 100;
+        image.Inline.Padding = LengthEdges.All(10);
 
         context.Update(0f);
         context.Draw(renderer);
@@ -274,9 +276,9 @@ public sealed class ContentBoxTests
         UiContext context = CreateContext(renderer);
         Element root = AddRoot(context, Align.FlexStart);
         Image image = AddImage(root, mode);
-        image.Style.Width = 100;
-        image.Style.Height = 100;
-        image.Style.Padding = new LengthEdges(10, 20, 30, 40);
+        image.Inline.Width = 100;
+        image.Inline.Height = 100;
+        image.Inline.Padding = new LengthEdges(10, 20, 30, 40);
 
         context.Update(0f);
         context.Draw(renderer);
@@ -299,9 +301,9 @@ public sealed class ContentBoxTests
         UiContext context = CreateContext(renderer);
         Element root = AddRoot(context, Align.FlexStart);
         Image image = AddImage(root, mode);
-        image.Style.Width = 10;
-        image.Style.Height = 10;
-        image.Style.Padding = LengthEdges.All(8);
+        image.Inline.Width = 10;
+        image.Inline.Height = 10;
+        image.Inline.Padding = LengthEdges.All(8);
 
         context.Update(0f);
         context.Draw(renderer);
@@ -317,10 +319,10 @@ public sealed class ContentBoxTests
         RecordingRenderer renderer = new();
         UiContext context = CreateContext(renderer);
         Element root = AddRoot(context, Align.FlexStart);
-        root.Style.Padding = LengthEdges.All(5);
-        root.Style.BorderWidth = LengthEdges.All(1);
+        root.Inline.Padding = LengthEdges.All(5);
+        root.Inline.BorderWidth = LengthEdges.All(1);
         Label label = AddLabel(root, "Hello");
-        label.Style.Padding = new LengthEdges(3, 4, 0, 0);
+        label.Inline.Padding = new LengthEdges(3, 4, 0, 0);
 
         context.Update(0f);
         context.Draw(renderer);
@@ -347,7 +349,7 @@ public sealed class ContentBoxTests
     private static Element AddRoot(UiContext context, Align align)
     {
         Element root = new();
-        root.Style.AlignItems = align;
+        root.Inline.AlignItems = align;
         context.AddRoot(root);
         return root;
     }
@@ -357,7 +359,10 @@ public sealed class ContentBoxTests
     /// <returns>The label.</returns>
     private static Label CreateLabel(string text)
     {
-        return new Label(new Label.CreateInfo { Color = White, Size = 16, Text = text });
+        Label label = new(new Label.CreateInfo { Text = text });
+        label.Inline.Color = White;
+        label.Inline.FontSize = 16;
+        return label;
     }
 
     /// <summary>Adds a white label of size 16 to a parent.</summary>
