@@ -1,8 +1,8 @@
 # Input Routing - Epic Overview
 
 **Epic:** input-routing
-**Status:** Planned
-**Last Updated:** 2026-10-22 06:10
+**Status:** Complete
+**Last Updated:** 2026-10-22 16:30
 
 > **This file is the epic marker.** Its presence in `docs/features/input-routing/` tells every Beast Mode command that this folder is an **epic**, not a plain feature. Keep it present and keep the required sections below filled in. The master `docs/overview.md` tracks this epic as a **single row**. The per-feature detail lives **here**.
 
@@ -22,10 +22,10 @@ The constituent features of this epic, in build order. Each feature is a subfold
 
 | # | Feature | Status | Tasks | Description |
 |---|---------|--------|-------|-------------|
-| 1 | event-model | Planned | - | The event structs, the handler delegates on `Element`, the event queue, and the capture, target, and bubble walk with stop propagation. |
-| 2 | pointer-routing | Planned | - | The `BrutalUi.Glfw` adapter, the hit test with clip rects and `IsPickable`, the `Hover` and `Active` states, and the scroll event. |
-| 3 | keyboard-focus | Planned | - | The focus owner, focus on click, Tab, and Shift+Tab, the key and char events to the focused element, and the `Focus` state. |
-| 4 | routing-gate | Planned | - | `UiRoutingGate`, the input pass in `UiContext.Update`, the 0-byte gate on the input pass, and the HelloPanel demo. |
+| 1 | event-model | Complete | 43/43 (100%) | The event structs, the handler delegates on `Element`, the event queue, and the capture, target, and bubble walk with stop propagation. |
+| 2 | pointer-routing | Complete | 44/44 (100%) | The `BrutalUi.Glfw` adapter, the hit test with clip rects and `IsPickable`, the `Hover` and `Active` states, and the scroll event. |
+| 3 | keyboard-focus | Complete | 42/42 (100%) | The focus owner, focus on click, Tab, and Shift+Tab, the key and char events to the focused element, and the `Focus` state. |
+| 4 | routing-gate | Complete | 23/23 (100%) | `UiRoutingGate`, the input pass in `UiContext.Update`, the 0-byte gate on the input pass, and the HelloPanel demo. |
 
 > Reference any feature with the slash form `input-routing/<feature-name>`. Task counts come from each feature's own `tasks.md`, and `/update-epic` refreshes them.
 
@@ -55,7 +55,7 @@ The constituent features of this epic, in build order. Each feature is a subfold
 
 ## Integration & Architecture
 
-- **Within the epic:** The adapter writes events into a fixed ring buffer on `UiContext`. The input pass drains the buffer in `UiContext.Update` before the style pass. The pointer walk and the keyboard walk share one dispatch path. The gate reads two fields that the walks write.
+- **Within the epic:** As built, the hit test uses the padding-box clip of `PaintWalk`, not `LayoutNode.ContentInsets`. The adapter writes events into a fixed ring buffer on `UiContext`. The input pass drains the buffer in `UiContext.Update` before the style pass. The pointer walk and the keyboard walk share one dispatch path. The gate reads two fields that the walks write.
 - **With other epics / features:** core-tree gives `Element`, `IsPickable`, `UiContext`, and the layout rects. style-system gives `PseudoStates` and `Element.States`, so a state change restyles the subtree. imgui-renderer gives `LayoutNode.ContentInsets` for the hit test. The interactive-elements epic registers handlers on the delegates of this epic. The Phase 3 framework epic adds the action map on top of the keyboard events.
 - **Key architectural decisions for the epic as a whole:**
   - Q1 The GLFW adapter lives in a new `BrutalUi.Glfw` package. Core stays free of GLFW.
@@ -78,8 +78,8 @@ The constituent features of this epic, in build order. Each feature is a subfold
 
 ## Master Overview Rollup
 
-- **Rollup status:** Planned (0/4 features)
-- **One-line summary for master:** Pointer and keyboard events reach the element tree through a hit test, a capture and bubble walk, and a focus owner. A gate tells the game when the UI owns the input.
+- **Rollup status:** Complete (4/4 features, 152/152 tasks)
+- **One-line summary for master:** A zero-allocation event ring, a capture and bubble walk, a hit test, a focus owner with Tab, the `BrutalUi.Glfw` adapter, and `UiRoutingGate`. HelloPanel shows hover, focus, and the gate. 2281 tests pass.
 
 ---
 

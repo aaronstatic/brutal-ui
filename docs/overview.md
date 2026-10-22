@@ -1,7 +1,7 @@
 # brutal-ui - Overview
 
-**Last Updated:** 2026-10-22 05:19
-**Version:** v1.4
+**Last Updated:** 2026-10-22 16:30
+**Version:** v1.5
 
 ## Project Summary
 
@@ -15,6 +15,7 @@ brutal-ui gives BRUTAL developers a retained-mode game UI framework with zero al
 | core-tree (epic) | Complete | 150/150 (100%) | The element tree, the C# flexbox engine (337 Yoga fixtures), and the 0-byte gate on a 1000-element tree. 574 tests pass. |
 | imgui-renderer (epic) | Complete | 141/141 (100%) | `IUiRenderer`, `UiContext.Draw`, `ImGuiRenderer`, `Label`, `Image`, and the HelloPanel static screen on Vulkan. Draw allocates 0 bytes. 1013 tests pass. Closes Phase 1. |
 | style-system (epic) | Complete | 234/234 (100%) | Stylesheets, selectors with pseudo-states and a depth-2 chain, a zero-allocation cascade into `ComputedStyle`, a CSS-subset parser, and paint transitions. HelloPanel loads a stylesheet. 2121 tests pass. |
+| input-routing (epic) | Complete | 152/152 (100%) | A zero-allocation event ring, a capture and bubble walk, a hit test, a focus owner with Tab, the `BrutalUi.Glfw` adapter, and `UiRoutingGate`. HelloPanel shows hover, focus, and the gate. 2281 tests pass. |
 
 > An epic is one row. Its child features live in `docs/features/<epic>/epic-overview.md`.
 
@@ -28,9 +29,11 @@ brutal-ui gives BRUTAL developers a retained-mode game UI framework with zero al
 - **imgui-renderer → later epics:** `IUiRenderer` is the only path to pixels. The style-system epic writes the paint members of `ComputedStyle`. The input epic reads the layout rects and `LayoutNode.ContentInsets`. The world-space epic adds a private draw list behind the same interface.
 - **GPU smoke contract (Phase 1):** The HelloPanel smoke run prints 3 lines and exits with code 1 when `Update` and `Draw` allocate after warm-up.
 - **style-system → later epics:** Code sets an inline value through `Element.Inline`, and `Element.Style` is `ref readonly`. The input-routing epic sets `Element.States`, and the pseudo-state rules restyle the subtree. The markup epic loads a sheet through `StyleSheetParser` in `BrutalUi.Markup`. `UiContext.Update` runs the style pass, then the transition pass, then layout.
+- **input-routing → later epics:** A handler registers on the capture and bubble slots of `Element` at build time. `UiContext.Update` drains the event ring, then runs the style pass, the transition pass, and layout. The interactive-elements epic builds `Button`, `Toggle`, `ScrollView`, and `TextField` on these events and on the focus owner. The game reads `UiContext.RoutingGate` after `Update`.
 
 ## Changelog
 
+- v1.5 (2026-10-22): **input-routing epic complete** - 4/4 features, 152/152 tasks. event-model adds the event structs, the fixed ring on `UiContext`, the capture and bubble slots on `Element`, and `EventWalk.Dispatch` with stop propagation. pointer-routing adds `HitWalk`, `Hover` and `Active`, scroll routing, and the `BrutalUi.Glfw` package with `GlfwUiInput`. keyboard-focus adds the focus owner, click focus, Tab and Shift+Tab, and the key and char route. routing-gate drains the ring first in `UiContext.Update`, adds `UiRoutingGate`, and shows hover, focus, and the gate in HelloPanel. 2281 tests pass, and each allocation gate measures 0 bytes.
 - v1.4 (2026-10-22): **style-system epic complete** - 4/4 features, 234/234 tasks. stylesheet-model adds `StyleProperties`, `StyleRule`, `StyleSheet`, the style pass, `Element.Inline`, the type id, and the inherited text members. selector-matching adds the name and pseudo-state parts, the depth-2 chain, and the byte-tier specificity. style-parser adds the CSS-subset parser with theme variables and the error report, and HelloPanel loads `HelloScreen.css`. transitions adds the tween pool with the CSS easings. 2121 tests pass, and each allocation gate measures 0 bytes.
 - v1.3 (2026-10-21): **imgui-renderer epic complete** - 4/4 features, 141/141 tasks. renderer-interface adds `IUiRenderer`, the paint members, and `UiContext.Draw`. imgui-draw-list adds `ImGuiRenderer` with the font and texture services and the headless ImGui tests. label-and-image adds `Label`, `Image`, the measurer slot, word wrap, and `LayoutNode.ContentInsets`. hello-panel-sample shows the static screen on Vulkan and adds `TreeDrawBenchmark`. 1013 tests pass. Phase 1 is closed.
 
