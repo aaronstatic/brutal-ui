@@ -5,8 +5,8 @@ namespace BrutalUi.Core;
 /// </summary>
 /// <remarks>
 /// <para>
-/// The caller sets the target (A4). The input routing finds the element under the pointer or the element
-/// with the focus, and puts it in <see cref="Target"/>. The drain skips an event with no target.
+/// The caller can set the target (A4). The drain hit-tests a pointer event with no target and puts the element
+/// under the pointer in <see cref="Target"/>. The drain skips an event of another type with no target.
 /// </para>
 /// <para>
 /// The walk writes <see cref="Phase"/> and <see cref="CurrentTarget"/> before each handler call. Only the
@@ -42,8 +42,19 @@ public struct UiEventHeader
     public double Timestamp;
 
     /// <summary>
-    /// The element that gets the event (A4). The caller sets it. The drain skips an event with no target.
+    /// The element that gets the event (A4), or <see langword="null"/> for an event that the drain routes.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A pointer event with no target gets the hit element as its target at the drain, not at the push. The hit test
+    /// reads the layout of the last <see cref="UiContext.Update(float)"/>. The drain also moves
+    /// <see cref="PseudoStates.Hover"/> to the hit element. A pointer event over no element gets no walk.
+    /// </para>
+    /// <para>
+    /// A target from the caller skips the hit test and the states (Decision 2). The drain skips an event of another
+    /// type with no target.
+    /// </para>
+    /// </remarks>
     public Element? Target;
 
     /// <summary>Gets the phase of the walk. The walk writes it before each handler call.</summary>

@@ -90,6 +90,7 @@ brutal-ui/
 ├── src/
 │   ├── BrutalUi.Core/          # element tree, layout, style, input, IUiRenderer
 │   ├── BrutalUi.ImGui/         # IUiRenderer on ImDrawList, fonts, textures
+│   ├── BrutalUi.Glfw/          # GlfwUiInput: GLFW window events to UiContext.PushEvent
 │   ├── BrutalUi.Framework/     # stores, panels, modes, windows, commands, events
 │   ├── BrutalUi.Markup/        # XML loader, stylesheet parser
 │   └── BrutalUi.Debugger/      # state, composition, and event inspector window
@@ -99,6 +100,7 @@ brutal-ui/
 ├── tests/
 │   ├── BrutalUi.Core.Tests/
 │   ├── BrutalUi.ImGui.Tests/
+│   ├── BrutalUi.Glfw.Tests/
 │   ├── BrutalUi.Framework.Tests/
 │   ├── BrutalUi.Markup.Tests/
 │   └── BrutalUi.Benchmarks/
@@ -115,6 +117,8 @@ brutal-ui/
 
 **`src/BrutalUi.ImGui/`** holds the ImGui renderer, the font service, the texture service, and the render-to-texture path. It references `Brutal.ImGui` and `Brutal.ImGui.Backends`.
 
+**`src/BrutalUi.Glfw/`** holds `GlfwUiInput`, the GLFW input adapter. It subscribes to the events of a `GlfwWindow` and pushes them to a `UiContext` with `PushEvent`. It references `Brutal.Glfw` and `BrutalUi.Core`. The package brings the native GLFW library through `Ahwoo.BRUTAL.Glfw`. `BrutalUi.Core` stays free of GLFW and of native code.
+
 **`src/BrutalUi.Framework/`** holds the mosaic-ui layer. It references Core only.
 
 **`src/BrutalUi.Markup/`** holds the XML element loader and the stylesheet parser. It references Core only.
@@ -130,7 +134,7 @@ brutal-ui/
 ```
  Game loop
    │
-   ├─ GlfwWindow events ──► UiInput ──► Element tree (focus, hover, capture)
+   ├─ GlfwWindow events ──► GlfwUiInput ──► UiContext.PushEvent ──► Element tree (focus, hover, capture)
    │
    ├─ UiContext.Update(deltaTime)
    │     ├─ Framework: mode diff, store notifications, bindings
@@ -314,7 +318,16 @@ An event is a struct that walks the tree in three phases: capture, target, and b
 
 **The queue.** `UiContext` holds a fixed ring. `CreateInfo.EventQueueCapacity` sets its size, and the default is 256 entries. An entry has 64 bytes (a header of 40 bytes and a payload of 20 bytes), so the default ring uses 16 KB for each context. A full ring drops the oldest entry and counts it in `DroppedEventCount`. `PushEvent` has four public overloads, one for each struct. A push with a type that the struct cannot carry throws `ArgumentException`. The ring copies the event, so a push allocates nothing.
 
-**The drain.** The internal `DrainEvents` pops each queued entry and walks it. The routing gate of the input-routing epic calls it from `Update`, before the style pass. The event-model feature does not call it. The drain skips an entry with a null target and an entry with a target outside the roots of the context. A call of the drain from a handler throws `InvalidOperationException`.
+**The drain.** The internal `DrainEvents` pops each queued entry and walks it. The routing gate of the input-routing epic calls it from `Update`, before the style pass. The event-model feature does not call it. The drain skips an entry with a null target after the pointer step and an entry with a target outside the roots of the context. A call of the drain from a handler throws `InvalidOperationException`.
+
+**The pointer step of the drain.** The step runs for each entry, before the walk, so a handler reads the new state. At the start of the drain, a stored element that left the roots loses its `Hover` and `Active` bits. A pointer or scroll entry with a null target then gets the hit element as its target:
+
+1. `HitWalk.Find` hit-tests the position of the entry (section 9, "Flow"). The context stores the position and the hit element. The property `PointerHit` returns the hit element for the routing gate.
+2. `Hover` moves to the hit element only, not to its ancestors. The old owner loses the bit. Each change marks the subtree for `Style`.
+3. A pointer down sets `Active` on the hit element when no element holds it. The first press target keeps `Active` until the last button goes up. A pointer up clears the bit on the stored element, also when the pointer is over another element.
+4. A move and a scroll leave `Active` as it is.
+
+A target from the caller skips the hit test and changes no state. The states follow the pointer events only. A layout change under a still pointer changes no state until the next pointer event.
 
 **The walk.** The walk copies the path from the target to the top root at its start, so a tree change during the walk does not change the path. It runs in this order:
 
@@ -764,12 +777,20 @@ Route GLFW events to the element tree and expose a gate for the game.
 
 ### Flow
 
-1. `UiInput` subscribes to `GlfwWindow` events: cursor position, mouse button, scroll, key, char, drop, content scale.
-2. The input layer pushes each event to the ring of the context with `UiContext.PushEvent`. The internal `DrainEvents` walks each entry (section 5, "Events"). `UiContext.Update` does not call the drain yet. The routing-gate feature adds the call at the start of `UiContext.Update`, before the style pass. Until then, no code of the library calls the drain.
-3. A pointer event hit-tests the tree from the top-most root down, with `PickingEnabled` and clip rects.
-4. The event walks capture, target, bubble. A handler can stop propagation.
-5. Focus moves on click, Tab, and gamepad navigation.
-6. `UiRoutingGate.PointerOverUi` and `KeyboardFocusInUi` tell the game to stand down.
+1. `GlfwUiInput` (package `BrutalUi.Glfw`) subscribes to the events of a `GlfwWindow`: cursor position, mouse button, scroll, cursor enter, drop, and content scale. The key and char events belong to keyboard-focus. A cursor leave pushes a pointer move at (NaN, NaN), so the pointer hits nothing and `Hover` clears. The positions stay in GLFW screen coordinates. Create the window, then `GlfwBackend`, then `GlfwUiInput`. Dispose in the opposite order.
+2. The adapter pushes each event to the ring of the context with `UiContext.PushEvent`. The internal `DrainEvents` walks each entry (section 5, "Events"). `UiContext.Update` does not call the drain yet. The routing-gate feature adds the call at the start of `UiContext.Update`, before the style pass. Until then, no code of the library calls the drain.
+3. A pointer or scroll event with no target hit-tests the tree. The internal `HitWalk` uses an explicit stack on `UiContext` and no recursion. The hit rules are:
+   - The walk visits the last root first, the last child first, and a descendant before its ancestor.
+   - The border box of an element is its hit area. The edges are half-open: the left and top edges hit, the right and bottom edges do not. A NaN point hits nothing.
+   - An element with an overflow other than `Visible` clips to its padding box, intersected with the clip of its parent (`PaintWalk.PaddingBounds` and `PaintWalk.Intersect`, shared with the draw). A point outside the clip skips the subtree.
+   - `Display.None` and an opacity product of 0 or less skip the subtree.
+   - `IsPickable` set to false skips the element only. Its children stay pickable.
+4. The state rules are: `Hover` goes to the hit element only. `Active` goes to the first press target and stays until the last button goes up. The states follow the pointer events only, and a stored element that leaves the roots loses its state at the start of the next drain.
+5. A layout root sets `IsPickable` to false. Then an empty area of the root passes the pointer to the game, because the hit test finds no element there. The routing gate reads `PointerHit` for this.
+6. The event walks capture, target, bubble. A handler can stop propagation.
+7. Focus moves on click, Tab, and gamepad navigation.
+8. `UiRoutingGate.PointerOverUi` and `KeyboardFocusInUi` tell the game to stand down.
+9. Two window events skip the queue and the routing. `UiContext.OnFileDrop` and `UiContext.OnContentScale` are slots for a handler. `RaiseFileDrop` and `RaiseContentScale` call them at once, and the adapter calls the Raise methods from the GLFW events. A null slot does nothing.
 
 ### Action map
 
@@ -1041,6 +1062,8 @@ The Vulkan backend binds one render pass at construction. Phase 5 tests a second
 - **A third allocation gate.** `ElementAllocationTests` runs 100 frames on a tree of 50 labels with wrapped text, 50 images with a width of 32, and one label with an `LString`. Each frame changes 10 labels and 10 images. On a label, it sets the text and the inline color, size, and font. On an image, it sets the tint, the UV rect, the texture, and the scale mode. A new UV span runs the image measure. The frame also sets one of two `LString` instances on the last label. Then it runs `Update` and `Draw` into a `RecordingRenderer`. The tests assert zero allocated bytes after warm-up for the span path, the string path, and `RefreshLocalizedText`. Before each measured refresh, the test changes the locale string, so each refresh takes the slow path. `TheMeasuredBodyDoesRealWork` checks that each frame measures and draws the new values. `ImGuiRendererAllocationTests.LabelUpdateAndDrawAllocateNothingAfterWarmUp` runs the same scene through `ImGuiRenderer`. The harness has one font, so that test does not change the font. A planted allocation in the label measure makes three of these tests fail. A planted allocation in the image measure, in the `Uv`, `Color`, or `Size` setter, in `SetText(LString)`, or in the slow path of the refresh makes one test or more fail.
 - **Event tests** in `BrutalUi.Core.Tests/Input/`. `EventWalkTests` checks the capture, target, and bubble order and the stop rule. `EventKindTests` checks that each of the 7 kinds reaches only its own slots and that each payload survives the queue. `EventQueueTests` checks the ring, the drop of the oldest entry, the capacity rules, and the exceptions of a wrong type. `EventWalkEdgeTests` checks a deep chain, a handler that throws, a nested drain, and a target outside the tree. `EventRecorder` is the shared test helper that records each call.
 - **A fifth allocation gate.** `EventAllocationTests` builds a chain of 40 levels under the root, with all 14 slots registered, and a multicast slot at level 10. Each step pushes 11 events of the 4 kinds into a ring of 9, including a stopped walk, a target outside the tree, and a null target. It drains the ring and asserts zero allocated bytes over 100 steps (1100 pushes, 100 drains, 700 walks). `APushToAFullQueueAllocatesNothing` asserts zero bytes for 1000 pushes into a full ring. `TheMeasuredBodyDoesRealWork` checks that each step calls 438 handlers and that the ring drops entries. A planted `GC.KeepAlive(new object());` as the first line of `EventWalk.Dispatch` gave exit code 2 and failed one gate: `PushAndDrainAllocateNothingAfterWarmUp`. After the restore, the run gave exit code 0.
+- **Pointer tests** in `BrutalUi.Core.Tests/Input/`. `PointerTree` is the shared small scene. `HitTestTests` (6 tests) checks the order of the walk, the half-open edges, and the NaN point. `HitTestRuleTests` (11 tests) checks the clip of an overflow, the nested clip, `Display.None`, the opacity product, and `IsPickable`. `PointerHoverTests` (5 tests) checks that `Hover` moves to the hit element only and restyles it. `PointerPressTests` (8 tests) checks `Active` with the button mask and the bubble from the hit element. It also checks a release over no element and at a NaN point. `ScrollRoutingTests` (4 tests) checks that a scroll reaches the hit element. `PointerStateEdgeTests` (8 tests) checks the stale state rule, the target from the caller, and the state after a removal. It also checks that the stale rule keeps the button mask. `WindowCallbackTests` (4 tests) checks the two window callbacks. `BrutalUi.Glfw.Tests` has 12 tests: `GlfwUiInputTests` (10) and `GlfwUiInputAllocationTests` (2). Most tests run through an internal test seam of the adapter, with no window. Two tests create a hidden window and skip when the machine has no display. They run under `xvfb-run -a`. `dotnet test` loads the native GLFW library of the pinned `Ahwoo.BRUTAL.Glfw` package.
+- **A sixth and a seventh allocation gate.** `PointerAllocationTests` (3 tests) builds the 1000-element tree (`ThousandElementTree`). Each step pushes 6 pointer and scroll events and drains them, with 5 hit tests and 5 walks. `TheHitTestAllocatesNothingOnAWarmTree` and `PointerRoutingAllocatesNothingAfterWarmUp` assert zero allocated bytes. `TheMeasuredBodyDoesRealWork` checks that the hit tests find elements, because `HitRound` stores a hit count that the compiler cannot drop. `GlfwUiInputAllocationTests.TheAdapterHandlersAllocateNothing` pushes 8 events of each kind through the adapter into a context with `RecordingRenderer` and a ring of 8, and it asserts zero bytes. A second test, `TheRealHandlersAllocateNothing`, creates a hidden window, reads the handler delegates of `OnCursorPos`, `OnScroll`, and `OnMouseButton`, and calls each one 1000 times. It runs the real `GetKey`, `Glfw.Time`, and `Log.Trace` path, and it measures zero bytes. It skips when the machine has no display. The gate leaves out the drop and the content scale, because a drop allocates in the binding. A planted `GC.KeepAlive(new object());` as the first line of `HitWalk.Find` gave exit code 2 and failed two gates: `TheHitTestAllocatesNothingOnAWarmTree` and `PointerRoutingAllocatesNothingAfterWarmUp`. After the restore, the file hash was equal and the run gave exit code 0 with 0 failed.
 - **Benchmarks** with BenchmarkDotNet for layout and draw on that tree. `TreeLayoutBenchmark` measures the full layout, a dirty subtree, and a clean update on the 1000-element tree. The settings panel is hidden, so the full layout pass lays out 780 elements and sets the 220 elements of the panel to zero. `PercentChainBenchmark` measures a leaf mark under a chain of percent sizes. `TreeDrawBenchmark` measures `Draw` on the 1000-element tree into `RecordingRenderer`. The time holds the walk and the cost of the recording.
 - **Facts report.** The `--facts` mode of the benchmark project prints four `facts:` lines: the size of the tree, the callback calls of the two percent chains, and the number of levels that pass on a 1 MB stack.
 - **Sample projects** as the integration test, built in CI. The HelloPanel smoke run (`--frames 120`) prints 3 lines: `HelloPanel: 120 frames rendered.`, `HelloPanel: last frame: draw commands 2, vertices 128.`, and `HelloPanel: bytes after warm-up: Update and Draw 0, frame <F>, in 117 frames.` The run is also a gate. It exits with code 1 and writes `HelloPanel: Update and Draw allocated <B> bytes after warm-up. The limit is 0 bytes.` to standard error when the UI region (`ViewportSize`, `Update`, and `Draw`) allocates after 3 warm-up frames. The frame number is a report only. In a measured frame in which the thread allocated since the last release, the sample releases the allocation context before the UI region and outside it, for the same cause as the test gates. The sample loads `HelloScreen.css` before the window opens. A bad sheet gives exit code 1 and the error lines on standard error, with no GPU.

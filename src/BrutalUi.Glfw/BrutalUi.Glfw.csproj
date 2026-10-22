@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>The GLFW input adapter for brutal-ui. It converts the events of a GLFW window into the input events of BrutalUi.Core.</Description>
+  </PropertyGroup>
+
+  <!-- The headless test project calls the internal push methods: the test seam with no window. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="BrutalUi.Glfw.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Ahwoo.BRUTAL.Glfw" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../BrutalUi.Core/BrutalUi.Core.csproj" />
+  </ItemGroup>
+
+</Project>

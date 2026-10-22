@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" />
+  </ItemGroup>
+
+  <!-- The tests compile the shared tree builders, the recording renderer, the pointer tree, and the event recorder of
+       the Core test project. A linked Compile item is not a reference, so this project references only BrutalUi.Glfw
+       and xunit.v3. The internals of Core come through the InternalsVisibleTo item of BrutalUi.Core. -->
+  <ItemGroup>
+    <Compile Include="../BrutalUi.Core.Tests/Shared/*.cs" LinkBase="Shared" />
+    <Compile Include="../BrutalUi.Core.Tests/Input/PointerTree.cs" LinkBase="Input" />
+    <Compile Include="../BrutalUi.Core.Tests/Input/EventRecorder.cs" LinkBase="Input" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/BrutalUi.Glfw/BrutalUi.Glfw.csproj" />
+  </ItemGroup>
+
+</Project>

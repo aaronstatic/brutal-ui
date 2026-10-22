@@ -11,6 +11,11 @@
     <InternalsVisibleTo Include="BrutalUi.Core.Tests" />
   </ItemGroup>
 
+  <!-- The adapter tests of BrutalUi.Glfw call the drain and read the last hit. DrainEvents stays internal until routing-gate. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="BrutalUi.Glfw.Tests" />
+  </ItemGroup>
+
   <!-- The layout engine is a port of Yoga (MIT). The package carries the Yoga notice at its root. -->
   <ItemGroup>
     <None Include="../../THIRD-PARTY-NOTICES.md" Pack="true" PackagePath="/" />

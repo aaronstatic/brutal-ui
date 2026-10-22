@@ -98,6 +98,36 @@ public sealed class UiContext
     private ElementStorage _roots;
     private float2 _viewportSize;
     private PaintFrame[] _paintStack = new PaintFrame[PaintWalk.InitialStackSize];
+
+    /// <summary>
+    /// The frame stack of the hit walk. The walk grows it by doubling and never shrinks it (Decision 3).
+    /// </summary>
+    private HitFrame[] _hitStack = new HitFrame[HitWalk.InitialStackSize];
+
+    /// <summary>
+    /// The result of the last hit test of a pointer entry. It is also the element with <see cref="PseudoStates.Hover"/>
+    /// from this context (Decision 7).
+    /// </summary>
+    private Element? _pointerHit;
+
+    /// <summary>The position of the last hit-tested pointer entry, in viewport pixels.</summary>
+    private float2 _pointerPosition;
+
+    /// <summary>True after the first hit-tested pointer entry.</summary>
+    private bool _hasPointerPosition;
+
+    /// <summary>
+    /// The element with <see cref="PseudoStates.Active"/> from this context, or <see langword="null"/>. A press sets
+    /// it and the release of the last button clears it (Decision 8).
+    /// </summary>
+    private Element? _activeElement;
+
+    /// <summary>
+    /// The buttons that are down. The bit <c>1 &lt;&lt; (int)button</c> is set from the press to the release of a
+    /// button.
+    /// </summary>
+    private int _pressedButtons;
+
     private bool _drawing;
     private bool _draining;
 
@@ -613,6 +643,67 @@ public sealed class UiContext
     /// <remarks>Only the tests of <c>BrutalUi.Core.Tests</c> read this member.</remarks>
     internal ReadOnlySpan<UiQueuedEvent> EventRingSlots => _events.Slots;
 
+    /// <summary>Gets the length of the frame stack of the hit walk. This member serves the tests.</summary>
+    internal int HitStackLength => _hitStack.Length;
+
+    /// <summary>Gets the slots of the frame stack of the hit walk. Each slot holds no element after a hit test.</summary>
+    /// <remarks>Only the tests of <c>BrutalUi.Core.Tests</c> read this member.</remarks>
+    internal ReadOnlySpan<HitFrame> HitStackSlots => _hitStack;
+
+    /// <summary>
+    /// Gets the result of the hit test of the last pointer entry with no target, or <see langword="null"/> when that
+    /// entry hit nothing. This element also holds <see cref="PseudoStates.Hover"/> from this context.
+    /// </summary>
+    /// <remarks>
+    /// Routing-gate reads this member (A6). The value follows the pointer events only. An entry with a target from
+    /// the caller does not change it. The value changes only during a drain: a pointer entry with no target sets it, and
+    /// the start of a drain sets it to <see langword="null"/> when the element left the roots (Decision 10). A layout
+    /// change under a still pointer waits for the next pointer event.
+    /// </remarks>
+    internal Element? PointerHit => _pointerHit;
+
+    /// <summary>
+    /// Gets the position of the last pointer entry with no target, in viewport pixels. The value is (0, 0) before the
+    /// first such entry. A cursor leave gives (NaN, NaN).
+    /// </summary>
+    /// <remarks>The value follows the pointer events only. Routing-gate reads it (A6).</remarks>
+    internal float2 PointerPosition => _pointerPosition;
+
+    /// <summary>
+    /// Gets a value that tells if a pointer entry with no target went through a drain. Then
+    /// <see cref="PointerPosition"/> holds its position.
+    /// </summary>
+    /// <remarks>The value follows the pointer events only. The position can be NaN after a cursor leave.</remarks>
+    internal bool HasPointerPosition => _hasPointerPosition;
+
+    /// <summary>
+    /// Gets the element with <see cref="PseudoStates.Active"/> from this context, or <see langword="null"/> when a
+    /// press set no state or the last button went up.
+    /// </summary>
+    /// <remarks>
+    /// Only the tests of <c>BrutalUi.Core.Tests</c> and routing-gate read this member. The value changes only during a drain.
+    /// Limit: the ring drops its oldest entry when it is full. A dropped <c>PointerUp</c> leaves the button bit set, so
+    /// <c>Active</c> stays until the next press and release of that button. Drain the queue each frame.
+    /// </remarks>
+    internal Element? ActiveElement => _activeElement;
+
+    /// <summary>
+    /// Finds the top-most element whose border box holds a position: the last root first, the last child first, and a
+    /// descendant before its ancestor.
+    /// </summary>
+    /// <remarks>
+    /// The hit test reads <see cref="LayoutNode.Rect"/> of the last <see cref="Update(float)"/>. An element that
+    /// arrives after that update has no layout yet. The test is half-open, so the right and the bottom edge are
+    /// outside. A NaN component hits nothing. The method changes no state and allocates only when a deep tree grows
+    /// the frame stack.
+    /// </remarks>
+    /// <param name="position">The position in viewport pixels.</param>
+    /// <returns>The hit element, or <see langword="null"/> when no element holds the position.</returns>
+    internal Element? HitTest(float2 position)
+    {
+        return HitWalk.Find(_roots.AsSpan(), position, ref _hitStack);
+    }
+
     /// <summary>
     /// Gets the number of events that a push into a full ring dropped. The ring drops its oldest event in this case.
     /// </summary>
@@ -623,9 +714,19 @@ public sealed class UiContext
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The caller sets <see cref="UiEventHeader.Target"/> (A4). The drain skips an event with no target. The ring
-    /// keeps the type, the timestamp, the target, and the pointer fields. It does not keep
+    /// The push only copies the event. The ring keeps the type, the timestamp, the target, and the pointer fields.
+    /// It does not keep
     /// <see cref="UiEventHeader.Phase"/> or <see cref="UiEventHeader.CurrentTarget"/>: the walk writes them.
+    /// </para>
+    /// <para>
+    /// A pointer event with no <see cref="UiEventHeader.Target"/> gets the hit element as its target at the drain,
+    /// not at the push. The hit test reads the layout of the last <see cref="Update(float)"/>. The drain also moves
+    /// <see cref="PseudoStates.Hover"/> to the hit element and stores the hit. A pointer event over no element gets no
+    /// walk, but it clears <see cref="PseudoStates.Hover"/>.
+    /// </para>
+    /// <para>
+    /// A target from the caller skips the hit test, the states, and the store of the hit (Decision 2). The hit test
+    /// applies to the pointer types only. The drain skips an event of another type with no target.
     /// </para>
     /// <para>
     /// A full ring drops its oldest event. The push allocates nothing, because the constructor creates the ring.
@@ -642,8 +743,17 @@ public sealed class UiContext
     /// Adds a scroll event at the end of the event ring. The next drain sends it along the path of its target.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// The rules of <see cref="PushEvent(in PointerEvent)"/> apply. The ring keeps the type, the timestamp, the
     /// target, the position, the delta, and the modifiers.
+    /// </para>
+    /// <para>
+    /// The scroll rule: a scroll with no <see cref="UiEventHeader.Target"/> gets the element under its position as
+    /// its target at the drain. It goes through the same hit test as a pointer event, so it also moves
+    /// <see cref="PseudoStates.Hover"/> to the hit element and stores the hit. It changes
+    /// <see cref="PseudoStates.Active"/> never. A scroll over no element gets no walk. A scroll with a target from the
+    /// caller skips the hit test and the states.
+    /// </para>
     /// </remarks>
     /// <param name="e">The event. The call copies it.</param>
     /// <exception cref="ArgumentException">The type of the event is not <see cref="UiEventType.Scroll"/>.</exception>
@@ -681,6 +791,77 @@ public sealed class UiContext
     }
 
     /// <summary>
+    /// Gets or sets the handler for a file drop on the window. <see cref="RaiseFileDrop(ReadOnlySpan{string})"/>
+    /// calls it.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A4: a window event gets no per-element routing. The slot is on the context, not on an element. A null slot
+    /// ignores the drop.
+    /// </para>
+    /// <para>
+    /// Set the slot at build time, not in the frame loop. <c>+=</c> combines delegates in the order of add.
+    /// </para>
+    /// </remarks>
+    public UiFileDropHandler? OnFileDrop { get; set; }
+
+    /// <summary>
+    /// Gets or sets the handler for a change of the content scale of the window.
+    /// <see cref="RaiseContentScale(float2)"/> calls it.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A4: a window event gets no per-element routing. The slot is on the context, not on an element. A null slot
+    /// ignores the change.
+    /// </para>
+    /// <para>
+    /// The context does not apply the scale. The handler applies it. Set the slot at build time, not in the frame
+    /// loop.
+    /// </para>
+    /// </remarks>
+    public UiContentScaleHandler? OnContentScale { get; set; }
+
+    /// <summary>
+    /// Calls <see cref="OnFileDrop"/> at once with the paths of a file drop. A null slot makes the call do nothing.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Call the method on the main thread. The input adapter calls it. A test or another platform layer can call it
+    /// too.
+    /// </para>
+    /// <para>
+    /// The method queues no entry, walks no element, and changes no state of the context (Decision 11). The span is
+    /// valid during the call only. An exception from the handler goes to the caller.
+    /// </para>
+    /// <para>The method allocates nothing. The handler can allocate.</para>
+    /// </remarks>
+    /// <param name="paths">The paths of the dropped files. An empty span still calls the slot.</param>
+    public void RaiseFileDrop(ReadOnlySpan<string> paths)
+    {
+        OnFileDrop?.Invoke(paths);
+    }
+
+    /// <summary>
+    /// Calls <see cref="OnContentScale"/> at once with the new content scale. A null slot makes the call do nothing.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Call the method on the main thread. The input adapter calls it. A test or another platform layer can call it
+    /// too.
+    /// </para>
+    /// <para>
+    /// The method queues no entry, walks no element, and changes no state of the context (Decision 11). It does not
+    /// check the value. It does not change <see cref="ViewportSize"/>. An exception from the handler goes to the
+    /// caller.
+    /// </para>
+    /// </remarks>
+    /// <param name="scale">The new content scale of the window.</param>
+    public void RaiseContentScale(float2 scale)
+    {
+        OnContentScale?.Invoke(scale);
+    }
+
+    /// <summary>
     /// Pops each event that the ring holds at the start of the call, and sends each event with a target along the
     /// path of its target.
     /// </summary>
@@ -700,10 +881,44 @@ public sealed class UiContext
     /// causes. The drain then never pops an event that a handler pushed. A skipped entry runs no handler, so it causes no drop.
     /// </para>
     /// <para>
-    /// The method skips an entry with no target (A4). It skips an entry when the top of the parent chain of the
-    /// target is not a root of this context (Decision 7): the target left the tree, or it belongs to another context.
+    /// A pointer entry or a scroll entry with no target gets the hit element as its target in the target step,
+    /// before the walk (Decision 1 of pointer-routing). The hit test reads the layout of the last
+    /// <see cref="Update(float)"/>. The step moves <see cref="PseudoStates.Hover"/> to the hit element and stores the
+    /// hit before the walk runs, so a handler reads the new state. An entry over no element clears
+    /// <see cref="PseudoStates.Hover"/> and gets no walk. An entry with a target from the caller skips the hit test
+    /// and changes no state.
+    /// </para>
+    /// <para>
+    /// The Active rule: a <see cref="UiEventType.PointerDown"/> sets <see cref="PseudoStates.Active"/> on its hit
+    /// element when no element holds the state. The context counts the buttons that are down. The
+    /// <see cref="UiEventType.PointerUp"/> of the last button clears the state on the element that got it. The release
+    /// walks to the element under the pointer, which can be another element. A move and a scroll leave the state.
+    /// </para>
+    /// <para>
+    /// The method skips an entry with no target after the target step (A4). It skips an entry when the top of the
+    /// parent chain of the target is not a root of this context (Decision 7): the target left the tree, or it belongs
+    /// to another context.
     /// It also skips an entry with a type that no event struct carries. <see cref="PushEvent(in PointerEvent)"/> and
     /// the other push methods reject such a type, so the skip is a guard only.
+    /// </para>
+    /// <para>
+    /// The stale rule (Decision 10): at the start of each drain, the method clears <see cref="PseudoStates.Hover"/> and
+    /// <see cref="PseudoStates.Active"/> on a stored element that left the roots, and drops the reference. It keeps
+    /// the button mask, so a later release still clears its bit.
+    /// </para>
+    /// <para>
+    /// The states follow the pointer events only. A layout change under a still pointer, or a change that hides an
+    /// element, makes it transparent, or makes it unpickable, leaves the states until the next pointer event. An entry
+    /// with a target from the caller changes no state.
+    /// </para>
+    /// <para>
+    /// Limit of the ring: the ring drops its oldest entry when it is full. A dropped <c>PointerUp</c> leaves the button
+    /// bit set, so <see cref="PseudoStates.Active"/> stays until the next press and release of that button. Drain the
+    /// queue each frame to keep the ring below its capacity. <see cref="DroppedEventCount"/> shows a drop.
+    /// </para>
+    /// <para>
+    /// Limit of the stale rule: the check of one context can clear a state that another context set. Drain the old
+    /// context after you remove an element and before you add it to another context.
     /// </para>
     /// <para>
     /// A call from a handler of the drain throws. The flag is cleared in a <c>finally</c> block, so the context stays
@@ -722,6 +937,9 @@ public sealed class UiContext
         _draining = true;
         try
         {
+            // The stale rule (Decision 10): a stored element that left its roots loses its state before any entry runs.
+            DropStalePointerState();
+
             // Read the count one time. An event that a handler pushes waits for the next drain (Decision 6).
             int remaining = _events.Count;
             int walks = 0;
@@ -730,10 +948,17 @@ public sealed class UiContext
             {
                 remaining--;
 
-                // The target step. The caller sets the target (A4). Pointer-routing and keyboard-focus set the target
-                // of an entry here, before the walk. An entry with no target, or with a target outside the roots of
-                // this context, gets no walk.
+                // The target step. A pointer entry with no target gets the hit element here, before the walk
+                // (Decision 1 of pointer-routing). Keyboard-focus sets the target of a key entry here. An entry with
+                // no target after this step, or with a target outside the roots of this context, gets no walk.
                 Element? target = entry.Header.Target;
+                if (target is null
+                    && entry.Header.Type is UiEventType.PointerMove or UiEventType.PointerDown or UiEventType.PointerUp
+                        or UiEventType.Scroll)
+                {
+                    target = RoutePointer(ref entry);
+                }
+
                 if (target is null || !IsInRootTree(target))
                 {
                     continue;
@@ -785,6 +1010,40 @@ public sealed class UiContext
     }
 
     /// <summary>
+    /// Clears <see cref="PseudoStates.Hover"/> and <see cref="PseudoStates.Active"/> on a stored element that left the
+    /// roots of this context, and drops the references to it.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The method runs at the start of each drain (Decision 10). It costs one parent walk for each of the two fields and
+    /// allocates nothing. A closed panel then does not keep a hover look when it comes back.
+    /// </para>
+    /// <para>
+    /// The method keeps the button mask. The release of a button that went down before the removal still clears its
+    /// bit (Decision 10). The release then finds no stored element, so it clears no state.
+    /// </para>
+    /// <para>
+    /// Limit: each context keeps its own stored elements, and the states are bits on the element. An element that is
+    /// not in the roots of this context can be in the roots of another context, and that context can have set its
+    /// state. This method then clears the state that the other context set. Drain the old context after you remove an
+    /// element and before you add it to another context.
+    /// </para>
+    /// </remarks>
+    private void DropStalePointerState()
+    {
+        if (_pointerHit is { } hovered && !IsInRootTree(hovered))
+        {
+            SetHover(null);
+        }
+
+        if (_activeElement is { } active && !IsInRootTree(active))
+        {
+            active.States &= ~PseudoStates.Active;
+            _activeElement = null;
+        }
+    }
+
+    /// <summary>
     /// Finds out whether the top of the parent chain of an element is a root of this context. The method uses a loop and
     /// allocates nothing.
     /// </summary>
@@ -799,6 +1058,125 @@ public sealed class UiContext
         }
 
         return top.IsRoot && _roots.IndexOf(top) >= 0;
+    }
+
+    /// <summary>
+    /// Hit-tests the position of a pointer or scroll entry with no target. The method writes the hit into the target
+    /// of the entry, stores the hit and the position, and moves <see cref="PseudoStates.Hover"/> to the hit. A press
+    /// and a release also change <see cref="PseudoStates.Active"/>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The method runs in the target step of the drain, before the walk (Decision 9), so a handler reads the new
+    /// state. It creates no delegate, no closure, and no boxed value.
+    /// </para>
+    /// <para>
+    /// The payloads of a pointer and of a scroll overlap in memory, so the method branches on the type before it reads
+    /// the position. A press sets <see cref="PseudoStates.Active"/> on the hit when no element holds it. The release of
+    /// the last button clears it on the stored element (Decision 8). The release walks to the element under the
+    /// pointer and not to the stored element.
+    /// </para>
+    /// </remarks>
+    /// <param name="entry">The ring entry. Its type is a pointer type or <see cref="UiEventType.Scroll"/>, and its target is <see langword="null"/>.</param>
+    /// <returns>The hit element, or <see langword="null"/> when no element holds the position.</returns>
+    private Element? RoutePointer(ref UiQueuedEvent entry)
+    {
+        UiEventType type = entry.Header.Type;
+        float2 position = type == UiEventType.Scroll
+            ? entry.Payload.Scroll.Position
+            : entry.Payload.Pointer.Position;
+        Element? hit = HitTest(position);
+
+        entry.Header.Target = hit;
+        _pointerPosition = position;
+        _hasPointerPosition = true;
+
+        // One field is both the hover owner and the last hit (Decision 7). SetHover reads the old value of the field
+        // and then stores the hit in it, so the store of the hit happens there.
+        SetHover(hit);
+
+        // The state of Active follows the press and the release only (Decision 8). A move and a scroll leave it.
+        if (type == UiEventType.PointerDown)
+        {
+            PressButton(entry.Payload.Pointer.Button, hit);
+        }
+        else if (type == UiEventType.PointerUp)
+        {
+            ReleaseButton(entry.Payload.Pointer.Button);
+        }
+
+        // Keyboard-focus adds the focus move to the hit element in the PointerDown branch.
+        return hit;
+    }
+
+    /// <summary>
+    /// Records a button as down. When no element holds <see cref="PseudoStates.Active"/> and the press hit an
+    /// element, the method sets the state on that element and stores it.
+    /// </summary>
+    /// <param name="button">The button that goes down.</param>
+    /// <param name="hit">The element under the pointer, or <see langword="null"/>.</param>
+    private void PressButton(PointerButton button, Element? hit)
+    {
+        if ((uint)button < 32u)
+        {
+            _pressedButtons |= 1 << (int)button;
+        }
+
+        if (_activeElement is null && hit is not null)
+        {
+            hit.States |= PseudoStates.Active;
+            _activeElement = hit;
+        }
+    }
+
+    /// <summary>
+    /// Records a button as up. When no button is down after that, the method clears
+    /// <see cref="PseudoStates.Active"/> on the stored element and drops it.
+    /// </summary>
+    /// <param name="button">The button that goes up.</param>
+    private void ReleaseButton(PointerButton button)
+    {
+        if ((uint)button < 32u)
+        {
+            _pressedButtons &= ~(1 << (int)button);
+        }
+
+        if (_pressedButtons == 0 && _activeElement is not null)
+        {
+            _activeElement.States &= ~PseudoStates.Active;
+            _activeElement = null;
+        }
+    }
+
+    /// <summary>
+    /// Moves <see cref="PseudoStates.Hover"/> from the hover owner of this context to another element, and stores
+    /// that element in <see cref="PointerHit"/>.
+    /// </summary>
+    /// <remarks>
+    /// The call returns at once for the same element, so it marks nothing. Else it clears
+    /// <see cref="PseudoStates.Hover"/> on the old owner and sets it on the new element. Each change marks one
+    /// subtree for <see cref="DirtyFlags.Style"/>. The state goes on the element only, not on its ancestors
+    /// (Decision R1).
+    /// </remarks>
+    /// <param name="hit">The new hover owner, or <see langword="null"/> for no owner.</param>
+    private void SetHover(Element? hit)
+    {
+        Element? old = _pointerHit;
+        if (ReferenceEquals(old, hit))
+        {
+            return;
+        }
+
+        if (old is not null)
+        {
+            old.States &= ~PseudoStates.Hover;
+        }
+
+        _pointerHit = hit;
+        if (hit is not null)
+        {
+            hit.States |= PseudoStates.Hover;
+        }
     }
 
     /// <summary>

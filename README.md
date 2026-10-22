@@ -23,6 +23,7 @@ BRUTAL gives you Vulkan, OpenGL, GLFW, a Dear ImGui binding, textures, and local
 |---------|----------|------------|
 | `BrutalUi.Core` | The element tree, the flexbox engine, the style system, input, focus, and the `IUiRenderer` interface | `Brutal.Numerics`, `Brutal.Localization` |
 | `BrutalUi.ImGui` | `IUiRenderer` on `ImDrawList`, fonts through the ImGui atlas, textures through the BRUTAL backends, render to texture | `Brutal.ImGui`, `Brutal.ImGui.Backends` |
+| `BrutalUi.Glfw` | The GLFW input adapter `GlfwUiInput`, which pushes window events to a `UiContext` | `Brutal.Glfw`, `BrutalUi.Core` |
 | `BrutalUi.Framework` | Stores, panels, modes, slots, windows, commands, an event bus, and a service registry | `BrutalUi.Core` |
 | `BrutalUi.Markup` | The XML element loader and the stylesheet parser | `BrutalUi.Core` |
 | `BrutalUi.Debugger` | A state, composition, and event inspector window | `BrutalUi.Framework` |
@@ -141,7 +142,7 @@ The builder, the XML loader, the stylesheet, the stores, and the modes are not r
 ## Repository layout
 
 ```
-src/        the five packages
+src/        the six packages
 samples/    HelloPanel (one panel, one store, one mode) and WorldSpace (a panel on a quad)
 tests/      xUnit tests for each package, and the BenchmarkDotNet project with the allocation gate
 scripts/    the Linux and Windows test scripts

@@ -222,7 +222,8 @@ internal static class PaintWalk
     /// <param name="borderBox">The border box: x, y, width, and height.</param>
     /// <param name="style">The style of the element.</param>
     /// <returns>Min x, min y, max x, and max y. The max can be less than the min when the borders are wider than the box.</returns>
-    private static float4 PaddingBounds(in float4 borderBox, in ComputedStyle style)
+    /// <remarks><see cref="HitWalk"/> shares this method, so the hit clip equals the draw clip.</remarks>
+    internal static float4 PaddingBounds(in float4 borderBox, in ComputedStyle style)
     {
         float left = LayoutMath.LeadingBorder(in style, FlexDirection.Row);
         float right = LayoutMath.TrailingBorder(in style, FlexDirection.Row);
@@ -242,7 +243,8 @@ internal static class PaintWalk
     /// <param name="a">The first bounds: min x, min y, max x, and max y.</param>
     /// <param name="b">The second bounds: min x, min y, max x, and max y.</param>
     /// <returns>The intersection.</returns>
-    private static float4 Intersect(in float4 a, in float4 b)
+    /// <remarks><see cref="HitWalk"/> shares this method, so the hit clip equals the draw clip.</remarks>
+    internal static float4 Intersect(in float4 a, in float4 b)
     {
         float minX = Math.Max(a.X, b.X);
         float minY = Math.Max(a.Y, b.Y);
