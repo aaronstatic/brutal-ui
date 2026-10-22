@@ -335,6 +335,63 @@ internal sealed class ThousandElementTree
     }
 
     /// <summary>
+    /// Builds a second sheet with three rules that hold only transitions. A test adds it to <see cref="Context"/>, so the
+    /// style step of the allocation gate runs tweens.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The rules set no property value, so each target stays the value of <see cref="Sheet"/>. <see cref="Sheet"/> keeps
+    /// its <see cref="RuleCount"/> rules. The build does not add this sheet. The rules, in add order:
+    /// </para>
+    /// <list type="number">
+    /// <item><description>
+    /// <c>.slot</c>: <see cref="StyleProperty.BackgroundColor"/> 0.1 s <see cref="TransitionEasing.EaseOut"/> and
+    /// <see cref="StyleProperty.BorderColor"/> 0.5 s <see cref="TransitionEasing.EaseInOut"/>. The toggle of the class
+    /// <c>selected</c> fades the fill of grid slot 0. The fill tween ends before the next style step, because 9 steps of
+    /// 0.016 s (0.144 s) lie between two style steps. The toggle of the hover state fades the border color of grid slot
+    /// 0. The border tween runs longer than 0.144 s, so the next style step turns it.
+    /// </description></item>
+    /// <item><description>
+    /// <c>.muted</c>: <see cref="StyleProperty.Color"/> 0.1 s <see cref="TransitionEasing.Linear"/>. The toggle of the
+    /// class <c>muted</c> fades the text color of the sidebar, and the follow walk of the transition pass writes the
+    /// color into each sidebar item and each sidebar label. When the class goes, the rule does not match, so the color
+    /// changes at once.
+    /// </description></item>
+    /// <item><description>
+    /// <c>#header</c>: <see cref="StyleProperty.BorderColor"/> 0.3 s <see cref="TransitionEasing.EaseIn"/>. The name
+    /// change back to <see cref="HeaderName"/> fades the border color of <see cref="Header"/>. The next name change
+    /// comes after 0.144 s, while the tween runs. The rule then does not match, so the style step ends the tween.
+    /// </description></item>
+    /// </list>
+    /// </remarks>
+    /// <returns>A new sheet with the three rules.</returns>
+    public static StyleSheet BuildTransitionSheet()
+    {
+        ClassId slotClass = ClassName.Intern("slot");
+        ClassId mutedClass = ClassName.Intern("muted");
+        StyleProperties none = default;
+        StyleSheet.Builder builder = new();
+
+        // 1. Each grid slot: the fill and the border color.
+        StyleTransitions transitions = default;
+        transitions.Set(StyleProperty.BackgroundColor, new StyleTransition(0.1f, TransitionEasing.EaseOut));
+        transitions.Set(StyleProperty.BorderColor, new StyleTransition(0.5f, TransitionEasing.EaseInOut));
+        builder.Add(Selector.ForClass(slotClass), in none, in transitions);
+
+        // 2. A muted element: the text color.
+        transitions = default;
+        transitions.Set(StyleProperty.Color, new StyleTransition(0.1f, TransitionEasing.Linear));
+        builder.Add(Selector.ForClass(mutedClass), in none, in transitions);
+
+        // 3. The header by its name: the border color.
+        transitions = default;
+        transitions.Set(StyleProperty.BorderColor, new StyleTransition(0.3f, TransitionEasing.EaseIn));
+        builder.Add(Selector.ForName(HeaderName), in none, in transitions);
+
+        return builder.Build();
+    }
+
+    /// <summary>
     /// Builds the sheet of <see cref="RuleCount"/> rules: 2 type rules, 6 class rules, 4 class-on-type rules, 1 state
     /// rule, 1 child rule, 1 descendant rule, and 1 name rule.
     /// </summary>

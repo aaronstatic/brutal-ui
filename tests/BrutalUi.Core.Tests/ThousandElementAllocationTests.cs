@@ -35,6 +35,18 @@ namespace BrutalUi.Core.Tests;
 /// first round and matches in the second round. The kinds run in a fixed order, and the second round of a kind
 /// reverses the first.
 /// </para>
+/// <para>
+/// The transition gate <c>UpdateWithRunningTransitionsAllocatesNothing</c> adds
+/// <see cref="ThousandElementTree.BuildTransitionSheet"/> to the context before the warm-up. Then the style kind
+/// starts, turns, and ends tweens in the measured body: the fill and the border color of grid slot 0, the text
+/// color of the sidebar with the follow walk into the sidebar labels, and the border color of the header. The gate
+/// also asserts that the capacity of the pool does not change in the measure, so no array of the pool grows there.
+/// <c>TheTransitionStepRunsTweens</c> shows that the style step of that gate runs the tweens.
+/// </para>
+/// <para>
+/// The class holds 12 tests: 3 allocation gates (update, draw, and update with running transitions), the probe, and
+/// 8 tests that check the scene and the measured body.
+/// </para>
 /// </remarks>
 public sealed class ThousandElementAllocationTests
 {
@@ -228,6 +240,39 @@ public sealed class ThousandElementAllocationTests
         return scene;
     }
 
+    /// <summary>
+    /// Builds the warm scene, adds <see cref="ThousandElementTree.BuildTransitionSheet"/>, and runs one
+    /// <c>Update</c>. The sheet change restyles the tree. Each target equals the visible value, so no tween starts.
+    /// </summary>
+    private static Scene BuildTransitionScene()
+    {
+        Scene scene = BuildWarmScene();
+        scene.Tree.Context.AddSheet(ThousandElementTree.BuildTransitionSheet());
+        scene.Tree.Context.Update(0.016f);
+        return scene;
+    }
+
+    /// <summary>
+    /// Asserts that each of the R, G, and B channels of a color lies strictly between the channels of two colors, and
+    /// that the alpha equals the alpha of both colors.
+    /// </summary>
+    private static void AssertBetween(Rgba8 from, Rgba8 to, Rgba8 actual)
+    {
+        AssertChannelBetween(from.R, to.R, actual.R);
+        AssertChannelBetween(from.G, to.G, actual.G);
+        AssertChannelBetween(from.B, to.B, actual.B);
+        Assert.Equal(from.A, to.A);
+        Assert.Equal(from.A, actual.A);
+    }
+
+    private static void AssertChannelBetween(byte from, byte to, byte actual)
+    {
+        Assert.NotEqual(from, to);
+        int low = Math.Min(from, to);
+        int high = Math.Max(from, to);
+        Assert.InRange((int)actual, low + 1, high - 1);
+    }
+
     [Fact]
     public void UpdateAllocatesNothingAfterWarmUp()
     {
@@ -245,6 +290,72 @@ public sealed class ThousandElementAllocationTests
         long after = GC.GetAllocatedBytesForCurrentThread();
 
         Assert.Equal(0L, after - before);
+    }
+
+    [Fact]
+    public void UpdateWithRunningTransitionsAllocatesNothing()
+    {
+        Scene scene = BuildTransitionScene();
+        TransitionPool pool = scene.Tree.Context.Transitions;
+
+        // Warm-up: the rounds of UpdateAllocatesNothingAfterWarmUp. Each round starts, turns, and ends the tweens, so
+        // the record array and the index of the pool reach their peak size before the measure.
+        Run(scene, KindCount * 2);
+        Run(scene, KindCount * 2);
+
+        // The release empties the allocation context, so a background GC cannot add bytes. See AllocationGate.
+        AllocationGate.ReleaseAllocationContext();
+        int capacityBefore = pool.Capacity;
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        Run(scene, Iterations);
+        long after = GC.GetAllocatedBytesForCurrentThread();
+        int capacityAfter = pool.Capacity;
+
+        Assert.Equal(0L, after - before);
+        Assert.Equal(capacityBefore, capacityAfter);
+
+        // The hover toggle turns the border tween of grid slot 0 at each style step, so a tween ran in the measure.
+        Assert.True(pool.ActiveCount >= 1, "No tween runs after the measure.");
+    }
+
+    [Fact]
+    public void TheTransitionStepRunsTweens()
+    {
+        Scene scene = BuildTransitionScene();
+        ThousandElementTree tree = scene.Tree;
+        TransitionPool pool = tree.Context.Transitions;
+        Element slot = tree.GridSlot;
+        Element sidebar = tree.Sidebar;
+        Element label = tree.SidebarLabel;
+
+        // The first style of the new sheet starts no tween: each target equals the visible value.
+        Assert.Equal(0, pool.ActiveCount);
+        Assert.Equal(ThousandElementTree.SlotColor, slot.Style.BackgroundColor);
+        Assert.Equal(ThousandElementTree.RootTextColor, label.Style.Color);
+        Rgba8 slotBorder = slot.Style.BorderColor;
+
+        // The first style step starts three tweens in two records: the fill and the border color of grid slot 0 in
+        // one record, and the text color of the sidebar in the second record. The name change ends the header rule,
+        // so the header border changes at once. One step of 0.016 s puts each tween between its two values.
+        scene.StepCount = StyleKind;
+        Run(scene, 1);
+        Assert.Equal(2, pool.ActiveCount);
+        AssertBetween(ThousandElementTree.SlotColor, ThousandElementTree.SelectedSlotColor, slot.Style.BackgroundColor);
+        AssertBetween(ThousandElementTree.RootTextColor, ThousandElementTree.MutedTextColor, sidebar.Style.Color);
+        AssertBetween(ThousandElementTree.RootTextColor, ThousandElementTree.MutedTextColor, label.Style.Color);
+        Assert.Equal(sidebar.Style.Color, label.Style.Color);
+        Assert.Equal(sidebar.Style.Color, label.Parent!.Style.Color);
+
+        // 9 more steps of 0.016 s: the 8 steps of the rotation before the next style step, and one update with no
+        // change. The fill and the text color end after 0.1 s. The border tween of 0.5 s still runs.
+        Run(scene, KindCount - 1);
+        Assert.Equal(StyleKind, scene.StepCount % KindCount);
+        tree.Context.Update(0.016f);
+        Assert.Equal(ThousandElementTree.SelectedSlotColor, slot.Style.BackgroundColor);
+        Assert.Equal(ThousandElementTree.MutedTextColor, sidebar.Style.Color);
+        Assert.Equal(ThousandElementTree.MutedTextColor, label.Style.Color);
+        Assert.Equal(1, pool.ActiveCount);
+        AssertBetween(slotBorder, ThousandElementTree.SlotHoverBorderColor, slot.Style.BorderColor);
     }
 
     [Fact]

@@ -91,6 +91,8 @@ public struct StyleTransitions
     private const string MemberMessage =
         "The member cannot transition. Use BackgroundColor, BorderColor, CornerRadius, Opacity, or Color.";
 
+    private const string SlotMessage = "The value is not a slot index. Use a value from 0 to 4.";
+
     private StyleTransition _backgroundColor;
     private StyleTransition _borderColor;
     private StyleTransition _cornerRadius;
@@ -188,7 +190,14 @@ public struct StyleTransitions
     }
 
     /// <summary>Gives the slot index of a member, or -1 for a member that cannot transition.</summary>
-    private static int SlotOf(StyleProperty property)
+    /// <remarks>
+    /// The slot order is <see cref="StyleProperty.BackgroundColor"/> 0, <see cref="StyleProperty.BorderColor"/> 1,
+    /// <see cref="StyleProperty.CornerRadius"/> 2, <see cref="StyleProperty.Opacity"/> 3, and
+    /// <see cref="StyleProperty.Color"/> 4. <see cref="PropertyOf(int)"/> gives the inverse map.
+    /// </remarks>
+    /// <param name="property">The member.</param>
+    /// <returns>The slot index from 0 to <see cref="SlotCount"/> - 1, or -1.</returns>
+    internal static int SlotOf(StyleProperty property)
     {
         switch (property)
         {
@@ -199,5 +208,98 @@ public struct StyleTransitions
             case StyleProperty.Color: return 4;
             default: return -1;
         }
+    }
+
+    /// <summary>The number of slots: one for each member that can transition.</summary>
+    internal const int SlotCount = 5;
+
+    /// <summary>Gives the member of a slot. This is the inverse map of <see cref="SlotOf(StyleProperty)"/>.</summary>
+    /// <param name="slot">The slot index, from 0 to <see cref="SlotCount"/> - 1.</param>
+    /// <returns>The member of the slot.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="slot"/> is not a slot index.</exception>
+    internal static StyleProperty PropertyOf(int slot)
+    {
+        switch (slot)
+        {
+            case 0: return StyleProperty.BackgroundColor;
+            case 1: return StyleProperty.BorderColor;
+            case 2: return StyleProperty.CornerRadius;
+            case 3: return StyleProperty.Opacity;
+            case 4: return StyleProperty.Color;
+            default: throw new ArgumentOutOfRangeException(nameof(slot), slot, SlotMessage);
+        }
+    }
+
+    /// <summary>Checks whether the set holds a transition in a slot.</summary>
+    /// <param name="slot">The slot index.</param>
+    /// <returns>
+    /// <see langword="true"/> when the bit of the slot is set. <see langword="false"/> for an index outside 0 to
+    /// <see cref="SlotCount"/> - 1.
+    /// </returns>
+    internal readonly bool IsSlotSet(int slot)
+    {
+        return (uint)slot < SlotCount && (_mask & (1 << slot)) != 0;
+    }
+
+    /// <summary>Gets the transition of a slot.</summary>
+    /// <param name="slot">The slot index, from 0 to <see cref="SlotCount"/> - 1.</param>
+    /// <returns>The transition of the slot, or <c>default(StyleTransition)</c> when the set holds none.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="slot"/> is not a slot index.</exception>
+    internal readonly StyleTransition GetSlot(int slot)
+    {
+        switch (slot)
+        {
+            case 0: return _backgroundColor;
+            case 1: return _borderColor;
+            case 2: return _cornerRadius;
+            case 3: return _opacity;
+            case 4: return _color;
+            default: throw new ArgumentOutOfRangeException(nameof(slot), slot, SlotMessage);
+        }
+    }
+
+    /// <summary>
+    /// Copies each slot that <paramref name="later"/> holds into this set and sets its bit. A slot that
+    /// <paramref name="later"/> does not hold does not change.
+    /// </summary>
+    /// <remarks>
+    /// The style pass calls this method for each matched rule in the order of the cascade. Thus the last matched rule
+    /// that holds a slot wins for that slot (R1). The method allocates nothing.
+    /// </remarks>
+    /// <param name="later">The set of a later rule in the cascade.</param>
+    internal void MergeFrom(in StyleTransitions later)
+    {
+        byte mask = later._mask;
+        if (mask == 0)
+        {
+            return;
+        }
+
+        if ((mask & (1 << 0)) != 0)
+        {
+            _backgroundColor = later._backgroundColor;
+        }
+
+        if ((mask & (1 << 1)) != 0)
+        {
+            _borderColor = later._borderColor;
+        }
+
+        if ((mask & (1 << 2)) != 0)
+        {
+            _cornerRadius = later._cornerRadius;
+        }
+
+        if ((mask & (1 << 3)) != 0)
+        {
+            _opacity = later._opacity;
+        }
+
+        if ((mask & (1 << 4)) != 0)
+        {
+            _color = later._color;
+        }
+
+        _mask |= mask;
     }
 }

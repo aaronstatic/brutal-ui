@@ -11,9 +11,10 @@ namespace BrutalUi.Core;
 /// specificity.
 /// </para>
 /// <para>
-/// <see cref="Transitions"/> holds the transitions of the rule. The style pass does not read them, so a transition
-/// does not change the computed style. The transitions feature reads them. The set adds 44 bytes, and the rule is
-/// 368 bytes.
+/// <see cref="Transitions"/> holds the transitions of the rule. The style pass merges the sets of the matched rules
+/// for each slot, and the last matched rule in the order of the cascade wins a slot. A transition does not change the
+/// target that the style pass writes. The transition pass of <see cref="UiContext.Update(float)"/> writes the value
+/// of each running tween over the target. The set adds 44 bytes, and the rule is 368 bytes.
 /// </para>
 /// </remarks>
 public readonly struct StyleRule

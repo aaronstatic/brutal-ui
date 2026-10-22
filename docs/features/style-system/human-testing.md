@@ -1,7 +1,7 @@
 # Style System — Human Testing
 
 **Epic:** style-system
-**Last Updated:** 2026-10-22 00:55
+**Last Updated:** 2026-10-22 04:30
 
 > An `/autorun-epic` run adds one section per feature, and one demo line per slice as the slice lands. Check an item after you test it.
 
@@ -35,3 +35,13 @@
 - [ ] Phase 7 demo: the developer runs `scripts/test-linux.sh; echo "exit=$?"` and reads `test-linux: PASS build, test, gpu, smoke (120 frames) in <S> s` and `exit=0`. Then `grep -c 'draw commands 2, vertices 128' artifacts/test-linux/smoke.log` prints `1`.
 - [ ] Error path (style-parser): run `dotnet build brutal-ui.sln`, then write `.hello-panel { colour: #fff; }` into `samples/HelloPanel/bin/Debug/net10.0/HelloScreen.css`. Run `dotnet run --project samples/HelloPanel/HelloPanel.csproj --no-build -- --frames 1; echo "exit=$?"`. Expect `exit=1` and the line `HelloScreen.css(1,16): UnknownProperty:` on standard error. Then run `touch samples/HelloPanel/HelloScreen.css` (or delete the bin copy) before the next build. `PreserveNewest` does not copy an older source over a newer copy.
 - [ ] Windows run (style-parser): on Windows, after `git pull --ff-only`, run `.\scripts\test-windows.ps1`. Expect the PASS line and `$LASTEXITCODE` 0.
+
+## transitions
+
+- [ ] Phase 1 demo: the developer runs `dotnet run --project tests/BrutalUi.Core.Tests/BrutalUi.Core.Tests.csproj -- --filter-method '*AHoverFadesTheFillOfAButton' --show-live-output on` and reads `t 0.0 #1E222CFF`, then `t 0.1 #274176FF` after `States = Hover` and `Update(0.1f)`, then `t 0.2 #3060C0FF` after one more `Update(0.1f)`.
+- [ ] Phase 2 demo: the developer runs `dotnet run --project tests/BrutalUi.Core.Tests/BrutalUi.Core.Tests.csproj -- --filter-method '*AHoverOutDuringTheFadeTurnsBack' --show-live-output on` and reads `hover 0.1 #274176FF`, then `leave 0.0 #274176FF`, `leave 0.1 #233251FF`, and `leave 0.2 #1E222CFF` after `States = None`.
+- [ ] Phase 3 demo: the developer runs `dotnet run --project tests/BrutalUi.Core.Tests/BrutalUi.Core.Tests.csproj -- --filter-method '*EachEasingShapesTheFade' --show-live-output on` and reads `linear 0.500`, `ease-in 0.315`, `ease-out 0.685`, and `ease-in-out 0.500`.
+- [ ] Phase 4 demo: the developer runs `dotnet run --project tests/BrutalUi.Core.Tests/BrutalUi.Core.Tests.csproj -- --filter-method '*TheTextOfALabelFadesWithItsButton' --show-live-output on` and reads `button #FFFFFFFF label #FFFFFFFF`, then `button #FFE680FF label #FFE680FF` after `States = Hover` and `Update(0.1f)`, then `button #FFCC00FF label #FFCC00FF` after one more `Update(0.1f)`.
+- [ ] Phase 5 demo: the developer runs `dotnet run --project tests/BrutalUi.Core.Tests/BrutalUi.Core.Tests.csproj -- --filter-method '*ARemovedPanelEndsItsTweens' --show-live-output on` and reads `active 1 panel #274176FF`, then `active 0 panel #274176FF` after `root.Children.Remove(panel)` and `Update(0.1f)`, then `active 0 panel #3060C0FF` after `root.Children.Add(panel)` and `Update(0f)`.
+- [ ] Phase 6 demo: the developer runs `dotnet run --project tests/BrutalUi.Core.Tests/BrutalUi.Core.Tests.csproj -- --filter-class '*ThousandElementAllocationTests'` and reads a total of 12 with `failed: 0`.
+- [ ] Windows run (transitions): on Windows, after `git pull --ff-only`, run `.\scripts\test-windows.ps1`. Expect the PASS line and `$LASTEXITCODE` 0.

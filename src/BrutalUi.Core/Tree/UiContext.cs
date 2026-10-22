@@ -96,6 +96,17 @@ public sealed class UiContext
     private StyleRule[] _cascade = [];
 
     /// <summary>
+    /// The running tweens of the context. The style pass starts, keeps, turns, and ends them. The transition pass
+    /// advances them.
+    /// </summary>
+    /// <remarks>The field initializer serves both constructors.</remarks>
+    private readonly TransitionPool _transitions = new();
+
+    /// <summary>Gets the running tweens of the context.</summary>
+    /// <remarks>Only the tests of <c>BrutalUi.Core.Tests</c> read this member. They read the count and the capacity.</remarks>
+    internal TransitionPool Transitions => _transitions;
+
+    /// <summary>
     /// The rules of the cascade in the order that the style pass applies them: by specificity, then by sheet index,
     /// then by rule index.
     /// </summary>
@@ -205,6 +216,12 @@ public sealed class UiContext
     /// The call marks the root and each descendant for <see cref="DirtyFlags.Style"/>. Thus the next
     /// <see cref="Update(float)"/> restyles the full subtree with the sheets and the text defaults of this context.
     /// </para>
+    /// <para>
+    /// The join rule: the call also marks the subtree as not styled, so the next <see cref="Update(float)"/> starts
+    /// no tween in it. Each element gets the target of the cascade at once, and a running tween of a moved element
+    /// ends with no fade. A record of the element in the pool of another context drops at the next update of that
+    /// context with no write.
+    /// </para>
     /// </remarks>
     /// <param name="root">The element to add.</param>
     /// <exception cref="ArgumentNullException"><paramref name="root"/> is <see langword="null"/>.</exception>
@@ -222,8 +239,9 @@ public sealed class UiContext
         _roots.Add(root);
         root.IsRoot = true;
 
-        // A root from another context or from a parent needs the sheets and the text defaults of this context.
-        root.MarkSubtreeStyle();
+        // A root from another context or from a parent needs the sheets and the text defaults of this context. The
+        // join mark also starts no tween in the subtree (Decision 9).
+        root.MarkSubtreeJoined();
     }
 
     /// <summary>Removes a root element. The element keeps its dirty bits.</summary>
@@ -339,7 +357,28 @@ public sealed class UiContext
     {
         // The pass runs also with an empty cascade, so an inline value reaches the style with no sheet.
         // Each root gets the text defaults of the context as its parent text.
-        StylePass.Run(_roots.AsSpan(), _cascade, in _textDefaults);
+        StylePass.Run(_roots.AsSpan(), _cascade, in _textDefaults, _transitions);
+    }
+
+    /// <summary>
+    /// Runs the transition pass alone. <see cref="Update(float)"/> calls it after the style pass and before the layout
+    /// pass.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The pass advances each running tween by <paramref name="deltaTime"/>, writes its value over the target that
+    /// the style pass wrote, and marks <see cref="DirtyFlags.Paint"/> only. Tests call this method to read the dirty
+    /// bits of the pass before the clear pass clears them.
+    /// </para>
+    /// <para>The pass allocates nothing. With no running tween, it costs one count check.</para>
+    /// </remarks>
+    /// <param name="deltaTime">The time since the last update, in seconds.</param>
+    internal void UpdateTransitions(float deltaTime)
+    {
+        if (_transitions.ActiveCount > 0)
+        {
+            _transitions.Advance(deltaTime, _roots.AsSpan());
+        }
     }
 
     /// <summary>Gives a style that holds the resolved text defaults. The other members keep their defaults.</summary>
@@ -406,6 +445,14 @@ public sealed class UiContext
     /// parent text. An element with no rule and no inline value gets the defaults.
     /// </para>
     /// <para>
+    /// The frame order is: the style pass, the transition pass, the layout pass, and the clear pass. The style pass
+    /// writes the target of each member and starts, keeps, turns, or ends the tweens of the transitions of the rules.
+    /// The first style of an element starts no tween. The transition pass then advances each running tween by
+    /// <paramref name="deltaTime"/>, also the tween that the style pass started in this call. It writes the value of
+    /// the tween over the target and marks <see cref="DirtyFlags.Paint"/> only. A tween changes only the colors, the
+    /// corner radius, and the opacity, so the layout pass reads no value of a tween.
+    /// </para>
+    /// <para>
     /// The layout pass enters only the dirty elements and the elements with new constraints.
     /// A clean root with the same viewport costs one cache check.
     /// A new <see cref="ViewportSize"/> takes effect on the next call with no dirty bit, because the root sees new constraints.
@@ -416,7 +463,10 @@ public sealed class UiContext
     /// also after an exception. A nested call thus keeps the scope of the outer call.
     /// </para>
     /// </remarks>
-    /// <param name="deltaTime">The time since the last update, in seconds. No pass reads it yet. The framework and the transitions read it later.</param>
+    /// <param name="deltaTime">
+    /// The time since the last update, in seconds. The transition pass reads it: each running tween advances by this
+    /// time. A value of 0 or less, also <c>NaN</c>, advances no tween. An infinite value ends each tween at its target.
+    /// </param>
     /// <exception cref="InvalidOperationException">
     /// A <see cref="Label"/> needs a measure and the context has no <see cref="Measurer"/>.
     /// </exception>
@@ -426,6 +476,9 @@ public sealed class UiContext
 
         // The style pass. It restyles each element with the style bit from the cascade and clears the style bits.
         UpdateStyles();
+
+        // The transition pass. It writes the value of each running tween over the target and marks Paint only.
+        UpdateTransitions(deltaTime);
 
         // The layout pass. It lays out each root against the viewport size and clears the layout bits.
         // The measure scope gives the measurer of this context to the measure callbacks of the labels.

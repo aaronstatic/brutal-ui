@@ -90,6 +90,49 @@ public class Element
     /// </remarks>
     internal bool IsRoot { get; set; }
 
+    /// <summary>
+    /// Gets or sets a value that tells if the style pass wrote a style for the element in its current tree.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A new element holds <see langword="false"/>. The style pass sets the value to <see langword="true"/> after it
+    /// writes the first style of the element.
+    /// </para>
+    /// <para>
+    /// The first-style rule: the first style of an element in a tree starts no tween. The style pass writes the target
+    /// at once. Thus a new screen does not fade in from its defaults, as in CSS. <see cref="TransitionPool"/> reads the
+    /// value. An attach and <see cref="UiContext.AddRoot(Element)"/> set the value back to <see langword="false"/> on
+    /// the full subtree (<see cref="MarkSubtreeJoined"/>), so an element that joins a tree starts no tween and drops
+    /// the record of a running tween. A change of a class, a state, a name, or a sheet keeps the value.
+    /// </para>
+    /// </remarks>
+    internal bool IsStyled { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value that tells if the element follows a <see cref="ComputedStyle.Color"/> tween of its parent.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The style pass writes the value at each restyle. The value is <see langword="true"/> when no matching rule and
+    /// no inline value set the color, and no matching rule holds a <see cref="ComputedStyle.Color"/> transition. Then
+    /// the element inherits the color of its parent (or the default color of the context for a root), and it runs no
+    /// color tween of its own. A new element holds <see langword="false"/> until its first style.
+    /// </para>
+    /// <para>
+    /// The follow rule: a running <see cref="ComputedStyle.Color"/> tween of an ancestor writes its value into each
+    /// descendant with this value <see langword="true"/>, and it marks <see cref="DirtyFlags.Paint"/> only. The walk
+    /// stops at an element with this value <see langword="false"/>, because the descendants of that element inherit
+    /// from it. The walk also stops at an element with a running color tween of its own. <see cref="TransitionPool"/>
+    /// reads the value.
+    /// </para>
+    /// <para>
+    /// Decision R2: an element that inherits the color and holds its own <see cref="ComputedStyle.Color"/> transition
+    /// runs its own tween to the target of its parent, and it never follows. A follow after the end of its own tween
+    /// writes the visible color of the parent, and the color jumps back while the tween of the parent runs.
+    /// </para>
+    /// </remarks>
+    internal bool FollowsColor { get; set; }
+
     /// <summary>Gets the child list of the element. The list is a view. It allocates nothing.</summary>
     public ElementList Children => new(this);
 
@@ -292,13 +335,61 @@ public class Element
     }
 
     /// <summary>
+    /// Marks the element and each descendant for <see cref="DirtyFlags.Style"/> as a join, so the next style pass
+    /// restyles the full subtree and starts no tween in it.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The method sets the style bits as <see cref="MarkSubtreeStyle"/> does, and it sets <see cref="IsStyled"/> to
+    /// <see langword="false"/> on each element of the subtree. Then <see cref="DirtyFlags.DescendantStyle"/> goes up
+    /// the parent chain from this element.
+    /// </para>
+    /// <para>
+    /// The join rule (Decision 9): the first style of an element in a tree starts no tween, and it drops the record of
+    /// a running tween. <see cref="UiContext.AddRoot(Element)"/> calls this method. An attach calls the core walk. A
+    /// change of a class, a state, a name, or a sheet calls <see cref="MarkSubtreeStyle"/> and keeps
+    /// <see cref="IsStyled"/>. The recursion depth is the depth of the subtree. The method allocates nothing.
+    /// </para>
+    /// </remarks>
+    internal void MarkSubtreeJoined()
+    {
+        MarkSubtreeJoinedCore(this);
+        PropagateToAncestors(DirtyFlags.DescendantStyle);
+    }
+
+    /// <summary>
+    /// Sets the style bits on one element and on its subtree, in tree order, and sets <see cref="IsStyled"/> to
+    /// <see langword="false"/> on each element.
+    /// </summary>
+    /// <param name="element">The root of the subtree.</param>
+    private static void MarkSubtreeJoinedCore(Element element)
+    {
+        element._dirty |= DirtyFlags.Style;
+        element.IsStyled = false;
+
+        ReadOnlySpan<Element> children = element._children.AsSpan();
+        if (children.Length == 0)
+        {
+            return;
+        }
+
+        element._dirty |= DirtyFlags.DescendantStyle;
+        for (int i = 0; i < children.Length; i++)
+        {
+            MarkSubtreeJoinedCore(children[i]);
+        }
+    }
+
+    /// <summary>
     /// Links the element to a new parent and applies the child part of the add marks.
     /// </summary>
     /// <remarks>
     /// <para>
     /// The element and each descendant get the <see cref="DirtyFlags.Style"/> self bit, because the cascade of the
     /// full subtree can change. A move into another context changes the sheets of each element of the subtree.
-    /// Each element of the subtree with a child also gets <see cref="DirtyFlags.DescendantStyle"/>.
+    /// Each element of the subtree with a child also gets <see cref="DirtyFlags.DescendantStyle"/>. Each element of
+    /// the subtree gets <see cref="IsStyled"/> <see langword="false"/>, so the next restyle starts no tween and drops
+    /// the record of a running tween (the join rule, Decision 9).
     /// </para>
     /// <para>
     /// Then all the bits of the element go up the new parent chain as descendant bits, from the new parent.
@@ -312,7 +403,7 @@ public class Element
         Debug.Assert(_parent is null, "The element must have no parent before an attach.");
 
         _parent = parent;
-        MarkSubtreeStyleCore(this);
+        MarkSubtreeJoinedCore(this);
 
         DirtyFlags flags = _dirty;
         PropagateToAncestors(DirtyBits.ToDescendant(flags & DirtyBits.SelfMask) | (flags & DirtyBits.DescendantMask));

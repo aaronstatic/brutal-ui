@@ -24,6 +24,14 @@ namespace BrutalUi.Core;
 /// pass applies the inline set, so an inline value wins over each rule. The pass allocates nothing.
 /// </para>
 /// <para>
+/// The transitions (Decision 2): the pass writes the target of each member, also when a rule declares a transition
+/// for it. Before the write, it gives the old style and the target to <see cref="TransitionPool.Track"/>, which starts,
+/// keeps, turns, or ends each tween. Then the transition pass (<see cref="TransitionPool.Advance"/>) writes the
+/// interpolated value of each running tween over the target in the same update. <see cref="Compare(in ComputedStyle, in ComputedStyle, out bool, out bool)"/>
+/// and the dirty rules do not change. The first style of an element starts no tween
+/// (<see cref="Element.IsStyled"/>).
+/// </para>
+/// <para>
 /// The inheritance: a text member (<see cref="StyleMasks.Text"/>) that no matching rule and no inline value set gets
 /// the value of the parent. A root gets the text defaults of its context. When a text member of an element changes,
 /// the pass marks each child with <see cref="DirtyFlags.Style"/> (A3), so the new value flows down in the same pass.
@@ -49,14 +57,22 @@ internal static class StylePass
     /// <param name="roots">The roots of the context.</param>
     /// <param name="cascade">The rules of each sheet, sorted by the specificity, then by the sheet, then by the rule.</param>
     /// <param name="defaults">The text defaults of the context. Each root inherits its unset text members from them.</param>
-    internal static void Run(ReadOnlySpan<Element> roots, ReadOnlySpan<StyleRule> cascade, in ComputedStyle defaults)
+    /// <param name="transitions">
+    /// The running tweens of the context. The pass calls <see cref="TransitionPool.Track"/> for a restyled element
+    /// before it writes the new style.
+    /// </param>
+    internal static void Run(
+        ReadOnlySpan<Element> roots,
+        ReadOnlySpan<StyleRule> cascade,
+        in ComputedStyle defaults,
+        TransitionPool transitions)
     {
         for (int i = 0; i < roots.Length; i++)
         {
             Element root = roots[i];
             if ((root.Dirty & StyleBits) != DirtyFlags.None)
             {
-                Visit(root, cascade, in defaults);
+                Visit(root, cascade, in defaults, transitions);
             }
         }
     }
@@ -69,14 +85,19 @@ internal static class StylePass
     /// <param name="parentText">
     /// The style of the parent, or the text defaults of the context for a root. The pass reads its text members only.
     /// </param>
-    private static void Visit(Element element, ReadOnlySpan<StyleRule> cascade, in ComputedStyle parentText)
+    /// <param name="transitions">The running tweens of the context.</param>
+    private static void Visit(
+        Element element,
+        ReadOnlySpan<StyleRule> cascade,
+        in ComputedStyle parentText,
+        TransitionPool transitions)
     {
         // Step 1: restyle the element when it has the self bit, also with an empty cascade. The pass owns the style,
         // so an element with no rule and no inline value gets the defaults and the parent text.
         DirtyFlags flags = element.Dirty;
         if ((flags & DirtyFlags.Style) != DirtyFlags.None)
         {
-            Restyle(element, cascade, in parentText);
+            Restyle(element, cascade, in parentText, transitions);
         }
 
         // Step 2: read the bits again. A text change in Restyle marks each child with Style, and the mark sets
@@ -93,7 +114,7 @@ internal static class StylePass
                 Element child = children[i];
                 if ((child.Dirty & StyleBits) != DirtyFlags.None)
                 {
-                    Visit(child, cascade, in style);
+                    Visit(child, cascade, in style, transitions);
                 }
             }
         }
@@ -107,16 +128,42 @@ internal static class StylePass
     /// the element for the changed kinds. A text change also marks each child with <see cref="DirtyFlags.Style"/>.
     /// </summary>
     /// <remarks>
-    /// The method is not inlined, so the large <see cref="ComputedStyle"/> local stays out of the frame of the
-    /// recursion in <see cref="Visit"/>.
+    /// <para>
+    /// The method is not inlined, so the large <see cref="ComputedStyle"/> local and the merged transition set stay
+    /// out of the frame of the recursion in <see cref="Visit"/>.
+    /// </para>
+    /// <para>
+    /// The method merges the transition set of each matched rule in the order of the cascade, so the last matched
+    /// rule that holds a slot wins for that slot (R1). Before it writes the new style, it calls
+    /// <see cref="TransitionPool.Track"/> when the merged set holds a slot or a tween runs. A pool with no running
+    /// tween and a merged set with no slot need no call, because no tween can start, keep, turn, or end. After the
+    /// write, the method sets <see cref="Element.IsStyled"/>. Thus the first style of an element starts no tween.
+    /// </para>
+    /// <para>
+    /// The method also writes <see cref="Element.FollowsColor"/>: <see langword="true"/> when no matching rule and no
+    /// inline value set <see cref="ComputedStyle.Color"/>, and the merged set holds no <see cref="ComputedStyle.Color"/>
+    /// slot with a valid duration (<see cref="TransitionPool.CanRun"/>). The transition pass reads the flag for the
+    /// follow walk of a color tween (Decision 8). The children inherit the target of the parent here, and the follow
+    /// walk writes the visible value of the tween over it later in the same update. A child with its own
+    /// <see cref="ComputedStyle.Color"/> transition runs its own tween and never follows (Decision R2). An inheriting
+    /// child ends on the target of its parent, so its color does not jump back. A <see cref="ComputedStyle.Color"/>
+    /// transition with a duration that starts no tween (for example, 0 s) acts as no transition, so the child still
+    /// follows (Decision R3).
+    /// </para>
     /// </remarks>
     /// <param name="element">The element to restyle.</param>
     /// <param name="cascade">The sorted rules.</param>
     /// <param name="parentText">The style of the parent, or the text defaults of the context for a root.</param>
+    /// <param name="transitions">The running tweens of the context.</param>
     [MethodImpl(MethodImplOptions.NoInlining)]
-    private static void Restyle(Element element, ReadOnlySpan<StyleRule> cascade, in ComputedStyle parentText)
+    private static void Restyle(
+        Element element,
+        ReadOnlySpan<StyleRule> cascade,
+        in ComputedStyle parentText,
+        TransitionPool transitions)
     {
         ComputedStyle next = default;
+        StyleTransitions merged = default;
         ref readonly StyleProperties inline = ref element.InlineStorage;
         ulong inlineMask = inline.SetMask;
         ulong applied = inlineMask;
@@ -132,6 +179,12 @@ internal static class StylePass
             {
                 rule.Properties.ApplyTo(ref next, inlineMask);
                 applied |= rule.Properties.SetMask;
+
+                // R1: the merge uses the order of the properties, so the rule that wins a member also wins its slot.
+                if (!rule.Transitions.IsEmpty)
+                {
+                    merged.MergeFrom(in rule.Transitions);
+                }
             }
         }
 
@@ -146,7 +199,25 @@ internal static class StylePass
 
         ref ComputedStyle current = ref element.StyleStorage;
         DirtyFlags bits = Compare(in current, in next, out bool textChanged, out bool sizeTextChanged);
+
+        // Decision 2: the pass writes the target. Track reads the visible value in current before the write, and the
+        // transition pass writes the value of each running tween over the target later in the same update.
+        if (!merged.IsEmpty || transitions.ActiveCount > 0)
+        {
+            transitions.Track(element, in current, in next, in merged, inlineMask);
+        }
+
         current = next;
+        element.IsStyled = true;
+
+        // The follow rule of the transition pass reads the flag: a color that no rule and no inline value set comes
+        // from the parent, and so it follows a color tween of the parent. The first half is the condition of Inherit.
+        // Decision R2: a color slot in the merged set stops the follow, because the element runs its own tween. A
+        // follow after the end of that tween writes the visible color of the parent, and the color jumps back.
+        // Decision R3: only a slot with a valid duration stops the follow. CanRun is also the start rule and the keep
+        // rule of Track, so a slot that starts no tween leaves the follow on.
+        element.FollowsColor = (applied & (1UL << (int)StyleProperty.Color)) == 0
+            && !TransitionPool.CanRun(in merged, StyleTransitions.SlotOf(StyleProperty.Color));
 
         // A label measures its text with the font and the font size, so a change of either one measures it again.
         // The color does not change the size.

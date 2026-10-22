@@ -21,6 +21,12 @@ namespace BrutalUi.Markup.Tests.Style;
 /// <c>nameof(Test) + "-"</c>. <see cref="TheHelloPanelSheetGivesTheOldValues"/> reads the real names of the sample.
 /// Each test passes the bytes of the text to <c>Parse</c> (decision R2).
 /// </para>
+/// <para>
+/// The sheet of the gate declares a transition list, so a hover toggle starts a tween on its panel. Each step runs
+/// <c>Update</c> with a step time, so the measured steps also run the transition pass and the turns of the tweens.
+/// The tweens grow the transition pool during the warm-up only. Before each check of the rules, the gate runs one
+/// settle update outside the measure. Its time is more than each duration, so each member holds its target.
+/// </para>
 /// </remarks>
 public sealed class ParsedSheetAllocationTests
 {
@@ -50,10 +56,13 @@ public sealed class ParsedSheetAllocationTests
         Assert.Equal(50, scene.Elements.Length);
 
         // The steps reached the rules: the match is visible in the last state of the tree. The last measured step
-        // (115) sets the name A. One more step sets the name B, so the check reads both name rules.
+        // (115) sets the name A. One more step sets the name B, so the check reads both name rules. The settle
+        // update ends each running tween, so each member holds its target before the check.
+        scene.Settle();
         scene.AssertTheRulesMatch();
         Assert.Equal(Length.Px(10f), scene.Named.Style.MinWidth);
         scene.Step();
+        scene.Settle();
         scene.AssertTheRulesMatch();
         Assert.Equal(Length.Percent(20f), scene.Named.Style.MinWidth);
     }
@@ -213,7 +222,8 @@ public sealed class ParsedSheetAllocationTests
     /// <summary>
     /// The tree of the gate: a root, 7 panels, and 6 items under each panel (50 elements). The first item of each panel
     /// is a <see cref="Label"/>. One parsed text gives the sheet. Each step toggles the hover of one panel, toggles one
-    /// class of one item, sets the name of one item to one of two names, and runs one <c>Update</c>.
+    /// class of one item, sets the name of one item to one of two names, and runs one <c>Update</c> with
+    /// <see cref="StepTime"/>. <see cref="Settle"/> ends each running tween.
     /// </summary>
     private sealed class GateScene
     {
@@ -223,6 +233,12 @@ public sealed class ParsedSheetAllocationTests
         private const int PanelCount = 7;
         private const int ItemCount = 6;
         private const int RuleCount = 10;
+
+        /// <summary>The time of one step in seconds: one frame at about 60 frames each second.</summary>
+        private const float StepTime = 0.016f;
+
+        /// <summary>The time of the settle update in seconds. It is more than each duration of the sheet.</summary>
+        private const float SettleTime = 1f;
 
         private static readonly Rgba8 Accent = new(0x30, 0x60, 0xC0, 255);
         private static readonly Rgba8 HoverFill = new(0x10, 0x20, 0x30, 255);
@@ -372,7 +388,17 @@ public sealed class ParsedSheetAllocationTests
 
             Named.Name = (step & 1) == 0 ? NameB : NameA;
 
-            Context.Update(0f);
+            // The step time advances the tweens of the transition list, so the measure covers the transition pass.
+            Context.Update(StepTime);
+        }
+
+        /// <summary>
+        /// Runs one update with <see cref="SettleTime"/> and changes no state. Each running tween ends, so each member
+        /// holds its target. Call it outside the measure, before <see cref="AssertTheRulesMatch"/>.
+        /// </summary>
+        public void Settle()
+        {
+            Context.Update(SettleTime);
         }
 
         /// <summary>Checks that the style of each element follows its state, its classes, its name, and its type.</summary>
