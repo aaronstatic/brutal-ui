@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using Brutal.Numerics;
 
 namespace BrutalUi.Core;
@@ -68,7 +69,20 @@ public sealed class UiContext
         /// of the font. The descendants inherit the size.
         /// </summary>
         public float DefaultFontSize;
+
+        /// <summary>
+        /// The number of entries of the event ring. The default is 0, which gives
+        /// <see cref="DefaultEventQueueCapacity"/>.
+        /// </summary>
+        /// <remarks>
+        /// The constructor creates the ring with this capacity, so a push never allocates. A full ring drops the
+        /// oldest entry.
+        /// </remarks>
+        public int EventQueueCapacity;
     }
+
+    /// <summary>The number of entries of the event ring when the create-info gives 0, or for <see cref="UiContext()"/>.</summary>
+    public const int DefaultEventQueueCapacity = 256;
 
     /// <summary>
     /// The measurer of the <see cref="Update(float)"/> call that runs on this thread. It is <see langword="null"/>
@@ -85,6 +99,18 @@ public sealed class UiContext
     private float2 _viewportSize;
     private PaintFrame[] _paintStack = new PaintFrame[PaintWalk.InitialStackSize];
     private bool _drawing;
+    private bool _draining;
+
+    /// <summary>
+    /// The ring of queued events. Both constructors create it, so a push never allocates (Decision 8).
+    /// </summary>
+    /// <remarks>The ring is a mutable struct. Change it only through this field.</remarks>
+    private EventQueue _events;
+
+    /// <summary>
+    /// The path buffer of the event walk. The walk grows it by doubling and never shrinks it (A7).
+    /// </summary>
+    private Element[] _eventPath = new Element[EventWalk.InitialPathSize];
 
     /// <summary>The sheets in the order of add.</summary>
     private readonly List<StyleSheet> _sheets = [];
@@ -121,7 +147,7 @@ public sealed class UiContext
 
     /// <summary>
     /// Creates a context with no roots, a viewport size of (0, 0), no measurer, and the text defaults opaque white,
-    /// the font id 0, and the font size 0.
+    /// the font id 0, and the font size 0. The event ring has <see cref="DefaultEventQueueCapacity"/> entries.
     /// </summary>
     /// <remarks>
     /// A context with no measurer cannot lay out a <see cref="Label"/>. Use <see cref="UiContext(in CreateInfo)"/>
@@ -130,14 +156,18 @@ public sealed class UiContext
     public UiContext()
     {
         _textDefaults = CreateTextDefaults(null, default, 0f);
+        _events = new EventQueue(DefaultEventQueueCapacity);
     }
 
     /// <summary>
-    /// Creates a context with no roots, a viewport size of (0, 0), and the measurer and the text defaults of the
-    /// create-info.
+    /// Creates a context with no roots, a viewport size of (0, 0), and the measurer, the text defaults, and the event
+    /// ring capacity of the create-info.
     /// </summary>
     /// <param name="info">The create-info.</param>
     /// <exception cref="ArgumentNullException">The measurer of <paramref name="info"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// The <see cref="CreateInfo.EventQueueCapacity"/> of <paramref name="info"/> is negative.
+    /// </exception>
     public UiContext(in CreateInfo info)
     {
         if (info.Measurer is null)
@@ -145,8 +175,20 @@ public sealed class UiContext
             throw new ArgumentNullException(nameof(info), "The Measurer of the UiContext.CreateInfo must not be null.");
         }
 
+        if (info.EventQueueCapacity < 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(info),
+                info.EventQueueCapacity,
+                "The CreateInfo.EventQueueCapacity must not be negative. Use 0 for the default of 256.");
+        }
+
         _measurer = info.Measurer;
         _textDefaults = CreateTextDefaults(info.DefaultColor, info.DefaultFont, info.DefaultFontSize);
+
+        // The ring rejects a capacity of 0, so map 0 to the default first (P1-1).
+        int capacity = info.EventQueueCapacity == 0 ? DefaultEventQueueCapacity : info.EventQueueCapacity;
+        _events = new EventQueue(capacity);
     }
 
     /// <summary>
@@ -552,6 +594,270 @@ public sealed class UiContext
         {
             _drawing = false;
         }
+    }
+
+    /// <summary>Gets the number of events in the event ring. The next drain walks them.</summary>
+    public int QueuedEventCount => _events.Count;
+
+    /// <summary>Gets the number of entries that the event ring holds at most.</summary>
+    public int EventQueueCapacity => _events.Capacity;
+
+    /// <summary>Gets the length of the path buffer of the event walk. This member serves the tests.</summary>
+    internal int EventPathLength => _eventPath.Length;
+
+    /// <summary>Gets the slots of the path buffer of the event walk. Each slot is null after a walk.</summary>
+    /// <remarks>Only the tests of <c>BrutalUi.Core.Tests</c> read this member.</remarks>
+    internal ReadOnlySpan<Element?> EventPathSlots => _eventPath;
+
+    /// <summary>Gets the slots of the event ring. A popped slot holds no element reference.</summary>
+    /// <remarks>Only the tests of <c>BrutalUi.Core.Tests</c> read this member.</remarks>
+    internal ReadOnlySpan<UiQueuedEvent> EventRingSlots => _events.Slots;
+
+    /// <summary>
+    /// Gets the number of events that a push into a full ring dropped. The ring drops its oldest event in this case.
+    /// </summary>
+    public long DroppedEventCount => _events.Dropped;
+
+    /// <summary>
+    /// Adds a pointer event at the end of the event ring. The next drain sends it along the path of its target.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The caller sets <see cref="UiEventHeader.Target"/> (A4). The drain skips an event with no target. The ring
+    /// keeps the type, the timestamp, the target, and the pointer fields. It does not keep
+    /// <see cref="UiEventHeader.Phase"/> or <see cref="UiEventHeader.CurrentTarget"/>: the walk writes them.
+    /// </para>
+    /// <para>
+    /// A full ring drops its oldest event. The push allocates nothing, because the constructor creates the ring.
+    /// </para>
+    /// </remarks>
+    /// <param name="e">The event. The call copies it.</param>
+    /// <exception cref="ArgumentException">The type of the event is not a pointer type.</exception>
+    public void PushEvent(in PointerEvent e)
+    {
+        Enqueue(in e);
+    }
+
+    /// <summary>
+    /// Adds a scroll event at the end of the event ring. The next drain sends it along the path of its target.
+    /// </summary>
+    /// <remarks>
+    /// The rules of <see cref="PushEvent(in PointerEvent)"/> apply. The ring keeps the type, the timestamp, the
+    /// target, the position, the delta, and the modifiers.
+    /// </remarks>
+    /// <param name="e">The event. The call copies it.</param>
+    /// <exception cref="ArgumentException">The type of the event is not <see cref="UiEventType.Scroll"/>.</exception>
+    public void PushEvent(in ScrollEvent e)
+    {
+        Enqueue(in e);
+    }
+
+    /// <summary>
+    /// Adds a key event at the end of the event ring. The next drain sends it along the path of its target.
+    /// </summary>
+    /// <remarks>
+    /// The rules of <see cref="PushEvent(in PointerEvent)"/> apply. The ring keeps the type, the timestamp, the
+    /// target, the key, the scan code, the modifiers, and the repeat flag.
+    /// </remarks>
+    /// <param name="e">The event. The call copies it.</param>
+    /// <exception cref="ArgumentException">The type of the event is not a key type.</exception>
+    public void PushEvent(in KeyEvent e)
+    {
+        Enqueue(in e);
+    }
+
+    /// <summary>
+    /// Adds a char event at the end of the event ring. The next drain sends it along the path of its target.
+    /// </summary>
+    /// <remarks>
+    /// The rules of <see cref="PushEvent(in PointerEvent)"/> apply. The ring keeps the type, the timestamp, the
+    /// target, and the code point.
+    /// </remarks>
+    /// <param name="e">The event. The call copies it.</param>
+    /// <exception cref="ArgumentException">The type of the event is not <see cref="UiEventType.Char"/>.</exception>
+    public void PushEvent(in CharEvent e)
+    {
+        Enqueue(in e);
+    }
+
+    /// <summary>
+    /// Pops each event that the ring holds at the start of the call, and sends each event with a target along the
+    /// path of its target.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A5: routing-gate calls this method from <see cref="Update(float)"/>. In this feature,
+    /// <see cref="Update(float)"/> does not call it, and the tests call it directly.
+    /// </para>
+    /// <para>
+    /// The method reads the count one time at the start (Decision 6). It pops each entry into a local before the walk,
+    /// so the free slot of the ring holds no element reference during the walk. An event that a handler pushes waits for the next
+    /// drain. An exception from a handler stops the drain. The entries that the drain did not pop stay in the ring.
+    /// </para>
+    /// <para>
+    /// A handler can push into a full ring. The push drops the oldest entry, and this entry can be an entry of the
+    /// current drain that did not walk yet. The method reduces the count of waiting entries by each drop that a walk
+    /// causes. The drain then never pops an event that a handler pushed. A skipped entry runs no handler, so it causes no drop.
+    /// </para>
+    /// <para>
+    /// The method skips an entry with no target (A4). It skips an entry when the top of the parent chain of the
+    /// target is not a root of this context (Decision 7): the target left the tree, or it belongs to another context.
+    /// It also skips an entry with a type that no event struct carries. <see cref="PushEvent(in PointerEvent)"/> and
+    /// the other push methods reject such a type, so the skip is a guard only.
+    /// </para>
+    /// <para>
+    /// A call from a handler of the drain throws. The flag is cleared in a <c>finally</c> block, so the context stays
+    /// valid after an exception from a handler.
+    /// </para>
+    /// </remarks>
+    /// <returns>The number of walks: the entries that the method sent to the walk.</returns>
+    /// <exception cref="InvalidOperationException">A drain of this context runs already.</exception>
+    internal int DrainEvents()
+    {
+        if (_draining)
+        {
+            throw new InvalidOperationException("A drain of this UiContext runs already. Do not call Update or the drain from an event handler.");
+        }
+
+        _draining = true;
+        try
+        {
+            // Read the count one time. An event that a handler pushes waits for the next drain (Decision 6).
+            int remaining = _events.Count;
+            int walks = 0;
+
+            while (remaining > 0 && _events.TryPop(out UiQueuedEvent entry))
+            {
+                remaining--;
+
+                // The target step. The caller sets the target (A4). Pointer-routing and keyboard-focus set the target
+                // of an entry here, before the walk. An entry with no target, or with a target outside the roots of
+                // this context, gets no walk.
+                Element? target = entry.Header.Target;
+                if (target is null || !IsInRootTree(target))
+                {
+                    continue;
+                }
+
+                long droppedBefore = _events.Dropped;
+
+                switch (entry.Header.Type)
+                {
+                    case UiEventType.PointerMove:
+                    case UiEventType.PointerDown:
+                    case UiEventType.PointerUp:
+                        DispatchQueued<PointerEvent>(in entry);
+                        walks++;
+                        break;
+
+                    case UiEventType.Scroll:
+                        DispatchQueued<ScrollEvent>(in entry);
+                        walks++;
+                        break;
+
+                    case UiEventType.KeyDown:
+                    case UiEventType.KeyUp:
+                        DispatchQueued<KeyEvent>(in entry);
+                        walks++;
+                        break;
+
+                    case UiEventType.Char:
+                        DispatchQueued<CharEvent>(in entry);
+                        walks++;
+                        break;
+
+                    default:
+                        // No event struct carries the type, so the entry gets no walk. The push rejects such a type.
+                        break;
+                }
+
+                // A push from a handler into a full ring drops the oldest entry. While entries of this drain wait,
+                // that entry belongs to this drain, so the drain must not pop one more entry in its place.
+                remaining -= (int)Math.Min(remaining, _events.Dropped - droppedBefore);
+            }
+
+            return walks;
+        }
+        finally
+        {
+            _draining = false;
+        }
+    }
+
+    /// <summary>
+    /// Finds out whether the top of the parent chain of an element is a root of this context. The method uses a loop and
+    /// allocates nothing.
+    /// </summary>
+    /// <param name="element">The element.</param>
+    /// <returns><see langword="true"/> when the top element is a root of this context.</returns>
+    private bool IsInRootTree(Element element)
+    {
+        Element top = element;
+        while (top.Parent is { } parent)
+        {
+            top = parent;
+        }
+
+        return top.IsRoot && _roots.IndexOf(top) >= 0;
+    }
+
+    /// <summary>
+    /// Copies an event into a ring entry and pushes the entry. The entry header gets the phase
+    /// <see cref="UiEventPhase.None"/> and no current target.
+    /// </summary>
+    /// <typeparam name="T">The event struct.</typeparam>
+    /// <param name="e">The event.</param>
+    private void Enqueue<T>(in T e)
+        where T : struct, IUiEvent<T>
+    {
+        // HeaderOf takes a ref, so read the header through a copy. The copy is a struct on the stack.
+        T copy = e;
+        ref UiEventHeader header = ref T.HeaderOf(ref copy);
+
+        // A type that the struct does not carry would read the wrong payload fields. Reject it before it enters the ring.
+        if (!T.Accepts(header.Type))
+        {
+            ThrowTypeMismatch<T>(header.Type);
+        }
+
+        // Start from a default payload. Store writes only the fields of its kind (P1-7).
+        UiQueuedEvent entry = default;
+        entry.Header = new UiEventHeader(header.Type, header.Timestamp, header.Target);
+
+        // A queued entry never arrives stopped, also when the caller reuses a stopped struct (P2).
+        entry.Header.ResetWalkState();
+        T.Store(in copy, ref entry.Payload);
+        _events.Push(in entry);
+    }
+
+    /// <summary>Throws the exception for an event type that the struct does not carry. It allocates on this path only.</summary>
+    /// <typeparam name="T">The event struct.</typeparam>
+    /// <param name="type">The rejected type.</param>
+    /// <exception cref="ArgumentException">Always.</exception>
+    [DoesNotReturn]
+    private static void ThrowTypeMismatch<T>(UiEventType type)
+        where T : struct, IUiEvent<T>
+    {
+        string hint = type switch
+        {
+            UiEventType.PointerMove or UiEventType.PointerDown or UiEventType.PointerUp => "Use a PointerEvent.",
+            UiEventType.Scroll => "Use a ScrollEvent.",
+            UiEventType.KeyDown or UiEventType.KeyUp => "Use a KeyEvent.",
+            UiEventType.Char => "Use a CharEvent.",
+            _ => "Set a valid type in the event header.",
+        };
+
+        throw new ArgumentException($"A {typeof(T).Name} cannot carry the type {type}. {hint}", "e");
+    }
+
+    /// <summary>Makes an event from a ring entry and sends it along the path of its target.</summary>
+    /// <typeparam name="T">The event struct of the entry type.</typeparam>
+    /// <param name="entry">The ring entry.</param>
+    private void DispatchQueued<T>(in UiQueuedEvent entry)
+        where T : struct, IUiEvent<T>
+    {
+        T e = T.Load(in entry.Header, in entry.Payload);
+        EventWalk.Dispatch(ref e, ref _eventPath);
     }
 
     /// <summary>

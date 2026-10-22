@@ -31,6 +31,12 @@ public class Element
     private PseudoStates _states;
     private string? _name;
 
+    /// <summary>
+    /// The handler slots of the element, or <see langword="null"/> when the element has no handler (A2). The first
+    /// registration creates the object.
+    /// </summary>
+    private ElementHandlers? _handlers;
+
     private static readonly ElementTypeId s_typeId = ElementType.Intern("Element");
 
     /// <summary>
@@ -177,6 +183,323 @@ public class Element
     /// </summary>
     /// <remarks>A change of this value sets no dirty bit.</remarks>
     public bool IsPickable { get; set; } = true;
+
+    /// <summary>
+    /// Gets the handler slots of the element, or <see langword="null"/> when no handler was set on the element.
+    /// </summary>
+    /// <remarks>
+    /// The event walk reads this member one time for each element on the path. It skips an element with no side
+    /// object. A set of a <see langword="null"/> handler on an element with no side object creates no side object.
+    /// </remarks>
+    internal ElementHandlers? Handlers => _handlers;
+
+    /// <summary>
+    /// Gets or sets the bubble handler for <see cref="UiEventType.PointerMove"/>. The target phase also calls it.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The slots live in a side object (A2). The first registration of a handler on the element creates the side
+    /// object. An element with no handler holds one <see langword="null"/> reference. A set of
+    /// <see langword="null"/> on an element with no side object does nothing.
+    /// </para>
+    /// <para>
+    /// <c>+=</c> combines delegates into a multicast slot. The walk calls each delegate in the order of add.
+    /// Register handlers at build time, not in the frame loop.
+    /// </para>
+    /// </remarks>
+    public UiEventHandler<PointerEvent>? OnPointerMove
+    {
+        get => _handlers?.PointerMove;
+        set
+        {
+            if (value is null && _handlers is null)
+            {
+                return;
+            }
+
+            (_handlers ??= new ElementHandlers()).PointerMove = value;
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets the capture handler for <see cref="UiEventType.PointerMove"/>. The capture phase calls it on an
+    /// ancestor of the target. The target phase calls it before the bubble handler.
+    /// </summary>
+    /// <remarks>
+    /// The slot follows the rules of <see cref="OnPointerMove"/>: the first registration creates the side object, and
+    /// <c>+=</c> combines delegates in the order of add.
+    /// </remarks>
+    public UiEventHandler<PointerEvent>? OnPointerMoveCapture
+    {
+        get => _handlers?.PointerMoveCapture;
+        set
+        {
+            if (value is null && _handlers is null)
+            {
+                return;
+            }
+
+            (_handlers ??= new ElementHandlers()).PointerMoveCapture = value;
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets the bubble handler for <see cref="UiEventType.PointerDown"/>. The target phase also calls it.
+    /// </summary>
+    /// <remarks>
+    /// The slot follows the rules of <see cref="OnPointerMove"/>: the first registration creates the side object, and
+    /// <c>+=</c> combines delegates in the order of add.
+    /// </remarks>
+    public UiEventHandler<PointerEvent>? OnPointerDown
+    {
+        get => _handlers?.PointerDown;
+        set
+        {
+            if (value is null && _handlers is null)
+            {
+                return;
+            }
+
+            (_handlers ??= new ElementHandlers()).PointerDown = value;
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets the capture handler for <see cref="UiEventType.PointerDown"/>. The capture phase calls it on an
+    /// ancestor of the target. The target phase calls it before the bubble handler.
+    /// </summary>
+    /// <remarks>
+    /// The slot follows the rules of <see cref="OnPointerMove"/>: the first registration creates the side object, and
+    /// <c>+=</c> combines delegates in the order of add.
+    /// </remarks>
+    public UiEventHandler<PointerEvent>? OnPointerDownCapture
+    {
+        get => _handlers?.PointerDownCapture;
+        set
+        {
+            if (value is null && _handlers is null)
+            {
+                return;
+            }
+
+            (_handlers ??= new ElementHandlers()).PointerDownCapture = value;
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets the bubble handler for <see cref="UiEventType.PointerUp"/>. The target phase also calls it.
+    /// </summary>
+    /// <remarks>
+    /// The slot follows the rules of <see cref="OnPointerMove"/>: the first registration creates the side object, and
+    /// <c>+=</c> combines delegates in the order of add.
+    /// </remarks>
+    public UiEventHandler<PointerEvent>? OnPointerUp
+    {
+        get => _handlers?.PointerUp;
+        set
+        {
+            if (value is null && _handlers is null)
+            {
+                return;
+            }
+
+            (_handlers ??= new ElementHandlers()).PointerUp = value;
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets the capture handler for <see cref="UiEventType.PointerUp"/>. The capture phase calls it on an
+    /// ancestor of the target. The target phase calls it before the bubble handler.
+    /// </summary>
+    /// <remarks>
+    /// The slot follows the rules of <see cref="OnPointerMove"/>: the first registration creates the side object, and
+    /// <c>+=</c> combines delegates in the order of add.
+    /// </remarks>
+    public UiEventHandler<PointerEvent>? OnPointerUpCapture
+    {
+        get => _handlers?.PointerUpCapture;
+        set
+        {
+            if (value is null && _handlers is null)
+            {
+                return;
+            }
+
+            (_handlers ??= new ElementHandlers()).PointerUpCapture = value;
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets the bubble handler for <see cref="UiEventType.Scroll"/>. The target phase also calls it.
+    /// </summary>
+    /// <remarks>
+    /// The slot follows the rules of <see cref="OnPointerMove"/>: the first registration creates the side object, and
+    /// <c>+=</c> combines delegates in the order of add.
+    /// </remarks>
+    public UiEventHandler<ScrollEvent>? OnScroll
+    {
+        get => _handlers?.Scroll;
+        set
+        {
+            if (value is null && _handlers is null)
+            {
+                return;
+            }
+
+            (_handlers ??= new ElementHandlers()).Scroll = value;
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets the capture handler for <see cref="UiEventType.Scroll"/>. The capture phase calls it on an
+    /// ancestor of the target. The target phase calls it before the bubble handler.
+    /// </summary>
+    /// <remarks>
+    /// The slot follows the rules of <see cref="OnPointerMove"/>: the first registration creates the side object, and
+    /// <c>+=</c> combines delegates in the order of add.
+    /// </remarks>
+    public UiEventHandler<ScrollEvent>? OnScrollCapture
+    {
+        get => _handlers?.ScrollCapture;
+        set
+        {
+            if (value is null && _handlers is null)
+            {
+                return;
+            }
+
+            (_handlers ??= new ElementHandlers()).ScrollCapture = value;
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets the bubble handler for <see cref="UiEventType.KeyDown"/>. The target phase also calls it.
+    /// </summary>
+    /// <remarks>
+    /// The slot follows the rules of <see cref="OnPointerMove"/>: the first registration creates the side object, and
+    /// <c>+=</c> combines delegates in the order of add.
+    /// </remarks>
+    public UiEventHandler<KeyEvent>? OnKeyDown
+    {
+        get => _handlers?.KeyDown;
+        set
+        {
+            if (value is null && _handlers is null)
+            {
+                return;
+            }
+
+            (_handlers ??= new ElementHandlers()).KeyDown = value;
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets the capture handler for <see cref="UiEventType.KeyDown"/>. The capture phase calls it on an
+    /// ancestor of the target. The target phase calls it before the bubble handler.
+    /// </summary>
+    /// <remarks>
+    /// The slot follows the rules of <see cref="OnPointerMove"/>: the first registration creates the side object, and
+    /// <c>+=</c> combines delegates in the order of add.
+    /// </remarks>
+    public UiEventHandler<KeyEvent>? OnKeyDownCapture
+    {
+        get => _handlers?.KeyDownCapture;
+        set
+        {
+            if (value is null && _handlers is null)
+            {
+                return;
+            }
+
+            (_handlers ??= new ElementHandlers()).KeyDownCapture = value;
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets the bubble handler for <see cref="UiEventType.KeyUp"/>. The target phase also calls it.
+    /// </summary>
+    /// <remarks>
+    /// The slot follows the rules of <see cref="OnPointerMove"/>: the first registration creates the side object, and
+    /// <c>+=</c> combines delegates in the order of add.
+    /// </remarks>
+    public UiEventHandler<KeyEvent>? OnKeyUp
+    {
+        get => _handlers?.KeyUp;
+        set
+        {
+            if (value is null && _handlers is null)
+            {
+                return;
+            }
+
+            (_handlers ??= new ElementHandlers()).KeyUp = value;
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets the capture handler for <see cref="UiEventType.KeyUp"/>. The capture phase calls it on an
+    /// ancestor of the target. The target phase calls it before the bubble handler.
+    /// </summary>
+    /// <remarks>
+    /// The slot follows the rules of <see cref="OnPointerMove"/>: the first registration creates the side object, and
+    /// <c>+=</c> combines delegates in the order of add.
+    /// </remarks>
+    public UiEventHandler<KeyEvent>? OnKeyUpCapture
+    {
+        get => _handlers?.KeyUpCapture;
+        set
+        {
+            if (value is null && _handlers is null)
+            {
+                return;
+            }
+
+            (_handlers ??= new ElementHandlers()).KeyUpCapture = value;
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets the bubble handler for <see cref="UiEventType.Char"/>. The target phase also calls it.
+    /// </summary>
+    /// <remarks>
+    /// The slot follows the rules of <see cref="OnPointerMove"/>: the first registration creates the side object, and
+    /// <c>+=</c> combines delegates in the order of add.
+    /// </remarks>
+    public UiEventHandler<CharEvent>? OnChar
+    {
+        get => _handlers?.Char;
+        set
+        {
+            if (value is null && _handlers is null)
+            {
+                return;
+            }
+
+            (_handlers ??= new ElementHandlers()).Char = value;
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets the capture handler for <see cref="UiEventType.Char"/>. The capture phase calls it on an
+    /// ancestor of the target. The target phase calls it before the bubble handler.
+    /// </summary>
+    /// <remarks>
+    /// The slot follows the rules of <see cref="OnPointerMove"/>: the first registration creates the side object, and
+    /// <c>+=</c> combines delegates in the order of add.
+    /// </remarks>
+    public UiEventHandler<CharEvent>? OnCharCapture
+    {
+        get => _handlers?.CharCapture;
+        set
+        {
+            if (value is null && _handlers is null)
+            {
+                return;
+            }
+
+            (_handlers ??= new ElementHandlers()).CharCapture = value;
+        }
+    }
 
     /// <summary>
     /// Gets a read-only reference to the computed style of the element. The style lives inline in the element.
