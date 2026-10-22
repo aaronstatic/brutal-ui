@@ -20,6 +20,7 @@ This file lists each notable change of brutal-ui. The format follows [Keep a Cha
 - The event structs (`UiEventHeader`, `PointerEvent`, `ScrollEvent`, `KeyEvent`, `CharEvent`), the 14 handler slots of `Element`, the event queue of `UiContext` (`PushEvent`, `EventQueueCapacity`, `DroppedEventCount`), and the capture, target, and bubble walk with `StopPropagation` in `BrutalUi.Core` (input-routing/event-model).
 - The hit test with clip rects and `IsPickable`, the `Hover` and `Active` states, the scroll routing, the window callbacks `UiContext.OnFileDrop` and `UiContext.OnContentScale`, and the `BrutalUi.Glfw` package with `GlfwUiInput` (input-routing/pointer-routing).
 - The focus owner (`UiContext.FocusedElement`, `SetFocus`, `ClearFocus`, `FocusNext`, `FocusPrevious`), `Element.IsFocusable`, focus on click, Tab, and Shift+Tab in tree order, the `Focus` state, the routing of key and char events to the focus owner, and the key and char events of `GlfwUiInput` with `KeyboardEnabled` (input-routing/keyboard-focus).
+- `UiRoutingGate` (`PointerOverUi` and `KeyboardFocusInUi`), `UiContext.RoutingGate`, the allocation case of a full event queue in `ThousandElementAllocationTests`, and the input demo of the HelloPanel sample with its gate counts and its input check (input-routing/routing-gate).
 
 ### Changed
 
@@ -29,6 +30,7 @@ This file lists each notable change of brutal-ui. The format follows [Keep a Cha
 - `Selector.Specificity` uses one byte for each tier: `(names << 16) | ((classes + states) << 8) | types`. A class rule gives 256 in place of 10, and a type and class rule gives 257 in place of 11. The order of the existing rules does not change. `ClassList.Add`, `ClassList.Remove`, and a new `Element.States` value mark the full subtree with `Style`. The old mark was on the element only. A new value of `Element.Name` now marks the element and its full subtree with `Style`. The old name setter marked nothing (style-system/selector-matching).
 - The HelloPanel sample loads its sizes and colors from `HelloScreen.css` through `StyleSheetParser`, in place of inline values. A bad sheet gives exit code 1 before the window opens (style-system/style-parser).
 - `UiContext.Update` now reads `deltaTime`: each running tween advances by this time, and a value of 0 or less advances no tween. A rule with a transition no longer gives its target in the same `Update`: the member reaches the target after the duration. A test that reads a target after `Update(0f)` on a sheet with transitions must pass a time of at least the duration (style-system/transitions).
+- `UiContext.Update` drains the event ring before the style pass, and a handler that calls `Update` gets `InvalidOperationException` (input-routing/routing-gate).
 
 ### Fixed
 

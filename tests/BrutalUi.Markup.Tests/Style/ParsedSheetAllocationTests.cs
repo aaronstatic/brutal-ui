@@ -77,7 +77,7 @@ public sealed class ParsedSheetAllocationTests
         Assert.Empty(result.Errors);
         Assert.True(result.Succeeded);
         StyleSheet sheet = result.GetSheetOrThrow();
-        Assert.Equal(4, sheet.Rules.Length);
+        Assert.Equal(6, sheet.Rules.Length);
 
         StyleProperties root = FindRule(sheet, ".hello-root").Properties;
         AssertSetMembers(in root, StyleProperty.AlignItems, StyleProperty.Padding);
@@ -103,6 +103,21 @@ public sealed class ParsedSheetAllocationTests
         Assert.Equal(OldValues.PanelColor, panel.BackgroundColor);
         Assert.Equal(OldValues.BorderColor, panel.BorderColor);
         Assert.True(panelRule.Transitions.IsEmpty);
+
+        // The two state rules of input-routing/routing-gate. The selector text of a parsed state rule is the class
+        // text and the state text with no space, for example ".hello-panel:hover". Each rule sets one member only, so
+        // the hover and the focus show at the same time.
+        StyleRule hoverRule = FindRule(sheet, ".hello-panel:hover");
+        StyleProperties hover = hoverRule.Properties;
+        AssertSetMembers(in hover, StyleProperty.BackgroundColor);
+        Assert.Equal(new Rgba8(0x28, 0x30, 0x44, 255), hover.BackgroundColor);
+        Assert.True(hoverRule.Transitions.IsEmpty);
+
+        StyleRule focusRule = FindRule(sheet, ".hello-panel:focus");
+        StyleProperties focus = focusRule.Properties;
+        AssertSetMembers(in focus, StyleProperty.BorderColor);
+        Assert.Equal(new Rgba8(0xf0, 0xc0, 0x40, 255), focus.BorderColor);
+        Assert.True(focusRule.Transitions.IsEmpty);
 
         StyleProperties label = FindRule(sheet, ".hello-panel > Label").Properties;
         AssertSetMembers(in label, StyleProperty.Color, StyleProperty.FontSize);

@@ -6,8 +6,8 @@ using Brutal.Numerics;
 namespace BrutalUi.Core;
 
 /// <summary>
-/// The owner of the root elements. <see cref="Update(float)"/> runs the passes on the dirty elements in frame order.
-/// <see cref="Draw(IUiRenderer)"/> then sends the tree to a renderer.
+/// The owner of the root elements. <see cref="Update(float)"/> runs the input pass, then the other passes on the dirty
+/// elements in frame order. <see cref="Draw(IUiRenderer)"/> then sends the tree to a renderer.
 /// </summary>
 /// <remarks>
 /// <para>The tree is main-thread only. The context and the elements use no locks.</para>
@@ -513,8 +513,8 @@ public sealed class UiContext
     }
 
     /// <summary>
-    /// Runs the passes on each root in frame order. The layout pass lays out each root against
-    /// <see cref="ViewportSize"/> and clears the layout bits. The last pass clears each dirty bit that remains.
+    /// Runs the input pass, then the other passes on each root in frame order. The layout pass lays out each root
+    /// against <see cref="ViewportSize"/> and clears the layout bits. The last pass clears each dirty bit that remains.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -522,14 +522,35 @@ public sealed class UiContext
     /// Set <see cref="ViewportSize"/> before the first call.
     /// </para>
     /// <para>
-    /// The style pass runs first. It restyles each element with <see cref="DirtyFlags.Style"/> from the rules of the
-    /// sheets of <see cref="AddSheet(StyleSheet)"/> and from the inline set of <see cref="Element.Inline"/>. An inline
-    /// value wins over each rule. The pass marks the elements with a new style for the layout and the paint. Each
-    /// element with the style bit gets a new style from the defaults, the matching rules, the inline set, and the
-    /// parent text. An element with no rule and no inline value gets the defaults.
+    /// The input pass runs first (A5). It drains each entry that the event ring holds at the start of the call, and
+    /// it runs the stale rules also when the ring is empty. The hit test reads the layout of the last
+    /// <see cref="Update(float)"/>. An event that a handler pushes waits for the next <see cref="Update(float)"/>. A
+    /// handler that calls <see cref="Update(float)"/> gets <see cref="InvalidOperationException"/>. An exception from
+    /// a handler stops the call before the style pass. The entries after it stay in the ring, and the next
+    /// <see cref="Update(float)"/> drains them. Read <see cref="RoutingGate"/> after the call.
     /// </para>
     /// <para>
-    /// The frame order is: the style pass, the transition pass, the layout pass, and the clear pass. The style pass
+    /// The input pass drains the ring each frame. The ring holds <see cref="DefaultEventQueueCapacity"/> entries by
+    /// default and drops its oldest entry when it is full (Decision 4). A game with long hitches sets
+    /// <see cref="CreateInfo.EventQueueCapacity"/> to a larger value. <see cref="DroppedEventCount"/> shows a drop.
+    /// </para>
+    /// <para>
+    /// Limit of the stale rules (CR-8 of pointer-routing): the input pass of one context can clear
+    /// <see cref="PseudoStates.Hover"/>, <see cref="PseudoStates.Active"/>, or <see cref="PseudoStates.Focus"/> that
+    /// another context set. When you move an element to another context, call <see cref="Update(float)"/> on the old
+    /// context before the new context updates. Otherwise <see cref="RoutingGate"/> of the new context can read
+    /// <see langword="true"/> while the element has no <see cref="PseudoStates.Hover"/>.
+    /// </para>
+    /// <para>
+    /// The style pass runs after the input pass. It restyles each element with <see cref="DirtyFlags.Style"/> from the
+    /// rules of the sheets of <see cref="AddSheet(StyleSheet)"/> and from the inline set of
+    /// <see cref="Element.Inline"/>. An inline value wins over each rule. The pass marks the elements with a new style
+    /// for the layout and the paint. Each element with the style bit gets a new style from the defaults, the matching
+    /// rules, the inline set, and the parent text. An element with no rule and no inline value gets the defaults.
+    /// </para>
+    /// <para>
+    /// The frame order is: the input pass, the style pass, the transition pass, the layout pass, and the clear pass.
+    /// The input pass changes the states, so the style pass of the same call reads the new states. The style pass
     /// writes the target of each member and starts, keeps, turns, or ends the tweens of the transitions of the rules.
     /// The first style of an element starts no tween. The transition pass then advances each running tween by
     /// <paramref name="deltaTime"/>, also the tween that the style pass started in this call. It writes the value of
@@ -554,8 +575,15 @@ public sealed class UiContext
     /// <exception cref="InvalidOperationException">
     /// A <see cref="Label"/> needs a measure and the context has no <see cref="Measurer"/>.
     /// </exception>
+    /// <exception cref="InvalidOperationException">
+    /// An event handler of the input pass calls this method. The input pass of this context runs already.
+    /// </exception>
     public void Update(float deltaTime)
     {
+        // The input pass (A5): the drain walks the queued events and changes the states before the style pass
+        // reads them.
+        DrainEvents();
+
         ReadOnlySpan<Element> roots = _roots.AsSpan();
 
         // The style pass. It restyles each element with the style bit from the cascade and clears the style bits.
@@ -638,7 +666,7 @@ public sealed class UiContext
         }
     }
 
-    /// <summary>Gets the number of events in the event ring. The next drain walks them.</summary>
+    /// <summary>Gets the number of events in the event ring. The input pass of the next <see cref="Update(float)"/> walks them.</summary>
     public int QueuedEventCount => _events.Count;
 
     /// <summary>Gets the number of entries that the event ring holds at most.</summary>
@@ -685,10 +713,10 @@ public sealed class UiContext
     /// entry hit nothing. This element also holds <see cref="PseudoStates.Hover"/> from this context.
     /// </summary>
     /// <remarks>
-    /// Routing-gate reads this member (A6). The value follows the pointer events only. An entry with a target from
-    /// the caller does not change it. The value changes only during a drain: a pointer entry with no target sets it, and
-    /// the start of a drain sets it to <see langword="null"/> when the element left the roots (Decision 10). A layout
-    /// change under a still pointer waits for the next pointer event.
+    /// <see cref="RoutingGate"/> reads this member (A6). The value follows the pointer events only. An entry with a
+    /// target from the caller does not change it. The value changes only during a drain: a pointer entry with no
+    /// target sets it, and the start of a drain sets it to <see langword="null"/> when the element left the roots
+    /// (Decision 10). A layout change under a still pointer waits for the next pointer event.
     /// </remarks>
     internal Element? PointerHit => _pointerHit;
 
@@ -696,7 +724,7 @@ public sealed class UiContext
     /// Gets the position of the last pointer entry with no target, in viewport pixels. The value is (0, 0) before the
     /// first such entry. A cursor leave gives (NaN, NaN).
     /// </summary>
-    /// <remarks>The value follows the pointer events only. Routing-gate reads it (A6).</remarks>
+    /// <remarks>The value follows the pointer events only. The tests of <c>BrutalUi.Core.Tests</c> read this member.</remarks>
     internal float2 PointerPosition => _pointerPosition;
 
     /// <summary>
@@ -711,9 +739,9 @@ public sealed class UiContext
     /// press set no state or the last button went up.
     /// </summary>
     /// <remarks>
-    /// Only the tests of <c>BrutalUi.Core.Tests</c> and routing-gate read this member. The value changes only during a drain.
+    /// Only the tests of <c>BrutalUi.Core.Tests</c> read this member. The value changes only during a drain.
     /// Limit: the ring drops its oldest entry when it is full. A dropped <c>PointerUp</c> leaves the button bit set, so
-    /// <c>Active</c> stays until the next press and release of that button. Drain the queue each frame.
+    /// <c>Active</c> stays until the next press and release of that button. Call <see cref="Update(float)"/> each frame to keep the ring below its capacity.
     /// </remarks>
     internal Element? ActiveElement => _activeElement;
 
@@ -723,8 +751,8 @@ public sealed class UiContext
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Routing-gate reads this member (A6). The owner holds <see cref="PseudoStates.Focus"/> from this context. The
-    /// state goes on the owner only, not on its ancestors.
+    /// <see cref="RoutingGate"/> reads this member (A6). The owner holds <see cref="PseudoStates.Focus"/> from this
+    /// context. The state goes on the owner only, not on its ancestors.
     /// </para>
     /// <para>
     /// The value changes at a code call (<see cref="SetFocus(Element)"/>, <see cref="ClearFocus"/>,
@@ -753,6 +781,29 @@ public sealed class UiContext
     /// </para>
     /// </remarks>
     public Element? FocusedElement => _focusOwner;
+
+    /// <summary>
+    /// Gets the routing gate: the two values that tell the game when the UI owns the pointer or the keyboard. Read it
+    /// after <see cref="Update(float)"/> and before the game handles its own input.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The property reads the current state at each read and gives a new copy (Decision 3).
+    /// <see cref="UiRoutingGate.PointerOverUi"/> comes from the hit of the last pointer or scroll entry with no target,
+    /// the element with <see cref="PseudoStates.Hover"/>. <see cref="UiRoutingGate.KeyboardFocusInUi"/> comes from
+    /// <see cref="FocusedElement"/>. The value changes during
+    /// a drain, at <see cref="SetFocus(Element)"/>, <see cref="ClearFocus"/>, <see cref="FocusNext"/>, and
+    /// <see cref="FocusPrevious"/>, and at the stale rules of the next <see cref="Update(float)"/>.
+    /// </para>
+    /// <para>
+    /// The pointer value follows the pointer events only. A layout change under a still pointer, for example a panel
+    /// that closes, keeps the value until the next pointer event or the next stale rule. A press, a release, a move,
+    /// and a scroll each hit-test again before the game reads the gate. An entry with a target from the caller
+    /// changes no value.
+    /// </para>
+    /// <para>The read allocates nothing.</para>
+    /// </remarks>
+    public UiRoutingGate RoutingGate => new(_pointerHit is not null, _focusOwner is not null);
 
     /// <summary>
     /// Moves the keyboard focus of this context to an element.
@@ -886,7 +937,8 @@ public sealed class UiContext
     public long DroppedEventCount => _events.Dropped;
 
     /// <summary>
-    /// Adds a pointer event at the end of the event ring. The next drain sends it along the path of its target.
+    /// Adds a pointer event at the end of the event ring. The input pass of the next <see cref="Update(float)"/> sends
+    /// it along the path of its target.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -922,7 +974,8 @@ public sealed class UiContext
     }
 
     /// <summary>
-    /// Adds a scroll event at the end of the event ring. The next drain sends it along the path of its target.
+    /// Adds a scroll event at the end of the event ring. The input pass of the next <see cref="Update(float)"/> sends
+    /// it along the path of its target.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -945,7 +998,8 @@ public sealed class UiContext
     }
 
     /// <summary>
-    /// Adds a key event at the end of the event ring. The next drain sends it along the path of its target.
+    /// Adds a key event at the end of the event ring. The input pass of the next <see cref="Update(float)"/> sends it
+    /// along the path of its target.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -974,7 +1028,8 @@ public sealed class UiContext
     }
 
     /// <summary>
-    /// Adds a char event at the end of the event ring. The next drain sends it along the path of its target.
+    /// Adds a char event at the end of the event ring. The input pass of the next <see cref="Update(float)"/> sends it
+    /// along the path of its target.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -1071,8 +1126,7 @@ public sealed class UiContext
     /// </summary>
     /// <remarks>
     /// <para>
-    /// A5: routing-gate calls this method from <see cref="Update(float)"/>. In this feature,
-    /// <see cref="Update(float)"/> does not call it, and the tests call it directly.
+    /// A5: <see cref="Update(float)"/> calls this method first. The tests also call it directly.
     /// </para>
     /// <para>
     /// The method reads the count one time at the start (Decision 6). It pops each entry into a local before the walk,
@@ -1158,13 +1212,13 @@ public sealed class UiContext
     /// </para>
     /// <para>
     /// Limit of the ring: the ring drops its oldest entry when it is full. A dropped <c>PointerUp</c> leaves the button
-    /// bit set, so <see cref="PseudoStates.Active"/> stays until the next press and release of that button. Drain the
-    /// queue each frame to keep the ring below its capacity. <see cref="DroppedEventCount"/> shows a drop.
+    /// bit set, so <see cref="PseudoStates.Active"/> stays until the next press and release of that button. Call
+    /// <see cref="Update(float)"/> each frame to keep the ring below its capacity. <see cref="DroppedEventCount"/> shows a drop.
     /// </para>
     /// <para>
     /// Limit of the stale rules: the check of one context can clear a state that another context set. This is true
     /// for <see cref="PseudoStates.Hover"/>, <see cref="PseudoStates.Active"/>, and <see cref="PseudoStates.Focus"/>.
-    /// Drain the old context after you remove an element and before you add it to another context.
+    /// Call <see cref="Update(float)"/> on the old context after you remove an element and before you add it to another context.
     /// </para>
     /// <para>
     /// A call from a handler of the drain throws. The flag is cleared in a <c>finally</c> block, so the context stays
@@ -1310,8 +1364,8 @@ public sealed class UiContext
     /// <para>
     /// Limit: each context keeps its own stored elements, and the states are bits on the element. An element that is
     /// not in the roots of this context can be in the roots of another context, and that context can have set its
-    /// state. This method then clears the state that the other context set. Drain the old context after you remove an
-    /// element and before you add it to another context.
+    /// state. This method then clears the state that the other context set. Call <see cref="Update(float)"/> on the old
+    /// context after you remove an element and before you add it to another context.
     /// </para>
     /// </remarks>
     private void DropStalePointerState()
@@ -1351,8 +1405,8 @@ public sealed class UiContext
     /// </para>
     /// <para>
     /// Limit: the state is a bit on the element. When the owner is in the roots of another context, that context can
-    /// have set the bit too. This method then clears it. Drain the old context after you remove an element and before
-    /// you add it to another context.
+    /// have set the bit too. This method then clears it. Call <see cref="Update(float)"/> on the old context after you
+    /// remove an element and before you add it to another context.
     /// </para>
     /// <para>
     /// Limit: the method runs at the start of the drain only. A handler that disables the owner or clears

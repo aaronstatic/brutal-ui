@@ -6,6 +6,7 @@ using Brutal.ImGuiApi.Backends;
 using Brutal.Numerics;
 using Brutal.VulkanApi;
 using BrutalUi.Core;
+using BrutalUi.Glfw;
 using BrutalUi.ImGui;
 
 namespace HelloPanel;
@@ -17,13 +18,21 @@ namespace HelloPanel;
 /// </summary>
 /// <remarks>
 /// <para>
-/// After a run, the sample writes three lines to standard output:
+/// After a run, the sample writes four lines to standard output:
 /// <c>HelloPanel: &lt;count&gt; frames rendered.</c>,
-/// <c>HelloPanel: last frame: draw commands &lt;C&gt;, vertices &lt;V&gt;.</c>, and
-/// <c>HelloPanel: bytes after warm-up: Update and Draw &lt;B&gt;, frame &lt;F&gt;, in &lt;M&gt; frames.</c> The
-/// counts of line 2 come from the ImGui background draw list of the last frame. The exit code is 0 for success, 1 for
-/// a runtime failure or for an allocation of <c>Update</c> and <c>Draw</c> after warm-up, and 2 for a usage error.
-/// The command line contract is in <c>docs/features/dev-ops/solution-skeleton/context.md</c>.
+/// <c>HelloPanel: last frame: draw commands &lt;C&gt;, vertices &lt;V&gt;.</c>,
+/// <c>HelloPanel: bytes after warm-up: Update and Draw &lt;B&gt;, frame &lt;F&gt;, in &lt;M&gt; frames.</c>, and
+/// <c>HelloPanel: gate: pointer over UI in &lt;P&gt; frames, keyboard focus in UI in &lt;K&gt; frames, of
+/// &lt;M&gt; measured frames.</c> The counts of line 2 come from the ImGui background draw list of the last frame.
+/// The exit code is 0 for success, 1 for a runtime failure, for an allocation of the UI region after warm-up, or for
+/// a smoke run in which the synthetic input did not reach the UI or the gate read the pointer over the UI in each
+/// measured frame, and 2 for a usage error. The command line contract
+/// is in <c>docs/features/dev-ops/solution-skeleton/context.md</c>.
+/// </para>
+/// <para>
+/// The sample reads the real input of the window through <see cref="GlfwUiInput"/>. The screen reacts to the pointer
+/// and to Tab. A run with <c>--frames</c> (the smoke run) also pushes a synthetic pointer move and a synthetic Tab in
+/// each frame, so the run proves with no user that the input reaches the UI.
 /// </para>
 /// <para>
 /// The sample loads <c>HelloScreen.css</c> from the folder of its assembly before it opens the window. A sheet with
@@ -65,6 +74,12 @@ internal static class Program
     /// </summary>
     private const int WarmUpFrames = 3;
 
+    /// <summary>
+    /// The distance in pixels to the left of and above the panel of the synthetic move in an odd frame of the smoke
+    /// run. The point is inside the root padding, so the move hits no element.
+    /// </summary>
+    private const float SmokeOffPanelOffset = 8f;
+
     /// <summary>The result of a run of the sample.</summary>
     /// <param name="FramesRendered">The number of frames that the sample rendered.</param>
     /// <param name="DrawCommandCount">
@@ -84,13 +99,23 @@ internal static class Program
     /// <param name="MeasuredFrames">
     /// The number of measured frames: the rendered frames after the <see cref="WarmUpFrames"/> warm-up frames.
     /// </param>
+    /// <param name="PointerOverUiFrames">
+    /// The number of measured frames with <see cref="UiRoutingGate.PointerOverUi"/> <see langword="true"/> after the
+    /// draw.
+    /// </param>
+    /// <param name="KeyboardFocusInUiFrames">
+    /// The number of measured frames with <see cref="UiRoutingGate.KeyboardFocusInUi"/> <see langword="true"/> after
+    /// the draw.
+    /// </param>
     private readonly record struct RunResult(
         int FramesRendered,
         int DrawCommandCount,
         int VertexCount,
         long UiAllocatedBytes,
         long FrameAllocatedBytes,
-        int MeasuredFrames);
+        int MeasuredFrames,
+        int PointerOverUiFrames,
+        int KeyboardFocusInUiFrames);
 
     private static int Main(string[] args)
     {
@@ -170,15 +195,28 @@ internal static class Program
 
     /// <summary>
     /// Loads the sheet, starts GLFW, runs the sample, and ends GLFW. After the run, writes the frame count (line 1),
-    /// the draw command count and the vertex count of the last frame (line 2), and the allocated bytes after warm-up
-    /// (line 3) to standard output. When the UI region allocates after warm-up, writes the gate line to standard error
-    /// and returns <see cref="ExitFailure"/>.
+    /// the draw command count and the vertex count of the last frame (line 2), the allocated bytes after warm-up
+    /// (line 3), and the gate counts of the measured frames (line 4) to standard output. When the UI region allocates
+    /// after warm-up, writes the allocation line to standard error and returns <see cref="ExitFailure"/>. When the
+    /// synthetic input of a smoke run did not reach the UI, or when the gate read the pointer over the UI in each
+    /// measured frame, writes the input line to standard error and returns <see cref="ExitFailure"/>.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// The sheet loads before the first GLFW call, so a bad sheet fails with no GPU and no display. A parse error
     /// throws <see cref="InvalidOperationException"/>. The <c>catch</c> of <see cref="Main"/> writes the exception to
     /// standard error, with one <c>HelloScreen.css(line,column): kind: text</c> line for each error, and returns
     /// <see cref="ExitFailure"/>.
+    /// </para>
+    /// <para>
+    /// The input check runs after the allocation check. It runs only for a run with a frame limit and 2 measured
+    /// frames or more. Then the synthetic input puts the pointer over the panel in each even frame and gives the
+    /// focus to the panel. It puts the pointer off the panel in each odd frame. A count of 0 for the pointer or for the
+    /// focus means that the input did not reach the UI. A pointer count equal to the measured count means that the
+    /// gate read the pointer over the UI in the off-panel frames too, so the off-panel frames did not reach the game.
+    /// Both cases write a line to standard error and return <see cref="ExitFailure"/>. A run with no frame limit
+    /// pushes no synthetic input, so the check does not run.
+    /// </para>
     /// </remarks>
     /// <param name="frameLimit">The number of frames to render, or <see cref="NoFrameLimit"/>.</param>
     /// <returns>The exit code.</returns>
@@ -208,6 +246,10 @@ internal static class Program
         Console.WriteLine(
             $"HelloPanel: bytes after warm-up: Update and Draw {result.UiAllocatedBytes}, " +
             $"frame {result.FrameAllocatedBytes}, in {result.MeasuredFrames} frames.");
+        Console.WriteLine(
+            $"HelloPanel: gate: pointer over UI in {result.PointerOverUiFrames} frames, " +
+            $"keyboard focus in UI in {result.KeyboardFocusInUiFrames} frames, " +
+            $"of {result.MeasuredFrames} measured frames.");
 
         // The gate reads the UI sum only. The frame sum also holds the managed bytes of the backends.
         if (result.UiAllocatedBytes > 0)
@@ -216,6 +258,27 @@ internal static class Program
                 $"HelloPanel: Update and Draw allocated {result.UiAllocatedBytes} bytes after warm-up. " +
                 "The limit is 0 bytes.");
             return ExitFailure;
+        }
+
+        // The smoke run pushes a synthetic move and a synthetic Tab in each frame (Decision 8). With 2 measured frames
+        // or more, one measured frame is even and puts the pointer over the panel, and one is odd and puts the pointer
+        // off the panel. A count of 0 means that the input pass did no work. A count equal to the measured count means
+        // that the gate read the pointer over the UI in the off-panel frames too, for example with a pickable root.
+        if (frameLimit != NoFrameLimit && result.MeasuredFrames >= 2)
+        {
+            if (result.PointerOverUiFrames == 0 || result.KeyboardFocusInUiFrames == 0)
+            {
+                Console.Error.WriteLine("HelloPanel: the synthetic input did not reach the UI.");
+                return ExitFailure;
+            }
+
+            if (result.PointerOverUiFrames == result.MeasuredFrames)
+            {
+                Console.Error.WriteLine(
+                    "HelloPanel: the pointer read over the UI in each measured frame. " +
+                    "The off-panel frames did not reach the game.");
+                return ExitFailure;
+            }
         }
 
         return ExitSuccess;
@@ -279,12 +342,20 @@ internal static class Program
     }
 
     /// <summary>
-    /// Creates the brutal-ui renderer, the UI context, and the two ImGui backends. Then registers the checker texture,
-    /// adds the sheet and the screen, runs the frame loop, removes the texture, and disposes the backends.
+    /// Creates the brutal-ui renderer, the UI context, the two ImGui backends, and the input adapter. Then registers
+    /// the checker texture, adds the sheet and the screen, runs the frame loop, removes the texture, and disposes the
+    /// adapter and the backends.
     /// </summary>
     /// <remarks>
-    /// The teardown waits for the device, then removes the texture, then disposes the backends. Thus no frame in flight
-    /// uses the descriptor set of the texture when the backend frees it.
+    /// <para>
+    /// The teardown waits for the device, then removes the texture, then disposes the adapter and the backends. Thus
+    /// no frame in flight uses the descriptor set of the texture when the backend frees it.
+    /// </para>
+    /// <para>
+    /// The creation order of the <see cref="GlfwUiInput"/> remarks: the window, then <see cref="GlfwBackend"/>, then
+    /// the adapter. Thus ImGui gets each window event first. The adapter comes after both backends, so its
+    /// <c>using</c> declaration disposes it first, before <see cref="GlfwBackend"/> and before the window.
+    /// </para>
     /// </remarks>
     /// <param name="window">The window.</param>
     /// <param name="vulkan">The Vulkan context of the window.</param>
@@ -328,6 +399,10 @@ internal static class Program
             DescriptorPoolSize = ImGuiDescriptorPoolSize,
         });
 
+        // The adapter comes after GlfwBackend, so ImGui gets each window event first. The using declaration
+        // disposes the adapter first, while the window is alive.
+        using GlfwUiInput input = new(new GlfwUiInput.CreateInfo { Window = window, Context = ui });
+
         TextureHandle handle = default;
         try
         {
@@ -336,9 +411,10 @@ internal static class Program
                 vulkanBackend, checker.Sampler, checker.View, VkImageLayout.ShaderReadOnlyOptimal, checker.Size);
             // The sheet gives each size and each color of the screen. The tree sets only the classes.
             ui.AddSheet(sheet);
-            ui.AddRoot(HelloScreen.Build(handle));
+            ui.AddRoot(HelloScreen.Build(handle, out Element panel, out Label gateLabel));
 
-            return RunFrames(window, vulkan, glfwBackend, vulkanBackend, ui, uiRenderer, frameLimit);
+            return RunFrames(
+                window, vulkan, glfwBackend, vulkanBackend, input, ui, uiRenderer, panel, gateLabel, frameLimit);
         }
         finally
         {
@@ -359,10 +435,32 @@ internal static class Program
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The frame order: (1) poll the events, wait while the window is minimized, and check the close flag. (2) Start
-    /// the frame of the GLFW backend, the Vulkan backend, and ImGui. (3) The UI region: set the viewport size from
-    /// <c>io.DisplaySize</c>, update the tree, and draw the tree. (4) <c>ImGui.Render</c>, then read the draw command
-    /// count and the vertex count of the background draw list. (5) Record and present the frame. (6) Count the frame.
+    /// The frame order: (1) set <see cref="GlfwUiInput.KeyboardEnabled"/> from <c>io.WantCaptureKeyboard</c>, poll
+    /// the events, wait while the window is minimized, and check the close flag. The poll gives each window event to
+    /// ImGui first and then to the adapter, and the adapter pushes it into the ring of the context. (2) Start the frame
+    /// of the GLFW backend, the Vulkan backend, and ImGui. (3) The UI region: push the smoke input (a run with a frame
+    /// limit only), set the viewport size from <c>io.DisplaySize</c>, update the tree, draw the tree, read
+    /// <see cref="UiContext.RoutingGate"/>, and set the text of the gate label. The input pass of
+    /// <see cref="UiContext.Update(float)"/> drains the ring before the style pass, so the hover and the focus of this
+    /// frame show in this frame. (4) <c>ImGui.Render</c>, then read the draw command count and the vertex count of the
+    /// background draw list. (5) Record and present the frame. (6) Count the frame and the gate values.
+    /// </para>
+    /// <para>
+    /// The <see cref="GlfwUiInput.KeyboardEnabled"/> line comes before the poll. The ImGui backend and the adapter
+    /// both get each key event, so the adapter pushes no key while ImGui wants the keyboard. The pointer has no switch.
+    /// A game with an ImGui window over the game uses <c>gate.PointerOverUi || io.WantCaptureMouse</c> (Decision 5).
+    /// </para>
+    /// <para>
+    /// The smoke input: a run with a frame limit pushes, at the start of the UI region of each frame, one pointer move,
+    /// one Tab key down, and one Tab key up, with no target. The move goes to the center of the panel in an even frame
+    /// and outside the panel in an odd frame. A run with no frame limit pushes no synthetic event and uses the real
+    /// input of the window only.
+    /// </para>
+    /// <para>
+    /// The gate counts: after the draw, the loop reads the gate. A measured frame adds 1 to the pointer count when
+    /// <see cref="UiRoutingGate.PointerOverUi"/> is <see langword="true"/>, and 1 to the focus count when
+    /// <see cref="UiRoutingGate.KeyboardFocusInUi"/> is <see langword="true"/>. The gate read and the label update are
+    /// inside the UI region, so the allocation gate measures them.
     /// </para>
     /// <para>
     /// The UI region runs between <c>ImGui.NewFrame</c> and <c>ImGui.Render</c>, because the renderer draws on the
@@ -387,28 +485,35 @@ internal static class Program
     /// toward the frame limit, and it is not measured.
     /// </para>
     /// <para>
-    /// <see cref="Run"/> writes the frame count as line 1, the two counts of the last frame as line 2, and the two
-    /// sums and the measured frame count as line 3.
+    /// <see cref="Run"/> writes the frame count as line 1, the two counts of the last frame as line 2, the two sums
+    /// and the measured frame count as line 3, and the two gate counts and the measured frame count as line 4.
     /// </para>
     /// </remarks>
     /// <param name="window">The window.</param>
     /// <param name="vulkan">The Vulkan context of the window.</param>
     /// <param name="glfwBackend">The ImGui platform backend.</param>
     /// <param name="vulkanBackend">The ImGui renderer backend.</param>
+    /// <param name="input">The input adapter of the window. It pushes the real events of the window into
+    /// <paramref name="ui"/>.</param>
     /// <param name="ui">The UI context that holds the screen.</param>
     /// <param name="uiRenderer">The brutal-ui renderer. It is also the measurer of <paramref name="ui"/>.</param>
+    /// <param name="panel">The panel of the screen. The smoke input aims its pointer move at the panel.</param>
+    /// <param name="gateLabel">The gate label of the screen. The loop sets its text after each draw.</param>
     /// <param name="frameLimit">The number of frames to render, or <see cref="NoFrameLimit"/>.</param>
     /// <returns>
-    /// The result of the run: the frame count, the draw list counts of the last frame, and the allocation sums of the
-    /// measured frames.
+    /// The result of the run: the frame count, the draw list counts of the last frame, the allocation sums of the
+    /// measured frames, and the gate counts of the measured frames.
     /// </returns>
     private static RunResult RunFrames(
         GlfwWindow window,
         VulkanContext vulkan,
         GlfwBackend glfwBackend,
         VulkanBackend vulkanBackend,
+        GlfwUiInput input,
         UiContext ui,
         ImGuiRenderer uiRenderer,
+        Element panel,
+        Label gateLabel,
         int frameLimit)
     {
         ImGuiIOPtr io = ImGui.GetIO();
@@ -420,11 +525,16 @@ internal static class Program
         long uiAllocatedBytes = 0;
         long frameAllocatedBytes = 0;
         int measuredFrames = 0;
+        int pointerOverUiFrames = 0;
+        int keyboardFocusInUiFrames = 0;
 
         // The counter value after the last release of the allocation context, or -1 before the first release.
         long releasedBytes = -1;
         while (frameLimit == NoFrameLimit || framesRendered < frameLimit)
         {
+            // ImGui and the adapter both get each key event. The adapter pushes no key while ImGui wants the keyboard.
+            // The flag of the last ImGui frame is the newest value before the poll.
+            input.KeyboardEnabled = !io.WantCaptureKeyboard;
             Glfw.PollEvents();
 
             // A minimized window can have a framebuffer of size zero, and the swapchain then fails.
@@ -459,10 +569,27 @@ internal static class Program
 
             // The UI region. Put no other call inside it.
             long uiStartBytes = GC.GetAllocatedBytesForCurrentThread();
+
+            // The smoke input (Decision 8). The events are structs, so the pushes allocate nothing.
+            if (frameLimit != NoFrameLimit)
+            {
+                PushSmokeInput(ui, panel, framesRendered);
+            }
+
             float2 displaySize = io.DisplaySize;
             ui.ViewportSize = new float2(MathF.Max(displaySize.X, 0f), MathF.Max(displaySize.Y, 0f));
+
+            // The input pass of Update drains the events of the poll and of the smoke input first.
             ui.Update(io.DeltaTime);
             ui.Draw(uiRenderer);
+
+            // The game handles the world input here, after Update and with the gate of this frame. With an ImGui
+            // window over the game, the game uses gate.PointerOverUi || io.WantCaptureMouse for the pointer
+            // (Decision 5). The keyboard side is the KeyboardEnabled line before the poll.
+            UiRoutingGate gate = ui.RoutingGate;
+
+            // The label shows the gate of this frame in the next frame. Each gate text fits the label buffer.
+            gateLabel.SetText(HelloScreen.GateText(gate));
             long uiEndBytes = GC.GetAllocatedBytesForCurrentThread();
 
             ImGui.Render();
@@ -484,10 +611,89 @@ internal static class Program
                 uiAllocatedBytes += uiEndBytes - uiStartBytes;
                 frameAllocatedBytes += frameEndBytes - frameStartBytes;
                 measuredFrames++;
+                if (gate.PointerOverUi)
+                {
+                    pointerOverUiFrames++;
+                }
+
+                if (gate.KeyboardFocusInUi)
+                {
+                    keyboardFocusInUiFrames++;
+                }
             }
         }
 
         return new RunResult(
-            framesRendered, drawCommandCount, vertexCount, uiAllocatedBytes, frameAllocatedBytes, measuredFrames);
+            framesRendered,
+            drawCommandCount,
+            vertexCount,
+            uiAllocatedBytes,
+            frameAllocatedBytes,
+            measuredFrames,
+            pointerOverUiFrames,
+            keyboardFocusInUiFrames);
+    }
+
+    /// <summary>
+    /// Pushes the synthetic input of one frame of the smoke run: one pointer move, one Tab key down, and one Tab key
+    /// up, each with no target.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The move goes to the center of the panel in an even frame, and to a point 8 pixels above and to the left of the
+    /// panel in an odd frame. That point is inside the root padding. The root is not pickable, so the move hits no
+    /// element. The position comes from the layout of the last <see cref="UiContext.Update(float)"/>, as the hit test
+    /// of the input pass. Before the first layout, the panel rectangle is 0, and the move hits no element.
+    /// </para>
+    /// <para>
+    /// The Tab down moves the focus to the next focusable element. The panel is the only focusable element, so the
+    /// focus stays on the panel. The Tab up does not move the focus. The method uses the public
+    /// <see cref="UiContext.PushEvent(in PointerEvent)"/> and <see cref="UiContext.PushEvent(in KeyEvent)"/>,
+    /// because the push methods of <see cref="GlfwUiInput"/> are internal. The events are structs, so the method
+    /// allocates nothing.
+    /// </para>
+    /// </remarks>
+    /// <param name="ui">The UI context that gets the events.</param>
+    /// <param name="panel">The panel of the screen.</param>
+    /// <param name="frameIndex">The index of the frame: the number of frames that the loop rendered before it.</param>
+    private static void PushSmokeInput(UiContext ui, Element panel, int frameIndex)
+    {
+        // The viewport rectangle of the panel: the position of the panel plus the position of the root.
+        float4 panelRect = panel.Layout.Rect;
+        float2 origin = new(panelRect.X, panelRect.Y);
+        for (Element? ancestor = panel.Parent; ancestor is not null; ancestor = ancestor.Parent)
+        {
+            float4 ancestorRect = ancestor.Layout.Rect;
+            origin = new float2(origin.X + ancestorRect.X, origin.Y + ancestorRect.Y);
+        }
+
+        float2 position = frameIndex % 2 == 0
+            ? new float2(origin.X + (panelRect.Z * 0.5f), origin.Y + (panelRect.W * 0.5f))
+            : new float2(origin.X - SmokeOffPanelOffset, origin.Y - SmokeOffPanelOffset);
+
+        double time = Glfw.Time;
+        ui.PushEvent(new PointerEvent
+        {
+            Header = new UiEventHeader(UiEventType.PointerMove, time, null),
+            Position = position,
+            Button = PointerButton.Left,
+            Modifiers = UiModifiers.None,
+        });
+        ui.PushEvent(new KeyEvent
+        {
+            Header = new UiEventHeader(UiEventType.KeyDown, time, null),
+            Key = (int)GlfwKey.Tab,
+            ScanCode = 0,
+            Modifiers = UiModifiers.None,
+            IsRepeat = false,
+        });
+        ui.PushEvent(new KeyEvent
+        {
+            Header = new UiEventHeader(UiEventType.KeyUp, time, null),
+            Key = (int)GlfwKey.Tab,
+            ScanCode = 0,
+            Modifiers = UiModifiers.None,
+            IsRepeat = false,
+        });
     }
 }

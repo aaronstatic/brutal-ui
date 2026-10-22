@@ -9,6 +9,8 @@
 :root {
     --panel-fill: #1e222c;
     --panel-border: #608cdc;
+    --panel-hover: #283044;
+    --panel-focus: #f0c040;
     --text: #ffffff;
 }
 
@@ -27,6 +29,16 @@
     border-radius: 8px;
     background-color: var(--panel-fill);
     border-color: var(--panel-border);
+}
+
+/* The pointer over the panel changes the fill. The rule sets only the fill, so it shows with the focus rule. */
+.hello-panel:hover {
+    background-color: var(--panel-hover);
+}
+
+/* The focus owner changes the border color. Tab gives the focus to the panel, the only focusable element. */
+.hello-panel:focus {
+    border-color: var(--panel-focus);
 }
 
 /* The label keeps font 0, the default font of the renderer. */

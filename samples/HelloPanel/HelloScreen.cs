@@ -7,8 +7,8 @@ using BrutalUi.Markup;
 namespace HelloPanel;
 
 /// <summary>
-/// Builds the static screen of the sample: a root, a panel, one label, and one image. Also fills the pixels of the
-/// checker texture of the image.
+/// Builds the screen of the sample: a root, a panel, two labels, and one image. Also fills the pixels of the checker
+/// texture of the image, and gives the text of the gate label.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -16,15 +16,30 @@ namespace HelloPanel;
 /// column with a fill, a border, and round corners. The panel takes the size of its content.
 /// </para>
 /// <para>
-/// The label uses font 0, the default font of the renderer. The sample loads no font, so font 0 is the ImGui default
-/// font. The panel and the label use the font atlas texture, so they share one ImGui draw command. The image binds the
-/// checker texture, so it opens a second draw command.
+/// The screen reacts to the pointer and to Tab. The panel is the only focusable element, so Tab gives the focus to
+/// the panel. The two labels and the image are not pickable, so each point inside the panel hits the panel. The root
+/// is not pickable (the layout-root rule): a point outside the panel hits no element, and the game gets the pointer.
+/// </para>
+/// <para>
+/// Two state rules of the sheet show the states. The <c>.hello-panel:hover</c> rule changes the fill of the panel,
+/// and the <c>.hello-panel:focus</c> rule changes its border color. The two rules set different members, so the
+/// hover and the focus show at the same time.
+/// </para>
+/// <para>
+/// The second label is the gate label. It shows the two values of <see cref="UiContext.RoutingGate"/>. The frame
+/// loop sets its text with <see cref="GateText"/> after each draw. The label starts with the longest gate text, so its
+/// buffer never grows after the first frame.
+/// </para>
+/// <para>
+/// The two labels use font 0, the default font of the renderer. The sample loads no font, so font 0 is the ImGui
+/// default font. The panel and the two labels use the font atlas texture, so they share one ImGui draw command. The
+/// gate label comes before the image. The image binds the checker texture, so it opens a second draw command.
 /// </para>
 /// <para>
 /// The sizes and the colors of the screen live in <c>HelloScreen.css</c>. <see cref="LoadSheet"/> parses the file,
 /// and <see cref="Build"/> sets the classes of the sheet. The tree holds no inline value. The rules
-/// <c>.hello-panel &gt; Label</c> and <c>.hello-panel &gt; Image</c> are child rules, so the label and the image must
-/// stay direct children of the panel.
+/// <c>.hello-panel &gt; Label</c> and <c>.hello-panel &gt; Image</c> are child rules, so the labels and the image
+/// must stay direct children of the panel.
 /// </para>
 /// <para>
 /// Copy this file and <c>HelloScreen.css</c> to start a screen of your game. Change a size or a color in the sheet,
@@ -130,20 +145,35 @@ internal static class HelloScreen
 
     /// <summary>Builds the tree of the screen.</summary>
     /// <remarks>
+    /// <para>
     /// The root has an auto size, so it takes the viewport size of its <see cref="UiContext"/>. Add the result to a
     /// context with <see cref="UiContext.AddRoot(Element)"/>, and add the sheet of <see cref="LoadSheet"/> to the same
     /// context. The tree sets the classes of the sheet and no inline value. The context must have a measurer, because
-    /// the tree holds a <see cref="Label"/>. The image takes the size of <paramref name="checker"/>, one pixel for each
-    /// texel.
+    /// the tree holds two <see cref="Label"/> elements. The image takes the size of <paramref name="checker"/>, one
+    /// pixel for each texel.
+    /// </para>
+    /// <para>
+    /// The root is not pickable, and the panel is focusable. The two labels and the image are not pickable, so a
+    /// point inside the panel hits the panel. The gate label starts with the longest text of <see cref="GateText"/>.
+    /// </para>
     /// </remarks>
     /// <param name="checker">
     /// The texture of the image. The none handle is valid: the image then takes no space and draws nothing.
     /// </param>
+    /// <param name="panel">
+    /// The panel. The frame loop of the sample reads its rectangle to aim the synthetic pointer move of the smoke run.
+    /// </param>
+    /// <param name="gateLabel">The gate label. Set its text with <see cref="GateText"/>.</param>
     /// <returns>The root element of the screen.</returns>
-    public static Element Build(TextureHandle checker)
+    public static Element Build(TextureHandle checker, out Element panel, out Label gateLabel)
     {
         // The rule .hello-panel > Label gives the color and the size. The label keeps font 0, the default font.
-        Label greeting = new(new Label.CreateInfo { Text = GreetingText });
+        // A label is not pickable, so the pointer hits the panel behind it.
+        Label greeting = new(new Label.CreateInfo { Text = GreetingText }) { IsPickable = false };
+
+        // The gate label starts with the longest gate text, so its buffer holds each gate text with no growth.
+        gateLabel = new Label(new Label.CreateInfo()) { IsPickable = false };
+        gateLabel.SetText(PointerYesFocusYes);
 
         // The rule .hello-panel > Image gives the top margin. The tint is a value of the image, not of the style.
         Image checkerImage = new(new Image.CreateInfo
@@ -151,19 +181,58 @@ internal static class HelloScreen
             Texture = checker,
             Tint = ImageTint,
             ScaleMode = ImageScaleMode.StretchToFill,
-        });
+        })
+        {
+            IsPickable = false,
+        };
 
-        // The two child rules read the parent, so the label and the image are direct children of the panel.
-        Element panel = new();
+        // The child rules read the parent, so the labels and the image are direct children of the panel.
+        // The gate label comes before the image, so the panel and the two labels share one draw command.
+        // The panel is the only focusable element, so Tab gives the focus to the panel.
+        panel = new Element { IsFocusable = true };
         panel.Classes.Add(PanelClass);
         panel.Children.Add(greeting);
+        panel.Children.Add(gateLabel);
         panel.Children.Add(checkerImage);
 
         // The root draws nothing. The rule .hello-root stops the stretch, so the panel keeps the size of its content.
-        Element root = new();
+        // The root covers the viewport. It is not pickable (the layout-root rule), so a point outside the panel hits
+        // no element, and the gate gives the pointer to the game.
+        Element root = new() { IsPickable = false };
         root.Classes.Add(RootClass);
         root.Children.Add(panel);
 
         return root;
     }
+
+    /// <summary>Gives the text of the gate label for a value of the routing gate.</summary>
+    /// <remarks>
+    /// The method returns one of four UTF-8 literals. The literals live in the data of the assembly, so the call
+    /// allocates nothing. Pass the result to <see cref="Label.SetText(ReadOnlySpan{byte})"/>.
+    /// </remarks>
+    /// <param name="gate">The value of <see cref="UiContext.RoutingGate"/>.</param>
+    /// <returns>The UTF-8 text that names the two values of <paramref name="gate"/>.</returns>
+    public static ReadOnlySpan<byte> GateText(UiRoutingGate gate)
+    {
+        if (gate.PointerOverUi)
+        {
+            return gate.KeyboardFocusInUi ? PointerYesFocusYes : PointerYesFocusNo;
+        }
+
+        return gate.KeyboardFocusInUi ? PointerNoFocusYes : PointerNoFocusNo;
+    }
+
+    /// <summary>The gate text when the pointer is not over the UI and the UI has no keyboard focus.</summary>
+    private static ReadOnlySpan<byte> PointerNoFocusNo => "Pointer over UI: no. Keyboard focus in UI: no."u8;
+
+    /// <summary>The gate text when the pointer is not over the UI and the UI has the keyboard focus.</summary>
+    private static ReadOnlySpan<byte> PointerNoFocusYes => "Pointer over UI: no. Keyboard focus in UI: yes."u8;
+
+    /// <summary>The gate text when the pointer is over the UI and the UI has no keyboard focus.</summary>
+    private static ReadOnlySpan<byte> PointerYesFocusNo => "Pointer over UI: yes. Keyboard focus in UI: no."u8;
+
+    /// <summary>
+    /// The gate text when the pointer is over the UI and the UI has the keyboard focus. This is the longest gate text.
+    /// </summary>
+    private static ReadOnlySpan<byte> PointerYesFocusYes => "Pointer over UI: yes. Keyboard focus in UI: yes."u8;
 }

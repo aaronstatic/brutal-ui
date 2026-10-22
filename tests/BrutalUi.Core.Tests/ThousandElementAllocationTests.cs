@@ -44,8 +44,17 @@ namespace BrutalUi.Core.Tests;
 /// <c>TheTransitionStepRunsTweens</c> shows that the style step of that gate runs the tweens.
 /// </para>
 /// <para>
-/// The class holds 12 tests: 3 allocation gates (update, draw, and update with running transitions), the probe, and
-/// 8 tests that check the scene and the measured body.
+/// The queue gate <c>UpdateDrainsAFullQueueWithNoAllocation</c> adds the input pass to the measure. Each step pushes
+/// a block of 16 events 16 times (<c>EventQueueCapacity / 16</c>), so the ring of 256 entries is full and drops
+/// nothing. The block holds a move at grid slot 0, a move at stat row 0, a scroll, a click, a key A down and up, a
+/// char, a Tab, a Shift+Tab, a move, a press, and a release over nothing, a second Tab, a move at (NaN, NaN), and a
+/// last move at the slot. Each event has a null target. Each grid slot accepts the focus and holds the 7 counter
+/// delegates. Then the step makes the rotating change and calls <c>Update</c>, which drains the full ring. The step
+/// reads <see cref="UiContext.RoutingGate"/> last. <c>TheQueueStepDoesRealWork</c> shows that the handlers run.
+/// </para>
+/// <para>
+/// The class holds 14 tests: 4 allocation gates (update, draw, update with running transitions, and update with a
+/// full queue), the probe, and 9 tests that check the scene and the measured body.
 /// </para>
 /// </remarks>
 public sealed class ThousandElementAllocationTests
@@ -240,6 +249,210 @@ public sealed class ThousandElementAllocationTests
         return scene;
     }
 
+    /// <summary>Counts the calls of the 7 handler kinds. Its methods are the targets of the delegates.</summary>
+    private sealed class QueueCounter
+    {
+        public int Moves;
+        public int Downs;
+        public int Ups;
+        public int Scrolls;
+        public int KeyDowns;
+        public int KeyUps;
+        public int Chars;
+
+        public void CountMove(ref PointerEvent e)
+        {
+            Moves++;
+        }
+
+        public void CountDown(ref PointerEvent e)
+        {
+            Downs++;
+        }
+
+        public void CountUp(ref PointerEvent e)
+        {
+            Ups++;
+        }
+
+        public void CountScroll(ref ScrollEvent e)
+        {
+            Scrolls++;
+        }
+
+        public void CountKeyDown(ref KeyEvent e)
+        {
+            KeyDowns++;
+        }
+
+        public void CountKeyUp(ref KeyEvent e)
+        {
+            KeyUps++;
+        }
+
+        public void CountChar(ref CharEvent e)
+        {
+            Chars++;
+        }
+    }
+
+    /// <summary>
+    /// The warm scene and the events of the queue case. The test builds all of it before the measure. Each event has a
+    /// null target, so the input pass hit-tests the pointer events and sends the key events to the focus owner.
+    /// </summary>
+    private sealed class QueueScene
+    {
+        public required Scene Scene { get; init; }
+
+        public required QueueCounter Counter { get; init; }
+
+        /// <summary>The center of grid slot 0 in viewport pixels.</summary>
+        public required float2 SlotPoint;
+
+        /// <summary>The center of stat row 0 in viewport pixels.</summary>
+        public required float2 RowPoint;
+
+        public required PointerEvent MoveSlot;
+        public required PointerEvent MoveRow;
+        public required ScrollEvent ScrollSlot;
+        public required PointerEvent DownSlot;
+        public required PointerEvent UpSlot;
+        public required KeyEvent LetterDown;
+        public required KeyEvent LetterUp;
+        public required CharEvent Letter;
+        public required KeyEvent Tab;
+        public required KeyEvent ShiftTab;
+        public required PointerEvent MoveOutside;
+        public required PointerEvent DownOutside;
+        public required PointerEvent UpOutside;
+        public required PointerEvent MoveNaN;
+
+        /// <summary>The sum of the pointer gate reads. It keeps the compiler from removing the read.</summary>
+        public int PointerSum;
+
+        /// <summary>The sum of the keyboard gate reads. It keeps the compiler from removing the read.</summary>
+        public int KeyboardSum;
+    }
+
+    /// <summary>The number of events in one block of the queue case.</summary>
+    private const int BlockSize = 16;
+
+    private const int LetterA = 65;
+    private const uint CharA = 'a';
+
+    private static float2 Center(Element element)
+    {
+        float4 rect = PointerTree.ViewportRect(element);
+        return new float2(rect.X + rect.Z * 0.5f, rect.Y + rect.W * 0.5f);
+    }
+
+    /// <summary>
+    /// Builds the warm scene, makes the 120 grid slots and the first row of the hidden settings panel focusable, and
+    /// registers the 7 counter delegates on each grid slot. It creates each delegate one time, before any measure.
+    /// </summary>
+    private static QueueScene BuildQueueScene()
+    {
+        Scene scene = BuildWarmScene();
+        ThousandElementTree tree = scene.Tree;
+
+        QueueCounter counter = new();
+        UiEventHandler<PointerEvent> onMove = counter.CountMove;
+        UiEventHandler<PointerEvent> onDown = counter.CountDown;
+        UiEventHandler<PointerEvent> onUp = counter.CountUp;
+        UiEventHandler<ScrollEvent> onScroll = counter.CountScroll;
+        UiEventHandler<KeyEvent> onKeyDown = counter.CountKeyDown;
+        UiEventHandler<KeyEvent> onKeyUp = counter.CountKeyUp;
+        UiEventHandler<CharEvent> onChar = counter.CountChar;
+
+        Element grid = tree.GridSlot.Parent!;
+        for (int i = 0; i < grid.Children.Count; i++)
+        {
+            Element slot = grid.Children[i];
+            slot.IsFocusable = true;
+            slot.OnPointerMove = onMove;
+            slot.OnPointerDown = onDown;
+            slot.OnPointerUp = onUp;
+            slot.OnScroll = onScroll;
+            slot.OnKeyDown = onKeyDown;
+            slot.OnKeyUp = onKeyUp;
+            slot.OnChar = onChar;
+        }
+
+        // The hidden panel has Display.None, so the Tab search never gives this element.
+        tree.Settings.Children[0].IsFocusable = true;
+
+        float2 slotPoint = Center(tree.GridSlot);
+        float2 rowPoint = Center(tree.StatRow);
+        float2 outside = new(2000f, 2000f);
+
+        return new QueueScene
+        {
+            Scene = scene,
+            Counter = counter,
+            SlotPoint = slotPoint,
+            RowPoint = rowPoint,
+            MoveSlot = PointerTree.Move(slotPoint),
+            MoveRow = PointerTree.Move(rowPoint),
+            ScrollSlot = PointerTree.Scroll(slotPoint, new float2(0f, -1f)),
+            DownSlot = PointerTree.Down(slotPoint, PointerButton.Left),
+            UpSlot = PointerTree.Up(slotPoint, PointerButton.Left),
+            LetterDown = PointerTree.Key(UiEventType.KeyDown, LetterA, UiModifiers.None),
+            LetterUp = PointerTree.Key(UiEventType.KeyUp, LetterA, UiModifiers.None),
+            Letter = PointerTree.Char(CharA),
+            Tab = PointerTree.Tab(shift: false),
+            ShiftTab = PointerTree.Tab(shift: true),
+            MoveOutside = PointerTree.Move(outside),
+            DownOutside = PointerTree.Down(outside, PointerButton.Left),
+            UpOutside = PointerTree.Up(outside, PointerButton.Left),
+            MoveNaN = PointerTree.Move(new float2(float.NaN, float.NaN)),
+        };
+    }
+
+    /// <summary>
+    /// The measured body of the queue case. It pushes the block of 16 events <c>EventQueueCapacity / 16</c> times, so
+    /// the ring is full and drops nothing. Then it runs <see cref="Step(Scene)"/>: one rotating change and one
+    /// <c>Update</c>, which drains the full ring. It reads the gate last. It uses no lambda, no boxing, no string, and
+    /// no Assert.
+    /// </summary>
+    private static void QueueStep(QueueScene scene)
+    {
+        UiContext context = scene.Scene.Tree.Context;
+        int blocks = context.EventQueueCapacity / BlockSize;
+        for (int block = 0; block < blocks; block++)
+        {
+            context.PushEvent(in scene.MoveSlot);
+            context.PushEvent(in scene.MoveRow);
+            context.PushEvent(in scene.ScrollSlot);
+            context.PushEvent(in scene.DownSlot);
+            context.PushEvent(in scene.UpSlot);
+            context.PushEvent(in scene.LetterDown);
+            context.PushEvent(in scene.LetterUp);
+            context.PushEvent(in scene.Letter);
+            context.PushEvent(in scene.Tab);
+            context.PushEvent(in scene.ShiftTab);
+            context.PushEvent(in scene.MoveOutside);
+            context.PushEvent(in scene.DownOutside);
+            context.PushEvent(in scene.UpOutside);
+            context.PushEvent(in scene.Tab);
+            context.PushEvent(in scene.MoveNaN);
+            context.PushEvent(in scene.MoveSlot);
+        }
+
+        Step(scene.Scene);
+
+        UiRoutingGate gate = context.RoutingGate;
+        scene.PointerSum += gate.PointerOverUi ? 1 : 0;
+        scene.KeyboardSum += gate.KeyboardFocusInUi ? 1 : 0;
+    }
+
+    private static void RunQueueSteps(QueueScene scene, int steps)
+    {
+        for (int i = 0; i < steps; i++)
+        {
+            QueueStep(scene);
+        }
+    }
+
     /// <summary>
     /// Builds the warm scene, adds <see cref="ThousandElementTree.BuildTransitionSheet"/>, and runs one
     /// <c>Update</c>. The sheet change restyles the tree. Each target equals the visible value, so no tween starts.
@@ -377,6 +590,64 @@ public sealed class ThousandElementAllocationTests
         long after = GC.GetAllocatedBytesForCurrentThread();
 
         Assert.Equal(0L, after - before);
+    }
+
+    [Fact]
+    public void UpdateDrainsAFullQueueWithNoAllocation()
+    {
+        QueueScene scene = BuildQueueScene();
+        UiContext context = scene.Scene.Tree.Context;
+
+        // Warm-up: two rounds run each kind of change in both directions, with a full ring in each step. This lets the
+        // JIT compile the code, and it lets the hit, focus, and path stacks reach their peak size.
+        RunQueueSteps(scene, KindCount * 2);
+        RunQueueSteps(scene, KindCount * 2);
+
+        // The release empties the allocation context, so a background GC cannot add bytes. See AllocationGate.
+        AllocationGate.ReleaseAllocationContext();
+        long droppedBefore = context.DroppedEventCount;
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        RunQueueSteps(scene, Iterations);
+        long after = GC.GetAllocatedBytesForCurrentThread();
+
+        Assert.Equal(0L, after - before);
+        Assert.Equal(droppedBefore, context.DroppedEventCount);
+        Assert.Equal(0, context.QueuedEventCount);
+    }
+
+    [Fact]
+    public void TheQueueStepDoesRealWork()
+    {
+        QueueScene scene = BuildQueueScene();
+        ThousandElementTree tree = scene.Scene.Tree;
+        UiContext context = tree.Context;
+        QueueCounter counter = scene.Counter;
+        int blocks = context.EventQueueCapacity / BlockSize;
+
+        // The leaf kind leaves the settings panel hidden, so the Tab walk uses the 120 grid slots only.
+        Assert.Equal(16, blocks);
+        scene.Scene.StepCount = LeafKind;
+        QueueStep(scene);
+
+        // Each block gives the slots 2 moves, 1 scroll, 1 down, 1 up, 3 key downs, 1 key up, and 1 char. The key down of
+        // the Tab at slot 0 and the key down of the Shift+Tab at slot 1 count too, and so does the key down of the A.
+        Assert.Equal(blocks * 2, counter.Moves);
+        Assert.Equal(blocks, counter.Scrolls);
+        Assert.Equal(blocks, counter.Downs);
+        Assert.Equal(blocks, counter.Ups);
+        Assert.Equal(blocks * 3, counter.KeyDowns);
+        Assert.Equal(blocks, counter.KeyUps);
+        Assert.Equal(blocks, counter.Chars);
+
+        // The last Tab of the block, with no owner, gives the focus to slot 0.
+        Assert.Same(tree.GridSlot.Parent!.Children[0], context.FocusedElement);
+        UiRoutingGate gate = context.RoutingGate;
+        Assert.True(gate.PointerOverUi);
+        Assert.True(gate.KeyboardFocusInUi);
+        Assert.Equal(1, scene.PointerSum);
+        Assert.Equal(1, scene.KeyboardSum);
+        Assert.Equal(0, context.QueuedEventCount);
+        Assert.Equal(0L, context.DroppedEventCount);
     }
 
     [Fact]

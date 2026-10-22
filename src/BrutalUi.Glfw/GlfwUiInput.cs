@@ -55,9 +55,8 @@ namespace BrutalUi.Glfw;
 /// space of ImGui, so the context and ImGui use the same coordinates.
 /// </para>
 /// <para>
-/// The adapter only pushes the events into the ring of the context. <see cref="UiContext.Update(float)"/> does not
-/// drain the ring until the routing-gate feature. Until then, the drain is internal. A full ring drops its oldest
-/// event.
+/// The adapter only pushes the events into the ring of the context. <see cref="UiContext.Update(float)"/> drains the
+/// ring at its start, before the style pass. Poll the events before the update. A full ring drops its oldest event.
 /// </para>
 /// <para>
 /// The window catches an exception from a handler and gives it to the GLFW exception aggregator. The exception stops
