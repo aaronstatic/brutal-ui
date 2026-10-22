@@ -391,18 +391,22 @@ Classes, pseudo-states, and a cascade on the element tree.
 ### Model
 
 ```csharp
-public readonly struct CompoundSelector         // one compound, as Label.title:hover is in CSS
+public readonly struct CompoundSelector : IEquatable<CompoundSelector>   // one compound, as Label.title:hover is in CSS
 {
     public ElementTypeId Type { get; init; }    // none, or the type id that the element must have
     public ClassId Class { get; init; }         // none, or the one class that the element must hold
     public PseudoStates States { get; init; }   // none, or each state that the element must hold
     public string? Name { get; init; }          // null, or the name that the element must have (ordinal)
+    public bool Equals(CompoundSelector other); // also Equals(object?), ==, !=, and GetHashCode
+    public override string ToString();          // "Label.title#score:hover", "" for an empty compound
 }
 
 public enum SelectorCombinator : byte { None = 0, Child = 1, Descendant = 2 }
 
-public readonly struct Selector
+public readonly struct Selector : IEquatable<Selector>
 {
+    public bool Equals(Selector other);         // also Equals(object?), ==, !=, and GetHashCode
+    public override string ToString();          // ".a:hover > .b", ".a .b", "(empty)" for default(Selector)
     public CompoundSelector Subject { get; }    // the compound that the element itself must match
     public CompoundSelector Ancestor { get; }   // default when Combinator is None
     public SelectorCombinator Combinator { get; }
@@ -427,12 +431,33 @@ public struct StyleProperties                   // sparse set: a mask and one va
     // ...
 }
 
+public enum TransitionEasing : byte { Linear, EaseIn, EaseOut, EaseInOut }
+
+public readonly struct StyleTransition          // 8 bytes
+{
+    public StyleTransition(float duration, TransitionEasing easing);   // throws for an easing that is not a member
+    public float Duration { get; }              // seconds. The model keeps each float
+    public TransitionEasing Easing { get; }
+}
+
+public struct StyleTransitions                  // sparse set: five fixed slots and a mask. 44 bytes, no heap object
+{
+    public static bool CanTransition(StyleProperty property);   // BackgroundColor, BorderColor, CornerRadius, Opacity, Color
+    public readonly bool IsEmpty { get; }
+    public readonly bool IsSet(StyleProperty property);
+    public readonly StyleTransition Get(StyleProperty property); // default(StyleTransition) for an unset member
+    public void Set(StyleProperty property, StyleTransition transition);   // ArgumentOutOfRangeException outside the five
+    public void Clear(StyleProperty property);  // a member outside the five changes nothing
+}
+
 public readonly struct StyleRule
 {
     public readonly Selector Selector;
     public readonly StyleProperties Properties; // a copy of the set at creation
+    public readonly StyleTransitions Transitions; // a copy of the set at creation. Empty from the first constructor
     public readonly int Specificity;            // the value of the selector at creation
     public StyleRule(in Selector selector, in StyleProperties properties);
+    public StyleRule(in Selector selector, in StyleProperties properties, in StyleTransitions transitions);
 }
 
 public sealed class StyleSheet                  // immutable
@@ -442,6 +467,7 @@ public sealed class StyleSheet                  // immutable
     public sealed class Builder
     {
         public Builder Add(in Selector selector, in StyleProperties properties);  // default(Selector) throws
+        public Builder Add(in Selector selector, in StyleProperties properties, in StyleTransitions transitions);
         public StyleSheet Build();              // copies the rules, so a later Add changes no built sheet
     }
 }
@@ -457,6 +483,8 @@ public readonly struct InlineStyle              // the view behind Element.Inlin
 
 A `StyleSheet` is an immutable, sorted rule list. `StyleSheet.Builder` copies each rule at `Build`. The context merges the rules of all its sheets into one cascade. The style pass matches the cascade against a dirty element and writes `ComputedStyle`. `StyleProperties` is a struct with a mask and one field for each member (about 250 bytes), so a rule and an inline set need no allocation per property. A set to the default value still sets the bit, so a rule can put a member back to its default. `Clear` is the only way to remove a value.
 
+**The transition set.** `StyleRule.Transitions` holds the transitions of a rule in a `StyleTransitions` set. The set has five fixed slots, one for each member that can transition: `BackgroundColor`, `BorderColor`, `CornerRadius`, `Opacity`, and `Color`. A change of these members changes the draw only. A mask holds one bit for each slot. `Set` writes a slot and its bit, and a second `Set` of the same member replaces the slot. `Set` and `Get` throw `ArgumentOutOfRangeException` for each other member, with a message that names the five. `CanTransition` gives the five, so a caller checks before the call. `IsSet` gives `false` and `Clear` changes nothing for a member outside the five. The model keeps each duration as it is (0, a negative value, `NaN`, and infinity). The parser rejects a negative duration (section 11). The set holds no heap object, so a copy allocates nothing, and `default(StyleTransitions)` is the empty set. The first `StyleRule` constructor and the first `Builder.Add` give an empty set. The sort of the builder copies each rule as a whole, and so does the merge of the cascade. Thus the set stays with its rule. The style pass does not read the set.
+
 `ComputedStyle` holds 32 members. They are the 25 layout inputs (section 6), four paint members, and three text members. The paint members are `BackgroundColor` (`Rgba8`), `BorderColor` (`Rgba8`), `CornerRadius` (`Corners`), and `Opacity` (`float`, default 1). The text members are `Color` (`Rgba8`), `Font` (`FontHandle`), and `FontSize` (`float`). `Label` reads the three text members from its style (section 8).
 
 **The cascade order.** The style pass builds the style of a dirty element from `default(ComputedStyle)` in these steps:
@@ -466,6 +494,8 @@ A `StyleSheet` is an immutable, sorted rule list. `StyleSheet.Builder` copies ea
 3. A text member that no rule and no inline value sets takes the value of the parent. A root takes the text default of the context.
 
 **The selectors.** A selector holds a subject compound. A chain also holds an ancestor compound and a combinator. Set the parts of a compound with an object initializer, and give the compound to `Selector.For`, `Selector.Child`, or `Selector.Descendant`. The shortcuts `ForClass`, `ForName`, `ForType`, and `ForTypeAndClass` create a selector with one compound. Each factory throws `ArgumentException` for a wrong compound. A wrong compound holds no part, an empty name, or a state bit that is not a member of `PseudoStates`. `Child` and `Descendant` check the ancestor slot first, and the parameter name of the exception tells the slot. A `default(Selector)` matches nothing, and the builder rejects it.
+
+**The equality and the text form.** `CompoundSelector` and `Selector` implement `IEquatable<T>`, `Equals(object?)`, `==`, `!=`, and `GetHashCode`. The compare reads each part: the type, the class, the states, and the name of each compound, and the combinator. The name compare is ordinal, and the hash of a `null` name is 0. The operators take `in` parameters. The compare allocates nothing. `ToString` gives the CSS text of section 11. A compound gives the type, `.class`, `#name`, and the states in the order `:hover:active:focus:disabled:checked`. A chain gives `ancestor > subject` or `ancestor subject`, and `default(Selector)` gives `(empty)`. `ToString` reads the global name tables and allocates, so use it for test output and debug output only. It never throws: an id outside a table gives `<type 7>` or `.<class 7>`, and a state bit outside `PseudoStates` gives `:<state N>`. A parsed selector equals the selector of the factories. For each form of the grammar, `Parse(selector.ToString())` gives an equal selector, for each name that the grammar of section 11 can read (an identifier for a type or a class, `[A-Za-z0-9_-]+` for a name). Another name gives a text that the parser does not read back.
 
 **The specificity tiers.** `Selector.Specificity` is the one place that holds the weights. Each tier holds one byte of the value: `(names << 16) | ((classes + states) << 8) | types`. The name tier counts each compound with a name. The class tier counts each class and each pseudo-state. The type tier counts each compound with a type. The value is the sum over the subject and the ancestor. A count of a higher tier wins over each count of a lower tier while each count stays below 256. The largest selector of the grammar holds 2 names, 12 units of the class tier, and 2 types. Thus no count comes near 256.
 
@@ -510,11 +540,13 @@ The match tests the parts in this order, the cheapest part first. A chain tests 
 
 **The sheets of a context.** `AddSheet` and `RemoveSheet` build the cascade again and mark each element of each root with `Style`. Both allocate, so call them in load code. `AddSheet` throws `InvalidOperationException` for a sheet that the context holds already. `RemoveSheet` returns `false` for an absent sheet. A sheet can be shared between contexts.
 
-**The cost.** The inline set lives in each element, also when empty. It adds about 250 bytes to each element (`StyleProperties`) and 8 bytes for the view. The `--facts` line shows 1046.6 bytes for each element in the 1000-element tree with its 16-rule sheet. The sheet holds a state rule, a child rule, a descendant rule, and a name rule. The style step of the allocation gate sets and clears a hover state. `StylePassTests.TheStylePassAllocatesNothingAfterWarmUp` and the style step of `ThousandElementAllocationTests` guard the pass (section 14). The rules have no index yet, so each restyled element scans all rules of the cascade. A rule index waits for a benchmark.
+**The cost.** The inline set lives in each element, also when empty. It adds about 250 bytes to each element (`StyleProperties`) and 8 bytes for the view. The `--facts` line shows 1049.5 bytes for each element in the 1000-element tree with its 16-rule sheet. The value was 1046.6 before style-parser. Each rule now holds a `StyleTransitions` set of 44 bytes. `StyleRule` is 368 bytes (320 before style-parser). The sheet and the cascade hold copies of the rules. The sheet holds a state rule, a child rule, a descendant rule, and a name rule. The style step of the allocation gate sets and clears a hover state. `StylePassTests.TheStylePassAllocatesNothingAfterWarmUp` and the style step of `ThousandElementAllocationTests` guard the pass (section 14). The rules have no index yet, so each restyled element scans all rules of the cascade. A rule index waits for a benchmark.
 
 ### Transitions
 
 A property transition has a duration and an easing. The style pass writes the target value. A transition system interpolates per frame into the computed style. No allocation after the transition pool fills.
+
+The `transition` declaration (section 11) goes into `StyleRule.Transitions` (see the transition set above). The transitions feature reads the set. It decides how the sets of the matched rules merge. It also decides the rule for a zero duration, a negative duration, `NaN`, and infinity.
 
 ### Design Decisions
 
@@ -525,7 +557,8 @@ A property transition has a duration and an easing. The style pass writes the ta
 - A name rule compares `Element.Name` with an ordinal compare. No intern table and no name id: the compare allocates nothing, and a name set takes no lock.
 - One byte for each specificity tier. The CSS order holds for each count below 256, with no proof that depends on the grammar.
 - A class change, a state change, and a name change mark the full subtree, with no check of the sheets. The mark is simple and correct. A sheet-aware mark waits for a benchmark.
-- `CompoundSelector` has no equality members. The default `ValueType.Equals` uses reflection for the `string?` name, so do not compare selectors in the hot path. The hot path compares no selector.
+- `CompoundSelector` and `Selector` have their own equality members and a CSS `ToString`. The compare is ordinal and allocates nothing, and no call reaches the reflection compare in `ValueType.Equals`. The hot path compares no selector. A parser test compares a parsed selector with the selector of the factories. A failed test shows the CSS text of both values.
+- A rule stores its transitions in five fixed slots and a mask, with no heap array. A comma list in one declaration sets more than one slot.
 - The style pass has its own recursion and not `DirtyWalk`, because it marks children during the visit.
 - `StyleRule` stores the specificity at creation, so a change of the weights touches `Selector.Specificity` only.
 - Theme variables (`--name`) resolve at parse time per stylesheet, not at runtime.
@@ -706,12 +739,175 @@ The loader maps element names to registered types and attributes to properties t
 
 ### Stylesheet format
 
+The `BrutalUi.Markup` package reads a stylesheet text into a `StyleSheet`. The sheet is the same type that `StyleSheet.Builder` makes (section 7). The format is a small part of CSS. `samples/HelloPanel/HelloScreen.css` is a full example.
+
 ```css
-.hud-value { font-size: 24px; color: #ffffff; }
-.hud-button:hover { background-color: #333333; }
+:root { --panel-fill: #1e222c; --text: #ffffff; }
+.hello-panel { flex-direction: column; padding: 16px; border-radius: 8px; background-color: var(--panel-fill); }
+.hello-panel > Label { color: var(--text); font-size: 26px; }
+.button:hover { background-color: #3060c0; transition: background-color 0.2s ease-out, opacity 150ms linear; }
 ```
 
-The parser produces a `StyleSheet`. Parsing happens at load time, not per frame.
+**The parser API.**
+
+```csharp
+namespace BrutalUi.Markup;
+
+public sealed class StyleSheetParser
+{
+    public struct CreateInfo
+    {
+        public IReadOnlyDictionary<string, FontHandle>? Fonts;   // null: only "font: default;"
+    }
+
+    public StyleSheetParser();
+    public StyleSheetParser(in CreateInfo info);          // copies the font map
+    public StyleParseResult Parse(ReadOnlySpan<byte> utf8, string sourceName = "stylesheet");
+    public StyleParseResult Parse(string text, string sourceName = "stylesheet");   // encodes to UTF-8, then parses
+}
+
+public sealed class StyleParseResult
+{
+    public StyleSheet? Sheet { get; }                     // null when Errors holds an error
+    public IReadOnlyList<StyleParseError> Errors { get; } // in the order of the source. Empty on success
+    public bool Succeeded { get; }                        // Sheet is not null
+    public StyleSheet GetSheetOrThrow();                  // InvalidOperationException with one line for each error
+}
+
+public readonly struct StyleParseError
+{
+    public StyleErrorKind Kind { get; }
+    public int Line { get; }                              // from 1
+    public int Column { get; }                            // from 1, in code points. A tab counts 1
+    public string Message { get; }                        // the problem and the fix
+    public string SourceName { get; }
+    public override string ToString();                    // "HelloScreen.css(3,10): InvalidValue: <message>"
+}
+
+public enum StyleErrorKind : byte { /* 13 members, see the error report */ }
+```
+
+The parser runs at load time, and it allocates: the UTF-8 copy of a `string` text, the token list, the names, the messages, and the sheet. The sheet allocates nothing in `Update` (section 14). `Parse` holds no state between calls. Each call makes its own token list and its own variable map, so one parser can parse more than one text, also on more than one thread. `Parse` never throws for the text. It throws `ArgumentNullException` for a `null` source name and for a `null` text.
+
+The BRUTAL analyzer `BRUTALCORE0011` rejects a constant string argument in a call to `Parse(string, string)`: a text literal, a source name literal, and `null`. Thus `parser.Parse(".a { color: #fff; }", "hud.css")` does not compile. Use the byte overload with a `u8` literal (`parser.Parse(".a { color: #fff; }"u8, "hud.css")`) or with the bytes of a file read. The HelloPanel sample calls `File.ReadAllBytes`, then `Parse(bytes, "HelloScreen.css").GetSheetOrThrow()`. It loads the sheet before the window opens, so a bad sheet stops the run with no GPU.
+
+**The tokens and the position.** The text is UTF-8. A BOM at the start adds no column. LF ends a line, and CRLF and a lone CR each count as one line break. The line and the column start at 1. The column counts code points, not bytes, and a tab counts 1. Outside a comment, each byte sequence that is not valid UTF-8 counts 1, as the replacement character of an editor does. Thus a stray continuation byte takes one column, and the bytes `80 C3 A9` give two errors at columns 1 and 2. Outside a comment, the text holds printable ASCII and whitespace only. A non-ASCII byte is valid only in a comment. A non-ASCII byte or a control byte outside a comment gives `UnexpectedCharacter`. A comment `/* ... */` joins the whitespace around it. A comment with no whitespace around it gives no token, so `./**/a` reads as `.a`. A comment with no `*/` gives `UnterminatedComment` at its `/*`. A number has an optional `-`, digits, and an optional `.digits`, or only `.digits`. The format has no exponent.
+
+**The grammar.**
+
+```
+sheet        := ( root-block | rule )* End
+root-block   := ':root' '{' ( '--name' ':' value-tokens ';' )* '}'
+rule         := selector ( ',' selector )* '{' declaration* '}'
+selector     := compound ( combinator compound )?                          at most 2 compounds
+combinator   := Whitespace | '>'                                           Descendant | Child
+compound     := Ident? ( '.' Ident | Hash | ':' Ident )*                    at least one part
+declaration  := Ident ':' value ( ';' | before '}' )                        the last ';' is optional
+value        := one token or more. Each 'var' '(' '--name' ')' takes the tokens of the variable
+```
+
+Whitespace and comments can come between each two tokens outside a compound. A comment alone gives no token, so it does not separate two values of a list (see **A list** in the value forms). The parts of a compound touch, and they can come in each order (`#title.a:checked`). Whitespace around `>`, after `,`, and before `{` is not a combinator.
+
+**The selectors.** A leading identifier is the type (`ElementType.Intern`). `.name` is the class (`ClassName.Intern`). `#name` is the name of the element. `:hover`, `:active`, `:focus`, `:disabled`, and `:checked` each set their bit of `States`, and a repeat adds nothing. One compound gives `Selector.For`. `>` gives `Selector.Child`, and whitespace gives `Selector.Descendant`. Each name is case-sensitive, so `label` does not match a `Label`. A type name that no element declares interns a new id and matches nothing, with no error. The rule matches when an element type with that name exists. A selector list gives one rule for each selector, with the same values, in the order of the source. A rule with no declaration gives no rule. The sheet sorts the rules by the specificity, so a later rule wins at equal specificity.
+
+**The walk bound of `.a .b`.** A descendant chain reads the parent and the grandparent of the element only (section 7). This differs from CSS: in CSS, `.a .b` also matches when `.a` is above the grandparent. The format accepts the CSS text, and the bound applies.
+
+**The selector rejects.** The parser checks each case before it calls a factory, so no `ArgumentException` leaves `Parse`. Each error points at the first byte of the token at fault.
+
+| Text | Kind | Position |
+|------|------|----------|
+| `.a.b` (a second class), `#a#b` (a second name) | `UnsupportedSelector` | the second `.` or `#` |
+| `.a .b .c`, `.a > .b > .c` (a third compound) | `UnsupportedSelector` | the start of the third compound |
+| `*`, `[x]`, `.a + .b`, `.a ~ .b`, `::before`, `:not(.a)` | `UnsupportedSelector` | the `*`, `[`, `+`, `~`, the second `:`, or `not` |
+| `:first-child` (an unknown state) | `UnknownPseudoState` | the identifier after `:` |
+| `> .a`, `.a >`, `.a, {`, `{` with no selector (an empty compound) | `InvalidSelector` | the token where the compound must start |
+| `:root .a`, `.a, :root`, `.a:root` (`:root` outside a block of its own) | `InvalidSelector` | the `:` of `:root` |
+
+**The properties.** Each of the 32 members of `StyleProperty` has one name. The names are case-sensitive. The format has no longhand such as `margin-top`.
+
+| Property names | Member type | Value |
+|----------------|-------------|-------|
+| `flex-direction` | `FlexDirection` | `column`, `column-reverse`, `row`, `row-reverse` |
+| `width`, `height`, `flex-basis`, `min-width`, `min-height`, `max-width`, `max-height`, `left`, `top`, `right`, `bottom` | `Length` | a length. A negative value is valid |
+| `margin` | `LengthEdges` | 1 to 4 lengths. A negative value is valid |
+| `padding` | `LengthEdges` | 1 to 4 values in `px`, `%`, or `0`, each 0 or more. No `auto` |
+| `border-width` | `LengthEdges` | 1 to 4 values in `px` or `0`, each 0 or more (Yoga has no percent border) |
+| `flex-grow`, `flex-shrink` | `float` | a number, 0 or more |
+| `justify-content` | `Justify` | `flex-start`, `center`, `flex-end`, `space-between`, `space-around`, `space-evenly` |
+| `align-items`, `align-self`, `align-content` | `Align` | `auto`, `flex-start`, `center`, `flex-end`, `stretch`, `space-between`, `space-around`, `space-evenly` |
+| `flex-wrap` | `FlexWrap` | `nowrap`, `wrap`, `wrap-reverse` |
+| `display` | `Display` | `flex`, `none` |
+| `position` | `PositionType` | `relative`, `absolute` |
+| `overflow` | `Overflow` | `visible`, `hidden`, `scroll` |
+| `background-color`, `border-color`, `color` | `Rgba8` | a color |
+| `border-radius` | `Corners` | 1 to 4 values in `px` or `0`, each 0 or more |
+| `opacity` | `float` | a number from 0 to 1 |
+| `font` | `FontHandle` | `default` (the id 0), or a key of `CreateInfo.Fonts` |
+| `font-size` | `float` | a value in `px` or `0`, 0 or more |
+| `transition` | `StyleTransitions` | `<property> <duration> <easing>`, and more of them in a comma list |
+
+**The value forms.**
+
+- **A length** is `<number>px` (`Length.Px`), `<number>%` (`Length.Percent`), `auto` (`Length.Auto`), or a bare `0` (`Length.Px(0)`). Another bare number gives `InvalidValue` with the fix "add px or %". A unit is case-sensitive. An unknown unit (`12em`) gives `InvalidValue`.
+- **A number** reads with `CultureInfo.InvariantCulture`, so `0.5` reads the same in each culture. A number that a `float` cannot hold gives `InvalidValue`. `flex-grow`, `flex-shrink`, and `opacity` take a bare number only.
+- **A color** is `#` and 3, 6, or 8 hex digits in each case. `#rgb` doubles each digit and sets the alpha to 255. `#rrggbb` sets the alpha to 255. `#rrggbbaa` holds the alpha.
+- **A keyword** maps through an explicit table for each enum, with no `Enum.Parse` and no reflection.
+- **A list** needs whitespace between two values. A comment alone does not separate two values. A fifth value gives `InvalidValue` at that value.
+- **A later declaration** of the same property in one rule wins, as in CSS.
+
+**The edge order.** An edge set and a corner set follow the CSS order. The constructors of Core use another order: `new LengthEdges(left, top, right, bottom)` and `new Corners(topLeft, topRight, bottomRight, bottomLeft)`. The parser maps the CSS order to them in one place. A rule sets all four edges of an edge set at one time. Thus `margin: 12px 0 0` sets the right, bottom, and left edges to `0px`.
+
+| Values | `margin`, `padding`, `border-width` | `border-radius` |
+|--------|-------------------------------------|-----------------|
+| `a` | each edge `a` | each corner `a` |
+| `a b` | top and bottom `a`, left and right `b` | top-left and bottom-right `a`, top-right and bottom-left `b` |
+| `a b c` | top `a`, left and right `b`, bottom `c` | top-left `a`, top-right and bottom-left `b`, bottom-right `c` |
+| `a b c d` | top `a`, right `b`, bottom `c`, left `d` | top-left `a`, top-right `b`, bottom-right `c`, bottom-left `d` |
+
+**The differences from CSS.** `flex-direction` defaults to `column` (Yoga), not `row`. The format has no `#rgba` (four digits), no `transparent`, no `rgb()`, and no `none` for a maximum size.
+
+**The text members inherit.** `color`, `font`, and `font-size` inherit down the tree in the style pass (section 7). The other members do not inherit. A rule that sets only `color` still lets `font` and `font-size` inherit.
+
+**The fonts.** `font: <name>` reads the font map `StyleSheetParser.CreateInfo.Fonts` with an ordinal compare. `default` gives the id 0, the default font of the renderer. A key `default` in the map wins over the id 0. Another name gives `UnknownFont`. A `FontHandle` id has a meaning for one renderer and one run only. Thus the file names a font, and the game binds the name at load time. The parser copies the map at creation, so a later change of the map does not change the parser.
+
+**Theme variables.** A `:root` block holds variables: `:root { --accent: #3060c0; }`. A value reads a variable with `var(--accent)`, and the tokens of the variable take the place of the use. The parser reads the variables in a first pass. Thus a block can come before or after the rules that read it. When a text defines a name two times, the later value wins. A variable can hold more than one value (`--pad: 4px 8px;`), and a value can mix variables with other values (`padding: var(--gap) 8px;`). A variable name is case-sensitive. The variables of a text live in one `Parse` call, and a second call does not see them. The parser checks the value of a variable at each use, with the form of the property that reads it. A variable that no rule reads gets no value check, as in CSS. Runtime theme variables are out of scope.
+
+- An unknown name gives `UnknownVariable` at the `--name` token of the use.
+- A definition with an error gives one error at the definition. A use of that name gives no second error. A token error inside a declaration of a `:root` block replaces each other error of that declaration.
+- A `--name` declaration outside `:root` gives `InvalidVariable`. So does a declaration in `:root` that is not a variable, and an empty variable value.
+- A variable cannot read a variable, and `var()` takes no fallback. Thus `--a: var(--b);` and `var(--a, 4px)` give `InvalidVariable`.
+- An error in a value that comes from a variable points at the `var` token of the use. The message names the variable.
+- A `:root` block ends at its first `}`. It gives no rule.
+
+**The transition declaration.** `transition: <property> <duration> <easing>` sets one transition for one member. A comma list sets more than one member: `transition: background-color 0.2s ease-out, opacity 150ms linear;`. The rule stores the set in `StyleRule.Transitions` (section 7).
+
+- The property is `background-color`, `border-color`, `color`, `border-radius`, or `opacity`. Each other name gives `InvalidValue` with a message that names the five.
+- The duration is `<number>s` or `<number>ms` (divided by 1000), 0 or more. A bare `0` gives 0 seconds.
+- The easing is `linear`, `ease-in`, `ease-out`, or `ease-in-out`.
+- The three parts need whitespace between them. A comment alone does not separate two parts.
+- All three parts are necessary. The format has no `none`, no `all`, no delay, and no CSS easing `ease`.
+- A later item for the same member wins, also in one list. A later `transition` declaration replaces only the slots of its own members. This differs from CSS: in CSS, a later declaration replaces the full list.
+- A wrong value changes no slot. A variable can hold a duration or a full list. A rule with only a `transition` declaration gives a rule.
+
+**The error report.** The parser records each error and continues. After an error in a declaration, it skips to the next `;` or `}` of the same block. After an error in a selector, it skips the full block of the rule. An at-rule skips to its `;` or to the end of its block. Each skip counts the nested braces. A missing `}` at the end gives `UnexpectedEnd` at the position after the last byte. `Errors` holds the errors of the tokens, the variable pass, and the rule pass. They come in the order of the source (line, then column). A text with one error or more gives `Sheet == null` and adds no name to the global name tables.
+
+| Kind | Cause |
+|------|-------|
+| `UnexpectedCharacter` | A byte that starts no token, a control byte, or a non-ASCII byte outside a comment |
+| `UnterminatedComment` | A `/*` with no `*/` |
+| `UnexpectedToken` | A token in a place where the grammar wants another token |
+| `UnexpectedEnd` | The text ends inside a rule, a `:root` block, an at-rule, or a `var(` |
+| `InvalidSelector` | An empty compound, or `:root` outside a block of its own |
+| `UnsupportedSelector` | `.a.b`, `*`, `[x]`, `+`, `~`, `::before`, `:not`, or a third compound |
+| `UnknownPseudoState` | A state other than the five states |
+| `UnknownProperty` | A property name that the format does not know |
+| `InvalidValue` | A wrong form, a wrong count, an unknown unit, or a number out of range |
+| `UnknownFont` | A font name that the font map does not hold |
+| `UnknownVariable` | A `var(--name)` with no definition in the same text. A name with a wrong definition gives the error of the definition only. |
+| `InvalidVariable` | A wrong variable declaration or a wrong `var()` use |
+| `UnsupportedSyntax` | An at-rule (at the `@`), `!important` (at the `!`), or a function other than `var` (at its name) |
+
+Each message names the problem and the fix in one or two short sentences. It quotes the source text at fault. `ToString` of an error gives `<source>(<line>,<column>): <kind>: <message>`. `GetSheetOrThrow` throws `InvalidOperationException` with one such line for each error. Example: `HelloScreen.css(1,16): UnknownProperty: 'colour' is not a property of the format. Check the spelling, for example 'color'.`
 
 ### Builder API
 
@@ -754,9 +950,11 @@ The Vulkan backend binds one render pass at construction. Phase 5 tests a second
 
 - **Unit tests** on the layout engine with fixtures from the Yoga test suite, ported by hand.
 - **Unit tests** on the XML loader, the stylesheet parser, and the framework diff.
-- **Style tests** in `BrutalUi.Core.Tests/Style/`. `StylePropertiesTests` checks the sparse set, the masks, and the throw for a value that is not a member. `StyleSheetTests` checks the builder, the sort, and the rule copy. `StylePassTests` checks the cascade, the compare of each member (a theory over all 32 members gives the kind of bit for each), and the dirty rule table of section 7. `InlineStyleTests` checks the view: a theory over all members checks that each set writes its own bit, that the same value marks nothing, and that a clear gives the default back. `TextInheritanceTests` checks the inheritance, the child marks, and the context defaults. `TypeSelectorTests` and `ElementTypeTests` check the type id and the type match. `MultiSheetTests` checks the merge of more than one sheet, `RemoveSheet`, and the mark of `AddRoot`. `PseudoStateSelectorTests`, `ChainSelectorTests`, and `NameSelectorTests` check each part of a compound, each chain form, the walk bound, the tiers, and the factory checks. `SubtreeMarkTests` checks the subtree mark of a class, state, and name change. The layout tests and the Yoga fixtures write through `Inline`, and no expected rect changed. `LayoutDifferentialTests` compares 200 random trees with a fresh layout.
+- **Style tests** in `BrutalUi.Core.Tests/Style/`. `StylePropertiesTests` checks the sparse set, the masks, and the throw for a value that is not a member. `StyleSheetTests` checks the builder, the sort, and the rule copy. `StylePassTests` checks the cascade, the compare of each member (a theory over all 32 members gives the kind of bit for each), and the dirty rule table of section 7. `InlineStyleTests` checks the view: a theory over all members checks that each set writes its own bit, that the same value marks nothing, and that a clear gives the default back. `TextInheritanceTests` checks the inheritance, the child marks, and the context defaults. `TypeSelectorTests` and `ElementTypeTests` check the type id and the type match. `MultiSheetTests` checks the merge of more than one sheet, `RemoveSheet`, and the mark of `AddRoot`. `PseudoStateSelectorTests`, `ChainSelectorTests`, and `NameSelectorTests` check each part of a compound, each chain form, the walk bound, the tiers, and the factory checks. `SubtreeMarkTests` checks the subtree mark of a class, state, and name change. `SelectorEqualityTests` checks the equality members and the hash code of both selector types for each part and each combinator. It also checks the CSS text of each form and the fallback text. Its gate `EqualsAllocatesNothing` asserts zero bytes for the compare. `StyleTransitionsTests` checks `CanTransition` for each of the 32 members, and the set, the get, the clear, and the throw. It also checks the empty set of the first constructor and the first `Add`, and the sort with the set. `ARuleWithATransitionStylesTheSame` checks that a transition does not change the computed style. The layout tests and the Yoga fixtures write through `Inline`, and no expected rect changed. `LayoutDifferentialTests` compares 200 random trees with a fresh layout.
 - **Allocation tests** that run update and draw on a warm 1000-element tree and assert zero bytes allocated. `ThousandElementAllocationTests` is the gate. It covers the update and the draw, and it holds a style step (see below). The draw test runs full frames (`Update`, then `Draw` into a `RecordingRenderer`) after a warm-up. Each zero-byte gate of `BrutalUi.Core.Tests` calls `AllocationGate.ReleaseAllocationContext()` right before its measured region. A background GC can add the free part of the allocation context to the counter, and the release stops this. `BrutalUi.ImGui.Tests` runs no tests in parallel, so its gates do not call the helper.
 - **The style step of the allocation gate.** The 1000-element tree holds a sheet of 16 rules, added with `AddSheet`: type rules, class rules, and rules with a type and a class. Four rules use the forms of selector-matching: a state rule (`.slot:hover`), a child rule (`.slot:hover > Element`), a descendant rule (`.row:hover Element`), and a name rule (`#header`). The frame body adds and removes two classes (`selected` on a grid slot and `muted` on the sidebar). It sets and clears `Hover` on a grid slot and on a stat row, and it changes the name of the header between two constant strings. It then marks `Style` on each element. Each round runs a full restyle of 1000 elements, with a match of the 16 rules, a merge, and the inheritance. The gate asserts zero allocated bytes. `TheStyleStepRestylesTheTree` checks that the step changes the slot fill, the label color, and the inherited values. `TheStyleStepMatchesEachSelectorForm` checks that each of the four new forms changes the value of its target, and that a miss keeps the old value. `StylePassTests.TheStylePassAllocatesNothingAfterWarmUp` is a smaller gate on 50 elements and 4 rules. `SubtreeMarkTests.AChainMatchAndAStateChangeAllocateNothing` is a gate on a chain scene. The class `ThousandElementAllocationTests` has 10 tests. Three plants show which gates guard the loops. A planted `GC.KeepAlive(new object())` in `Restyle` failed 7 gates in stylesheet-model: both gates of `ThousandElementAllocationTests` and one gate in each of 5 other classes. The same plant in `Selector.Matches` fails 4 Core gates: `StylePassTests.TheStylePassAllocatesNothingAfterWarmUp`, `SubtreeMarkTests.AChainMatchAndAStateChangeAllocateNothing`, and both gates of `ThousandElementAllocationTests`. It fails no ImGui gate, because the ImGui gates measure `Draw` only, the match runs in `Update`, and the ImGui label scene adds no sheet. The same plant in the `Name` setter fails the two gates of `ThousandElementAllocationTests`, because only the 1000-element step changes a name.
+- **Stylesheet parser tests** in `BrutalUi.Markup.Tests/Style/`. `StyleTokenizerTests` checks each token kind, the line and the column rules, the BOM, the comments, and the non-ASCII rule. `TextSheetTests` checks a text sheet end to end: the colors, the comments, the optional last `;`, and the result shape. `SelectorFormTests` checks each selector form against the factories, and the round trip of `ToString`. It also checks the selector lists, each reject with its position, and the specificity. `PropertyFormTests` checks each of the 32 names, each keyword, each length form, the invariant culture, and the fonts. `EdgeAndCornerTests` checks the CSS order of each count. `ThemeVariableTests` checks the variables and each variable error. `ErrorReportTests` checks a position for each of the 13 kinds, each range check, and the recovery. It also checks the error text, and the quote of the source text in each message. `ParserRobustnessTests` parses 2000 random texts and each cut of a valid sheet. No text makes the parser throw. `TransitionDeclarationTests` checks the transition declaration and each wrong form. The name tables are global, and xUnit runs the classes in parallel. Thus each test interns its names with its own prefix.
+- **A fourth allocation gate.** `ParsedSheetAllocationTests.AParsedSheetAllocatesNothingInUpdate` parses one text with a variable, each selector form, each value family, and a transition list. It runs `Update` on a tree of 50 elements. Each step toggles `Hover` on a panel, toggles one class, and sets a name to one of two constant strings. After 16 warm-up steps, the test releases the allocation context, measures 100 steps, and asserts zero bytes. It also checks that the steps reach the rules. The test project links `AllocationGate.cs` of `BrutalUi.Core.Tests`. The plant of style-parser put `GC.KeepAlive(new object())` at the start of `Selector.Matches(Element, ElementTypeId)`. It failed 5 gates: this gate (0 bytes expected, 208800 bytes measured), `StylePassTests.TheStylePassAllocatesNothingAfterWarmUp`, `SubtreeMarkTests.AChainMatchAndAStateChangeAllocateNothing`, and both gates of `ThousandElementAllocationTests`. `TheHelloPanelSheetGivesTheOldValues` parses `HelloScreen.css` and checks each value against the old constants of the sample.
 - **Headless ImGui tests** in `BrutalUi.ImGui.Tests`. A harness creates an ImGui context with no window and no GPU, runs frames, and reads the background draw list as text lines (clip, texture, element count, vertex bounds, colors). The tests need no `VulkanBackend`. `dotnet test` loads the native ImGui library of the pinned `Ahwoo.BRUTAL.ImGui` package.
 - **A second allocation gate.** `ImGuiRendererAllocationTests` runs full frames through `ImGuiRenderer` on the 1000-element tree and through the direct calls (rounded rect with a border, square and rounded image, wrapped text, and a measure outside a frame). It asserts zero allocated bytes after warm-up. A test also checks that the measured draw does real work, so a draw that does nothing cannot pass.
 - **Element tests** in `BrutalUi.Core.Tests/Elements/`: `LabelTests`, `LabelWrapTests`, `LabelTextTests`, `ImageTests`, and `ContentBoxTests`. `ContentInsetsTests` in `Layout/` checks the insets of the engine. `RecordingRenderer` is the measurer and the renderer. Its wrap rule counts bytes, and each byte is `size * 0.5` pixels wide. It breaks a line at a blank and cuts a word that is wider than the wrap width. The tests check the measure, draw, snap, and dirty rules. They also check the locale refresh, the scale modes, and the content box. A theory checks each width from 8 to 200, and from 20 to 400 with a percent padding. At each width, the text at the draw wrap width has the height of the measured box.
@@ -764,7 +962,7 @@ The Vulkan backend binds one render pass at construction. Phase 5 tests a second
 - **A third allocation gate.** `ElementAllocationTests` runs 100 frames on a tree of 50 labels with wrapped text, 50 images with a width of 32, and one label with an `LString`. Each frame changes 10 labels and 10 images. On a label, it sets the text and the inline color, size, and font. On an image, it sets the tint, the UV rect, the texture, and the scale mode. A new UV span runs the image measure. The frame also sets one of two `LString` instances on the last label. Then it runs `Update` and `Draw` into a `RecordingRenderer`. The tests assert zero allocated bytes after warm-up for the span path, the string path, and `RefreshLocalizedText`. Before each measured refresh, the test changes the locale string, so each refresh takes the slow path. `TheMeasuredBodyDoesRealWork` checks that each frame measures and draws the new values. `ImGuiRendererAllocationTests.LabelUpdateAndDrawAllocateNothingAfterWarmUp` runs the same scene through `ImGuiRenderer`. The harness has one font, so that test does not change the font. A planted allocation in the label measure makes three of these tests fail. A planted allocation in the image measure, in the `Uv`, `Color`, or `Size` setter, in `SetText(LString)`, or in the slow path of the refresh makes one test or more fail.
 - **Benchmarks** with BenchmarkDotNet for layout and draw on that tree. `TreeLayoutBenchmark` measures the full layout, a dirty subtree, and a clean update on the 1000-element tree. The settings panel is hidden, so the full layout pass lays out 780 elements and sets the 220 elements of the panel to zero. `PercentChainBenchmark` measures a leaf mark under a chain of percent sizes. `TreeDrawBenchmark` measures `Draw` on the 1000-element tree into `RecordingRenderer`. The time holds the walk and the cost of the recording.
 - **Facts report.** The `--facts` mode of the benchmark project prints four `facts:` lines: the size of the tree, the callback calls of the two percent chains, and the number of levels that pass on a 1 MB stack.
-- **Sample projects** as the integration test, built in CI. The HelloPanel smoke run (`--frames 120`) prints 3 lines: `HelloPanel: 120 frames rendered.`, `HelloPanel: last frame: draw commands 2, vertices 128.`, and `HelloPanel: bytes after warm-up: Update and Draw 0, frame <F>, in 117 frames.` The run is also a gate. It exits with code 1 and writes `HelloPanel: Update and Draw allocated <B> bytes after warm-up. The limit is 0 bytes.` to standard error when the UI region (`ViewportSize`, `Update`, and `Draw`) allocates after 3 warm-up frames. The frame number is a report only. In a measured frame in which the thread allocated since the last release, the sample releases the allocation context before the UI region and outside it, for the same cause as the test gates.
+- **Sample projects** as the integration test, built in CI. The HelloPanel smoke run (`--frames 120`) prints 3 lines: `HelloPanel: 120 frames rendered.`, `HelloPanel: last frame: draw commands 2, vertices 128.`, and `HelloPanel: bytes after warm-up: Update and Draw 0, frame <F>, in 117 frames.` The run is also a gate. It exits with code 1 and writes `HelloPanel: Update and Draw allocated <B> bytes after warm-up. The limit is 0 bytes.` to standard error when the UI region (`ViewportSize`, `Update`, and `Draw`) allocates after 3 warm-up frames. The frame number is a report only. In a measured frame in which the thread allocated since the last release, the sample releases the allocation context before the UI region and outside it, for the same cause as the test gates. The sample loads `HelloScreen.css` before the window opens. A bad sheet gives exit code 1 and the error lines on standard error, with no GPU.
 
 Run the benchmarks and the facts report from the repository root:
 

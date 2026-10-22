@@ -13,6 +13,11 @@
   <ItemGroup>
     <ProjectReference Include="../../src/BrutalUi.Core/BrutalUi.Core.csproj" />
     <ProjectReference Include="../../src/BrutalUi.ImGui/BrutalUi.ImGui.csproj" />
+    <ProjectReference Include="../../src/BrutalUi.Markup/BrutalUi.Markup.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="HelloScreen.css" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

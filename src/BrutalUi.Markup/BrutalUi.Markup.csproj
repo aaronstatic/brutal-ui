@@ -4,6 +4,11 @@
     <Description>The XML element loader and the stylesheet parser for brutal-ui.</Description>
   </PropertyGroup>
 
+  <!-- The test project reads the internal parser types: the tokens and the tokenizer. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="BrutalUi.Markup.Tests" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="../BrutalUi.Core/BrutalUi.Core.csproj" />
   </ItemGroup>

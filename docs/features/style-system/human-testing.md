@@ -1,7 +1,7 @@
 # Style System — Human Testing
 
 **Epic:** style-system
-**Last Updated:** 2026-10-21 21:18
+**Last Updated:** 2026-10-22 00:55
 
 > An `/autorun-epic` run adds one section per feature, and one demo line per slice as the slice lands. Check an item after you test it.
 
@@ -23,3 +23,15 @@
 - [ ] Phase 3 demo: the developer runs `dotnet run --project tests/BrutalUi.Core.Tests/BrutalUi.Core.Tests.csproj -- --filter-method '*ANameRuleWinsOverAClassAndAState' --show-live-output on` and reads `title #00FF00FF`, then `subtitle #3060C0FF` after `Name = "subtitle"`.
 - [ ] Phase 4 demo: the developer runs `dotnet run --project tests/BrutalUi.Core.Tests/BrutalUi.Core.Tests.csproj -- --filter-class '*ThousandElementAllocationTests'` and reads a total of 10 with `failed: 0`.
 - [ ] Windows run (selector-matching): on Windows, after `git pull --ff-only`, run `.\scripts\test-windows.ps1`. Expect the PASS line and `$LASTEXITCODE` 0.
+
+## style-parser
+
+- [ ] Phase 1 demo: the developer runs `dotnet run --project tests/BrutalUi.Markup.Tests/BrutalUi.Markup.Tests.csproj -- --filter-method '*ATextSheetPaintsAPanel' --show-live-output on` and reads `panel #1E222CFF` and `plain #00000000`.
+- [ ] Phase 2 demo: the developer runs `dotnet run --project tests/BrutalUi.Markup.Tests/BrutalUi.Markup.Tests.csproj -- --filter-method '*AHoverOnAPanelRestylesItsRowAndItsCellFromText' --show-live-output on` and reads `row #00000000 cell #00000000`, then `row #3060C0FF cell #FFCC00FF` after `panel.States = Hover`.
+- [ ] Phase 3 demo: the developer runs `dotnet run --project tests/BrutalUi.Markup.Tests/BrutalUi.Markup.Tests.csproj -- --filter-method '*ATextSheetLaysOutAPanel' --show-live-output on` and reads `panel 20,10,200,40`.
+- [ ] Phase 4 demo: the developer runs `dotnet run --project tests/BrutalUi.Markup.Tests/BrutalUi.Markup.Tests.csproj -- --filter-method '*AThemeVariableColorsTheButton' --show-live-output on` and reads `button #3060C0FF`, then `error 2:25 UnknownVariable` for a second sheet that reads `var(--missing)`.
+- [ ] Phase 5 demo: the developer runs `dotnet run --project tests/BrutalUi.Markup.Tests/BrutalUi.Markup.Tests.csproj -- --filter-method '*ASheetWithThreeMistakesReportsEachOne' --show-live-output on` and reads `error 2:3 UnknownProperty`, `error 3:10 InvalidValue`, `error 4:1 UnexpectedEnd`, and `sheet null`.
+- [ ] Phase 6 demo: the developer runs `dotnet run --project tests/BrutalUi.Markup.Tests/BrutalUi.Markup.Tests.csproj -- --filter-method '*ATransitionDeclarationIsStoredInTheRule' --show-live-output on` and reads `BackgroundColor 0.2s EaseOut`, then `Opacity none`.
+- [ ] Phase 7 demo: the developer runs `scripts/test-linux.sh; echo "exit=$?"` and reads `test-linux: PASS build, test, gpu, smoke (120 frames) in <S> s` and `exit=0`. Then `grep -c 'draw commands 2, vertices 128' artifacts/test-linux/smoke.log` prints `1`.
+- [ ] Error path (style-parser): run `dotnet build brutal-ui.sln`, then write `.hello-panel { colour: #fff; }` into `samples/HelloPanel/bin/Debug/net10.0/HelloScreen.css`. Run `dotnet run --project samples/HelloPanel/HelloPanel.csproj --no-build -- --frames 1; echo "exit=$?"`. Expect `exit=1` and the line `HelloScreen.css(1,16): UnknownProperty:` on standard error. Then run `touch samples/HelloPanel/HelloScreen.css` (or delete the bin copy) before the next build. `PreserveNewest` does not copy an older source over a newer copy.
+- [ ] Windows run (style-parser): on Windows, after `git pull --ff-only`, run `.\scripts\test-windows.ps1`. Expect the PASS line and `$LASTEXITCODE` 0.

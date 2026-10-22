@@ -12,4 +12,9 @@
     <ProjectReference Include="../../src/BrutalUi.Markup/BrutalUi.Markup.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Include="../BrutalUi.Core.Tests/Shared/AllocationGate.cs" LinkBase="Shared" />
+    <None Include="../../samples/HelloPanel/HelloScreen.css" Link="HelloScreen.css" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

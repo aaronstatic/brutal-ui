@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 
 namespace BrutalUi.Core;
@@ -54,14 +55,30 @@ public static class ElementType
     /// <exception cref="ArgumentOutOfRangeException">The table does not hold the id. <see cref="ElementTypeId.None"/> is not in the table.</exception>
     public static string GetName(ElementTypeId id)
     {
+        if (!TryGetName(id, out string? name))
+        {
+            throw new ArgumentOutOfRangeException(nameof(id), id.Value, "The element type table does not hold this id. Get an id from ElementType.Intern or Element.TypeId.");
+        }
+
+        return name;
+    }
+
+    /// <summary>Looks up the name of an element type id. The method never throws.</summary>
+    /// <param name="id">The id to look up.</param>
+    /// <param name="name">The type name of the id, or <see langword="null"/> when the table does not hold the id.</param>
+    /// <returns><see langword="true"/> when the table holds the id. <see cref="ElementTypeId.None"/> is not in the table.</returns>
+    internal static bool TryGetName(ElementTypeId id, [NotNullWhen(true)] out string? name)
+    {
         lock (s_lock)
         {
             if (id.Value < 1 || id.Value >= s_names.Count)
             {
-                throw new ArgumentOutOfRangeException(nameof(id), id.Value, "The element type table does not hold this id. Get an id from ElementType.Intern or Element.TypeId.");
+                name = null;
+                return false;
             }
 
-            return s_names[id.Value];
+            name = s_names[id.Value];
+            return true;
         }
     }
 }

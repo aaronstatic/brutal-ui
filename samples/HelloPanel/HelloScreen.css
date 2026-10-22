@@ -1,0 +1,41 @@
+/*
+ * HelloScreen.css - the stylesheet of the HelloPanel sample.
+ *
+ * HelloScreen.LoadSheet reads this file at the start of the run. Each size and
+ * each color of the screen lives here. The format is in section 11 of
+ * docs/technical-design.md ("Stylesheet format").
+ */
+
+:root {
+    --panel-fill: #1e222c;
+    --panel-border: #608cdc;
+    --text: #ffffff;
+}
+
+/* The root draws nothing. flex-start stops the stretch, so the panel keeps the size of its content. */
+.hello-root {
+    align-items: flex-start;
+    padding: 24px;
+}
+
+/* The panel is a column with a fill, a border, and round corners. */
+.hello-panel {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 16px;
+    border-width: 2px;
+    border-radius: 8px;
+    background-color: var(--panel-fill);
+    border-color: var(--panel-border);
+}
+
+/* The label keeps font 0, the default font of the renderer. */
+.hello-panel > Label {
+    color: var(--text);
+    font-size: 26px;
+}
+
+/* The space between the label and the image. */
+.hello-panel > Image {
+    margin: 12px 0 0;
+}

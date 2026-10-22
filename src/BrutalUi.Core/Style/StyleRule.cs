@@ -1,7 +1,8 @@
 namespace BrutalUi.Core;
 
 /// <summary>
-/// One rule of a <see cref="StyleSheet"/>: a selector, the values that the rule sets, and the specificity.
+/// One rule of a <see cref="StyleSheet"/>: a selector, the values that the rule sets, the transitions that the rule
+/// declares, and the specificity.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -9,7 +10,11 @@ namespace BrutalUi.Core;
 /// order of the specificity, then in the order of add. Thus a later rule wins over an earlier rule at equal
 /// specificity.
 /// </para>
-/// <para>The style-parser feature adds the transition member to this struct later.</para>
+/// <para>
+/// <see cref="Transitions"/> holds the transitions of the rule. The style pass does not read them, so a transition
+/// does not change the computed style. The transitions feature reads them. The set adds 44 bytes, and the rule is
+/// 368 bytes.
+/// </para>
 /// </remarks>
 public readonly struct StyleRule
 {
@@ -19,16 +24,32 @@ public readonly struct StyleRule
     /// <summary>The values that the rule sets. The members with no value do not change the element.</summary>
     public readonly StyleProperties Properties;
 
+    /// <summary>
+    /// The transitions that the rule declares. A rule from <see cref="StyleRule(in Selector, in StyleProperties)"/>
+    /// holds an empty set.
+    /// </summary>
+    public readonly StyleTransitions Transitions;
+
     /// <summary>The specificity of <see cref="Selector"/> at the creation of the rule.</summary>
     public readonly int Specificity;
 
-    /// <summary>Creates a rule. The specificity comes from the selector.</summary>
+    /// <summary>Creates a rule with no transition. The specificity comes from the selector.</summary>
     /// <param name="selector">The selector that picks the elements.</param>
     /// <param name="properties">The values that the rule sets. The rule keeps a copy.</param>
     public StyleRule(in Selector selector, in StyleProperties properties)
+        : this(in selector, in properties, default(StyleTransitions))
+    {
+    }
+
+    /// <summary>Creates a rule with transitions. The specificity comes from the selector.</summary>
+    /// <param name="selector">The selector that picks the elements.</param>
+    /// <param name="properties">The values that the rule sets. The rule keeps a copy.</param>
+    /// <param name="transitions">The transitions that the rule declares. The rule keeps a copy.</param>
+    public StyleRule(in Selector selector, in StyleProperties properties, in StyleTransitions transitions)
     {
         Selector = selector;
         Properties = properties;
+        Transitions = transitions;
         Specificity = selector.Specificity;
     }
 }

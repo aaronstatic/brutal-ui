@@ -25,6 +25,10 @@ namespace HelloPanel;
 /// a runtime failure or for an allocation of <c>Update</c> and <c>Draw</c> after warm-up, and 2 for a usage error.
 /// The command line contract is in <c>docs/features/dev-ops/solution-skeleton/context.md</c>.
 /// </para>
+/// <para>
+/// The sample loads <c>HelloScreen.css</c> from the folder of its assembly before it opens the window. A sheet with
+/// an error gives exit code 1 and the error lines on standard error, with no GPU and no display.
+/// </para>
 /// </remarks>
 internal static class Program
 {
@@ -165,15 +169,23 @@ internal static class Program
     }
 
     /// <summary>
-    /// Starts GLFW, runs the sample, and ends GLFW. After the run, writes the frame count (line 1), the draw command
-    /// count and the vertex count of the last frame (line 2), and the allocated bytes after warm-up (line 3) to
-    /// standard output. When the UI region allocates after warm-up, writes the gate line to standard error and
-    /// returns <see cref="ExitFailure"/>.
+    /// Loads the sheet, starts GLFW, runs the sample, and ends GLFW. After the run, writes the frame count (line 1),
+    /// the draw command count and the vertex count of the last frame (line 2), and the allocated bytes after warm-up
+    /// (line 3) to standard output. When the UI region allocates after warm-up, writes the gate line to standard error
+    /// and returns <see cref="ExitFailure"/>.
     /// </summary>
+    /// <remarks>
+    /// The sheet loads before the first GLFW call, so a bad sheet fails with no GPU and no display. A parse error
+    /// throws <see cref="InvalidOperationException"/>. The <c>catch</c> of <see cref="Main"/> writes the exception to
+    /// standard error, with one <c>HelloScreen.css(line,column): kind: text</c> line for each error, and returns
+    /// <see cref="ExitFailure"/>.
+    /// </remarks>
     /// <param name="frameLimit">The number of frames to render, or <see cref="NoFrameLimit"/>.</param>
     /// <returns>The exit code.</returns>
     private static int Run(int frameLimit)
     {
+        StyleSheet sheet = HelloScreen.LoadSheet();
+
         if (!Glfw.Init())
         {
             GlfwErrorCode code = Glfw.GetError(out string? description);
@@ -184,7 +196,7 @@ internal static class Program
         RunResult result;
         try
         {
-            result = RunWindow(frameLimit);
+            result = RunWindow(sheet, frameLimit);
         }
         finally
         {
@@ -218,12 +230,13 @@ internal static class Program
     /// dispose the texture first, then the Vulkan context, then the window. Thus the device is alive when the texture
     /// is destroyed.
     /// </remarks>
+    /// <param name="sheet">The sheet of the screen, from <see cref="HelloScreen.LoadSheet"/>.</param>
     /// <param name="frameLimit">The number of frames to render, or <see cref="NoFrameLimit"/>.</param>
     /// <returns>
     /// The result of the run: the frame count, the draw list counts of the last frame, and the allocation sums of the
     /// measured frames.
     /// </returns>
-    private static RunResult RunWindow(int frameLimit)
+    private static RunResult RunWindow(StyleSheet sheet, int frameLimit)
     {
         if (!Glfw.VulkanSupported())
         {
@@ -257,7 +270,7 @@ internal static class Program
         ImGuiContextPtr imGuiContext = ImGui.CreateContext();
         try
         {
-            return RunImGui(window, vulkan, checker, frameLimit);
+            return RunImGui(window, vulkan, checker, sheet, frameLimit);
         }
         finally
         {
@@ -267,7 +280,7 @@ internal static class Program
 
     /// <summary>
     /// Creates the brutal-ui renderer, the UI context, and the two ImGui backends. Then registers the checker texture,
-    /// adds the screen, runs the frame loop, removes the texture, and disposes the backends.
+    /// adds the sheet and the screen, runs the frame loop, removes the texture, and disposes the backends.
     /// </summary>
     /// <remarks>
     /// The teardown waits for the device, then removes the texture, then disposes the backends. Thus no frame in flight
@@ -276,12 +289,14 @@ internal static class Program
     /// <param name="window">The window.</param>
     /// <param name="vulkan">The Vulkan context of the window.</param>
     /// <param name="checker">The checker texture. It stays alive until after the backends are disposed.</param>
+    /// <param name="sheet">The sheet of the screen. It gives each size and each color of the tree.</param>
     /// <param name="frameLimit">The number of frames to render, or <see cref="NoFrameLimit"/>.</param>
     /// <returns>
     /// The result of the run: the frame count, the draw list counts of the last frame, and the allocation sums of the
     /// measured frames.
     /// </returns>
-    private static RunResult RunImGui(GlfwWindow window, VulkanContext vulkan, SampledTexture checker, int frameLimit)
+    private static RunResult RunImGui(
+        GlfwWindow window, VulkanContext vulkan, SampledTexture checker, StyleSheet sheet, int frameLimit)
     {
         // ImGui writes no imgui.ini file into the working directory.
         ImGuiIOPtr io = ImGui.GetIO();
@@ -319,6 +334,8 @@ internal static class Program
             // The pool now holds 2 of its sets: the font atlas and the checker texture.
             handle = textures.AddVulkan(
                 vulkanBackend, checker.Sampler, checker.View, VkImageLayout.ShaderReadOnlyOptimal, checker.Size);
+            // The sheet gives each size and each color of the screen. The tree sets only the classes.
+            ui.AddSheet(sheet);
             ui.AddRoot(HelloScreen.Build(handle));
 
             return RunFrames(window, vulkan, glfwBackend, vulkanBackend, ui, uiRenderer, frameLimit);

@@ -39,12 +39,23 @@ public sealed class StyleSheet
     {
         private readonly List<StyleRule> _rules = [];
 
-        /// <summary>Adds a rule at the end of the sheet.</summary>
+        /// <summary>Adds a rule with no transition at the end of the sheet.</summary>
         /// <param name="selector">The selector that picks the elements. Create it with <see cref="Selector.For(in CompoundSelector)"/>, <see cref="Selector.Child(in CompoundSelector, in CompoundSelector)"/>, or <see cref="Selector.Descendant(in CompoundSelector, in CompoundSelector)"/>, or with one of the shortcuts <see cref="Selector.ForClass(ClassId)"/>, <see cref="Selector.ForName(string)"/>, <see cref="Selector.ForType(ElementTypeId)"/>, and <see cref="Selector.ForTypeAndClass(ElementTypeId, ClassId)"/>.</param>
         /// <param name="properties">The values that the rule sets. The builder keeps a copy.</param>
         /// <returns>The builder, so calls can follow in a chain.</returns>
         /// <exception cref="ArgumentException"><paramref name="selector"/> is <c>default(Selector)</c>.</exception>
         public Builder Add(in Selector selector, in StyleProperties properties)
+        {
+            return Add(in selector, in properties, default(StyleTransitions));
+        }
+
+        /// <summary>Adds a rule with transitions at the end of the sheet.</summary>
+        /// <param name="selector">The selector that picks the elements. Create it as for <see cref="Add(in Selector, in StyleProperties)"/>.</param>
+        /// <param name="properties">The values that the rule sets. The builder keeps a copy.</param>
+        /// <param name="transitions">The transitions that the rule declares. The builder keeps a copy. The sort of <see cref="Build"/> keeps the set with its rule.</param>
+        /// <returns>The builder, so calls can follow in a chain.</returns>
+        /// <exception cref="ArgumentException"><paramref name="selector"/> is <c>default(Selector)</c>.</exception>
+        public Builder Add(in Selector selector, in StyleProperties properties, in StyleTransitions transitions)
         {
             if (selector.IsEmpty)
             {
@@ -53,7 +64,7 @@ public sealed class StyleSheet
                     nameof(selector));
             }
 
-            _rules.Add(new StyleRule(in selector, in properties));
+            _rules.Add(new StyleRule(in selector, in properties, in transitions));
             return this;
         }
 

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 
 namespace BrutalUi.Core;
@@ -54,14 +55,30 @@ public static class ClassName
     /// <exception cref="ArgumentOutOfRangeException">The table does not hold the id. <see cref="ClassId.None"/> is not in the table.</exception>
     public static string GetName(ClassId id)
     {
+        if (!TryGetName(id, out string? name))
+        {
+            throw new ArgumentOutOfRangeException(nameof(id), id.Value, "The class table does not hold this id.");
+        }
+
+        return name;
+    }
+
+    /// <summary>Looks up the name of a class id. The method never throws.</summary>
+    /// <param name="id">The id to look up.</param>
+    /// <param name="name">The class name of the id, or <see langword="null"/> when the table does not hold the id.</param>
+    /// <returns><see langword="true"/> when the table holds the id. <see cref="ClassId.None"/> is not in the table.</returns>
+    internal static bool TryGetName(ClassId id, [NotNullWhen(true)] out string? name)
+    {
         lock (s_lock)
         {
             if (id.Value < 1 || id.Value >= s_names.Count)
             {
-                throw new ArgumentOutOfRangeException(nameof(id), id.Value, "The class table does not hold this id.");
+                name = null;
+                return false;
             }
 
-            return s_names[id.Value];
+            name = s_names[id.Value];
+            return true;
         }
     }
 }

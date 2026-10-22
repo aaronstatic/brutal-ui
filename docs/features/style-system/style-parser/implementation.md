@@ -1,10 +1,10 @@
 # Style Parser - Implementation Plan
 
 **Epic:** style-system (feature 3 of 4)
-**Status:** Planning
+**Status:** Ready for Review
 **Started:** 2026-10-21
 **Target Completion:** TBD
-**Last Updated:** 2026-10-21 22:20
+**Last Updated:** 2026-10-22 00:55
 
 ---
 
@@ -14,7 +14,7 @@
 
 - **A correct map:** Each of the 32 property names sets its own member of `StyleProperties` and no other member. Each selector form gives the selector that the factory of selector-matching gives. An edge set and a corner set follow the CSS order of one to four values. A test proves each form.
 - **A correct error report:** A sheet with an error gives no `StyleSheet`. Each error holds a kind, a line, a column, a message, and the source name. The parser reports each error of a sheet, not only the first. No input makes `Parse` throw. A seeded random test proves it.
-- **Theme variables at parse time (A9):** `var(--name)` reads a `--name` of a `:root` block of the same sheet. An unknown variable is an error at the position of its name. A variable of one sheet is not visible in a second sheet.
+- **Theme variables at parse time (A9):** `var(--name)` reads a `--name` of a `:root` block of the same sheet. An unknown variable gives an error at its name. A variable of one sheet is not visible in a second sheet.
 - **Zero allocation in the frame loop:** The parser can allocate. The frame loop runs no parser code. `UiContext.Update` allocates 0 bytes after warm-up with a parsed sheet that holds each selector form and a transition declaration. A planted allocation proves that the new gate blocks.
 - **A visible result:** The HelloPanel sample loads `HelloScreen.css` and sets classes in place of inline values. The smoke run keeps its 3 lines (`draw commands 2, vertices 128`, and 0 bytes after warm-up) and its exit codes.
 - **No new package and no reflection:** `BrutalUi.Markup` references Core only. `Directory.Packages.props` does not change. The parser uses explicit tables, not `Enum.Parse` and not reflection.
@@ -27,7 +27,7 @@ This feature adds the text format of a stylesheet and the parser that makes a `S
 
 The parser has two layers. A tokenizer reads the UTF-8 bytes one time and gives a list of tokens, each with its line and column. A recursive descent parser then reads the list in two passes. Pass 1 collects the theme variables of each `:root` block. Pass 2 reads each rule, puts the variable values in place of each `var(--name)`, maps the selectors to `CompoundSelector` and the factories of selector-matching, and writes the values through the setters of `StyleProperties`. When an error occurs, the parser records it, skips to a safe point, and continues. Thus one parse reports each error. A sheet with an error gives no `StyleSheet`.
 
-The feature also adds two parts to Core. `StyleTransitions` holds the `transition` declaration of a rule for the transitions feature, and `StyleRule` gets it through a new constructor overload. `CompoundSelector` and `Selector` get equality members and a CSS text form (CR-4 of selector-matching), so a parser test that compares two selectors shows the CSS text of each value.
+The feature also adds two parts to Core. `StyleTransitions` holds the transitions of a rule for the transitions feature, and `StyleRule` gets it through a new constructor overload. `CompoundSelector` and `Selector` get equality members and a CSS text form (CR-4 of selector-matching), so a parser test that compares two selectors shows the CSS text of each value.
 
 ---
 
@@ -300,14 +300,14 @@ A rule sets all four edges of an edge set at one time. The format has no longhan
 
 ### Theme Variables (phase 4, A9)
 
-- **Pass 1** reads each `:root` block of the token list. Each declaration `--name: tokens;` stores the token range of its value, with no leading and no trailing whitespace. A later definition of the same name wins. A block can come before or after the rules that read it.
+- **Pass 1** reads each `:root` block of the token list. Each declaration `--name: tokens;` stores the token range of its value, with no leading and no trailing whitespace. When a text defines a name two times, the later value wins. A block can come before or after the rules that read it.
 - **Pass 2** skips each `:root` block. In a declaration value, `var(--name)` takes the tokens of the variable. A value can mix variables and other tokens: `padding: var(--gap) 8px;`. A variable can hold more than one value: `--pad: 4px 8px;`.
 - **The errors.** An unknown name gives `UnknownVariable` at the `--name` token inside `var(`. A `--name` declaration outside `:root`, a declaration in `:root` that is not a variable, an empty variable value, a `var()` inside a variable value, and a fallback (`var(--a, 4px)`) each give `InvalidVariable`. An error in a value that comes from a variable points at the `var` token of the declaration, and the message names the variable.
 - **The scope.** The variable map lives in one `Parse` call. A second sheet does not see it (A9). Runtime theme variables are out of scope.
 
 ### The Error Report (phase 5)
 
-- The parser records each error and continues. After an error in a declaration, it skips to the next `;` or `}` of the same block. After an error in a selector, it skips the full block of the rule. After an error at the top level, it skips to the next `}`. A missing `}` at the end gives `UnexpectedEnd` at the position of the `End` token.
+- The parser records each error and continues. After an error in a declaration, it skips to the next `;` or `}` of the same block. After an error in a selector, it skips the full block of the rule. After an error at the top level, it skips to the next `}`. A missing `}` at the end gives `UnexpectedEnd` at the `End` token.
 - `Errors` holds the errors in the order of the source. A text with one error or more gives `Sheet == null`.
 - An at-rule (`@import`, `@media`) gives `UnsupportedSyntax` at the `@`. `!important` gives `UnsupportedSyntax` at the `!`. A function other than `var` (`calc(`, `rgb(`) gives `UnsupportedSyntax` at its name.
 - Each message names the problem and the fix in one or two short sentences, quotes the source text, and follows ASD-STE100. Example: `'colour' is not a property of the format. Check the spelling, for example 'color'.` The tests assert the kind, the line, and the column, and not the full message text.
@@ -356,7 +356,7 @@ Group A (the tokenizer, 5 files):
   - `ALineBreakStartsANewLine`: LF, CRLF, and a lone CR each give line 2, column 1 for the next token.
   - `AColumnCountsCodePoints`: `/* é */ .a` gives column 9 for the `.`. A tab counts 1.
   - `ABomAddsNoColumn`, `ACommentJoinsTheWhitespace`, and `ANonAsciiByteOutsideACommentIsAnError`.
-  - `AnUnterminatedCommentIsAnError`: the position of the `/*`.
+  - `AnUnterminatedCommentIsAnError`: the error is at the `/*`.
   - `TheEndTokenHoldsThePositionAfterTheText`: a text that ends with LF gives `End` at the next line, column 1.
 
 Group B (the parser, 5 files):
@@ -433,9 +433,9 @@ Group B (the selectors from text, 3 files):
 **Tier note:** The plan gives the full property table, the value forms, and the edge order. The work is table work in the parser. The one trap is the order of the `LengthEdges` and `Corners` constructors, and `EdgeAndCornerTests` checks each edge of each count.
 
 **Tasks:**
-- [ ] 3.1 Write `src/BrutalUi.Markup/Style/PropertyTable.cs` (internal static): one entry for each of the 32 names of "The Properties and the Value Forms", with its `StyleProperty` member and its value form. Add an explicit keyword table for each of the 7 enums. The table is built one time, at the first use, with `StringComparer.Ordinal`.
+- [ ] 3.1 Write `src/BrutalUi.Markup/Style/PropertyTable.cs` (internal static): one entry for each of the 32 names of "The Properties and the Value Forms", with its `StyleProperty` member and its value form. Add an explicit keyword table for each of the 7 enums. The class builds the table one time, at the first use, with `StringComparer.Ordinal`.
 - [ ] 3.2 Edit `src/BrutalUi.Markup/Style/StyleValues.cs`: the length, the number (invariant culture), the keyword, the edge set and the corner set in the CSS order of the table, the `px` value of `font-size`, and the font. `font: default;` gives `new FontHandle(0)` when the map does not hold `default`. A key of `CreateInfo.Fonts` gives its handle. Another name gives `UnknownFont`. A wrong form or a wrong count gives `InvalidValue` at the first token at fault.
-- [ ] 3.3 Edit `src/BrutalUi.Markup/Style/StyleSheetParser.cs`: `CreateInfo.Fonts`. The declaration loop finds the name in `PropertyTable`, reads the value with `StyleValues`, and writes it through the `StyleProperties` setter. An unknown name gives `UnknownProperty`. A later declaration of the same property wins.
+- [ ] 3.3 Edit `src/BrutalUi.Markup/Style/StyleSheetParser.cs`: `CreateInfo.Fonts`. The declaration loop finds the name in `PropertyTable`, reads the value with `StyleValues`, and writes it through the `StyleProperties` setter. An unknown name gives `UnknownProperty`. When a rule sets the same property two times, the later value wins.
 - [ ] 3.4 Write `tests/BrutalUi.Markup.Tests/Style/PropertyFormTests.cs`:
   - `ATextSheetLaysOutAPanel` (the demo): a viewport of 400 by 300. `.<p>panel { width: 50%; height: 40px; margin: 10px 20px; }` on a child of a root with no style. Print `panel <x>,<y>,<width>,<height>` from `Layout.Rect` with the invariant culture. Assert the line.
   - `EachPropertyNameSetsItsOwnMember` (a theory with 32 rows): each row sets one name to a value that is not the default. The rule mask holds the bit of that member only, and the getter gives the value.
@@ -526,7 +526,7 @@ Group B (the selectors from text, 3 files):
 ---
 
 ### Phase 6: A Transition Declaration Lives in the Rule
-**Goal:** The Core model of a transition (`TransitionEasing`, `StyleTransition`, `StyleTransitions`), the new `StyleRule` constructor and `Add` overload, and the `transition` declaration of the format (Q3).
+**Goal:** The Core model of a transition (`TransitionEasing`, `StyleTransition`, `StyleTransitions`), the new `StyleRule` constructor and `Add` overload, and the `transition` declaration in the format (Q3).
 **Demo:** the developer runs `dotnet run --project tests/BrutalUi.Markup.Tests/BrutalUi.Markup.Tests.csproj -- --filter-method '*ATransitionDeclarationIsStoredInTheRule' --show-live-output on` and reads `BackgroundColor 0.2s EaseOut`, then `Opacity none`.
 **Needs:** Phase 5
 **Agent tier:** ADVANCED (opus)
@@ -624,7 +624,7 @@ The epic interview confirmed these items (`epic-overview.md`). The decisions bel
 ### Decision 2: The tokenizer gives a full list first, and the parser reads it in two passes
 **Choice:** One tokenizer run gives a `List<StyleToken>`. Pass 1 reads the `:root` blocks. Pass 2 reads the rules.
 **Rationale:** A9 asks for variables at parse time for each sheet. With a list, a variable can come after the rule that reads it, as in CSS, and a substitution is a token range with its own positions. The list also gives the look-ahead that the selector reader needs for whitespace before `>`, `,`, and `{`. The parser runs at load time, so the list costs no frame time.
-**Alternatives:** (a) A pull tokenizer with one pass: no list, but a variable must come before its use, and the look-ahead needs a buffer. (b) A text substitution of `var()` before the tokenizer: the positions of each later token move, so the error report gives wrong columns.
+**Alternatives:** (a) A pull tokenizer with one pass: no list, but a variable must come before its use, and the look-ahead needs a buffer. (b) A text swap for each `var()` before the tokenizer: the positions of each later token move, so the error report gives wrong columns.
 
 ### Decision 3: The parser reports each error through a result, not an exception
 **Choice:** `Parse` returns a `StyleParseResult` with `Sheet` or `Errors`. Each error holds a `StyleErrorKind`, a line, a column, a message, and the source name. The parser recovers at `;` and `}`. `GetSheetOrThrow` gives the throw for code that wants it.

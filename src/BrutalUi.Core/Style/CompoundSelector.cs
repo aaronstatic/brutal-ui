@@ -1,4 +1,6 @@
 using System;
+using System.Globalization;
+using System.Text;
 
 namespace BrutalUi.Core;
 
@@ -27,9 +29,28 @@ namespace BrutalUi.Core;
 /// The name part compares <see cref="Element.Name"/> with <see cref="Name"/>, as <c>#title</c> does in CSS. The
 /// compare is ordinal and case-sensitive. A <see langword="null"/> <see cref="Name"/> means no name part.
 /// </para>
+/// <para>
+/// Two compounds are equal when each of the four parts is equal. The name compare is ordinal. The equality members
+/// allocate nothing, so a test or a cache can compare compounds. <see cref="Equals(object?)"/> boxes only when the
+/// caller gives a boxed value. <see cref="ToString"/> gives the CSS text of the compound. It allocates and reads the
+/// global name tables, so use it for test output and debug output only.
+/// </para>
 /// </remarks>
-public readonly struct CompoundSelector
+public readonly struct CompoundSelector : IEquatable<CompoundSelector>
 {
+    /// <summary>
+    /// The state bits and their CSS text, in the order of the text form. <see cref="ToString"/> writes each state in
+    /// this order.
+    /// </summary>
+    private static readonly (PseudoStates State, string Text)[] StateTexts =
+    [
+        (PseudoStates.Hover, ":hover"),
+        (PseudoStates.Active, ":active"),
+        (PseudoStates.Focus, ":focus"),
+        (PseudoStates.Disabled, ":disabled"),
+        (PseudoStates.Checked, ":checked"),
+    ];
+
     /// <summary>
     /// Gets the type that the element must have. <see cref="ElementTypeId.None"/> when the compound has no type part.
     /// </summary>
@@ -101,5 +122,131 @@ public readonly struct CompoundSelector
     internal bool Matches(Element element)
     {
         return Matches(element, Type.IsNone ? ElementTypeId.None : element.TypeId);
+    }
+
+    /// <summary>Compares two compounds.</summary>
+    /// <param name="left">The first compound.</param>
+    /// <param name="right">The second compound.</param>
+    /// <returns><see langword="true"/> when each part of the two compounds is equal.</returns>
+    public static bool operator ==(in CompoundSelector left, in CompoundSelector right) => left.EqualParts(in right);
+
+    /// <summary>Compares two compounds.</summary>
+    /// <param name="left">The first compound.</param>
+    /// <param name="right">The second compound.</param>
+    /// <returns><see langword="true"/> when one part or more of the two compounds is not equal.</returns>
+    public static bool operator !=(in CompoundSelector left, in CompoundSelector right) => !left.EqualParts(in right);
+
+    /// <summary>Compares the compound with another compound.</summary>
+    /// <remarks>
+    /// The method compares <see cref="Type"/>, <see cref="Class"/>, <see cref="States"/>, and <see cref="Name"/>. The
+    /// name compare is ordinal, so two string instances with the same text are equal. The method allocates nothing.
+    /// </remarks>
+    /// <param name="other">The compound to compare.</param>
+    /// <returns><see langword="true"/> when each part of the two compounds is equal.</returns>
+    public bool Equals(CompoundSelector other) => EqualParts(in other);
+
+    /// <summary>Compares the compound with an object.</summary>
+    /// <param name="obj">The object to compare.</param>
+    /// <returns>
+    /// <see langword="true"/> when <paramref name="obj"/> is a <see cref="CompoundSelector"/> and each part is equal.
+    /// </returns>
+    public override bool Equals(object? obj) => obj is CompoundSelector other && EqualParts(in other);
+
+    /// <summary>Gives a hash code from the four parts.</summary>
+    /// <remarks>
+    /// Two equal compounds give the same hash code. The name part uses the ordinal hash, and a
+    /// <see langword="null"/> name gives 0. The method allocates nothing.
+    /// </remarks>
+    /// <returns>The hash code.</returns>
+    public override int GetHashCode()
+    {
+        int nameHash = Name is null ? 0 : StringComparer.Ordinal.GetHashCode(Name);
+        return HashCode.Combine(Type.Value, Class.Value, (int)States, nameHash);
+    }
+
+    /// <summary>
+    /// Gives the CSS text of the compound: the type name, then <c>.class</c>, then <c>#name</c>, then each state in
+    /// the order <c>:hover:active:focus:disabled:checked</c>. For example, <c>Label.title#score:hover</c>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The method allocates and reads the global name tables. Use it for test output and debug output only. The text
+    /// uses the grammar of the stylesheet parser, so the parser reads the text back to an equal compound for each
+    /// name that the grammar of section 11 can read (an identifier for a type or a class, <c>[A-Za-z0-9_-]+</c> for a
+    /// name). Another name gives a text that the parser does not read back.
+    /// </para>
+    /// <para>
+    /// The method never throws. A type id that the type table does not hold gives <c>&lt;type N&gt;</c>, and a class
+    /// id that the class table does not hold gives <c>.&lt;class N&gt;</c>, with the number of the id for N. A state
+    /// bit that is not a member of <see cref="PseudoStates"/> gives <c>:&lt;state N&gt;</c>, with the value of each
+    /// such bit for N. The name goes into the text with no escape. An empty compound gives the empty text.
+    /// </para>
+    /// </remarks>
+    /// <returns>The CSS text of the compound.</returns>
+    public override string ToString()
+    {
+        StringBuilder text = new();
+        if (!Type.IsNone)
+        {
+            text.Append(TypeText(Type));
+        }
+
+        if (!Class.IsNone)
+        {
+            text.Append('.').Append(ClassText(Class));
+        }
+
+        if (Name is not null)
+        {
+            text.Append('#').Append(Name);
+        }
+
+        PseudoStates rest = States;
+        foreach ((PseudoStates state, string stateText) in StateTexts)
+        {
+            if ((States & state) != PseudoStates.None)
+            {
+                text.Append(stateText);
+                rest &= ~state;
+            }
+        }
+
+        if (rest != PseudoStates.None)
+        {
+            text.Append(":<state ").Append(((int)rest).ToString(CultureInfo.InvariantCulture)).Append('>');
+        }
+
+        return text.ToString();
+    }
+
+    /// <summary>Compares each part of the compound with each part of another compound.</summary>
+    /// <param name="other">The compound to compare.</param>
+    /// <returns><see langword="true"/> when each part is equal.</returns>
+    private bool EqualParts(in CompoundSelector other)
+    {
+        return Type == other.Type
+            && Class == other.Class
+            && States == other.States
+            && string.Equals(Name, other.Name, StringComparison.Ordinal);
+    }
+
+    /// <summary>Gives the name of a type id, or <c>&lt;type N&gt;</c> when the type table does not hold the id.</summary>
+    /// <param name="type">The type id. It is not <see cref="ElementTypeId.None"/>.</param>
+    /// <returns>The type name or the fallback text.</returns>
+    private static string TypeText(ElementTypeId type)
+    {
+        return ElementType.TryGetName(type, out string? name)
+            ? name
+            : "<type " + type.Value.ToString(CultureInfo.InvariantCulture) + ">";
+    }
+
+    /// <summary>Gives the name of a class id, or <c>&lt;class N&gt;</c> when the class table does not hold the id.</summary>
+    /// <param name="id">The class id. It is not <see cref="ClassId.None"/>.</param>
+    /// <returns>The class name or the fallback text, with no dot.</returns>
+    private static string ClassText(ClassId id)
+    {
+        return ClassName.TryGetName(id, out string? name)
+            ? name
+            : "<class " + id.Value.ToString(CultureInfo.InvariantCulture) + ">";
     }
 }

@@ -39,8 +39,15 @@ namespace BrutalUi.Core;
 /// selector of the grammar holds 2 names, 12 units of the class tier (one class and five pseudo-states in each of two
 /// compounds), and 2 types. Thus each count stays far below 256, and the value is never negative.
 /// </para>
+/// <para>
+/// Two selectors are equal when the subject, the ancestor, and the combinator are equal. The equality members
+/// allocate nothing. <see cref="Equals(object?)"/> boxes only when the caller gives a boxed value. A selector with one
+/// compound has an empty ancestor, so two such selectors with equal subjects are equal. <see cref="ToString"/> gives the
+/// CSS text of the selector. It allocates and reads the global name tables, so use it for test output and debug output
+/// only.
+/// </para>
 /// </remarks>
-public readonly struct Selector
+public readonly struct Selector : IEquatable<Selector>
 {
     /// <summary>The position of the lowest bit of the name tier in <see cref="Specificity"/>.</summary>
     private const int NameShift = 16;
@@ -312,6 +319,81 @@ public readonly struct Selector
             default:
                 return true;
         }
+    }
+
+    /// <summary>Compares two selectors.</summary>
+    /// <param name="left">The first selector.</param>
+    /// <param name="right">The second selector.</param>
+    /// <returns><see langword="true"/> when the subject, the ancestor, and the combinator are equal.</returns>
+    public static bool operator ==(in Selector left, in Selector right) => left.EqualParts(in right);
+
+    /// <summary>Compares two selectors.</summary>
+    /// <param name="left">The first selector.</param>
+    /// <param name="right">The second selector.</param>
+    /// <returns><see langword="true"/> when the subject, the ancestor, or the combinator is not equal.</returns>
+    public static bool operator !=(in Selector left, in Selector right) => !left.EqualParts(in right);
+
+    /// <summary>Compares the selector with another selector.</summary>
+    /// <remarks>
+    /// The method compares <see cref="Subject"/>, <see cref="Ancestor"/>, and <see cref="Combinator"/> with the
+    /// equality of <see cref="CompoundSelector"/>. The name compare is ordinal. The method allocates nothing.
+    /// </remarks>
+    /// <param name="other">The selector to compare.</param>
+    /// <returns><see langword="true"/> when the subject, the ancestor, and the combinator are equal.</returns>
+    public bool Equals(Selector other) => EqualParts(in other);
+
+    /// <summary>Compares the selector with an object.</summary>
+    /// <param name="obj">The object to compare.</param>
+    /// <returns>
+    /// <see langword="true"/> when <paramref name="obj"/> is a <see cref="Selector"/> with an equal subject, an equal
+    /// ancestor, and an equal combinator.
+    /// </returns>
+    public override bool Equals(object? obj) => obj is Selector other && EqualParts(in other);
+
+    /// <summary>Gives a hash code from the subject, the ancestor, and the combinator.</summary>
+    /// <remarks>Two equal selectors give the same hash code. The method allocates nothing.</remarks>
+    /// <returns>The hash code.</returns>
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(_subject.GetHashCode(), _ancestor.GetHashCode(), (int)_combinator);
+    }
+
+    /// <summary>
+    /// Gives the CSS text of the selector: <c>subject</c>, <c>ancestor &gt; subject</c> for a child chain, or
+    /// <c>ancestor subject</c> for a descendant chain. For example, <c>.a:hover &gt; .b</c>.
+    /// <c>default(Selector)</c> gives <c>(empty)</c>.
+    /// </summary>
+    /// <remarks>
+    /// The method allocates and reads the global name tables. Use it for test output and debug output only. It never
+    /// throws: <see cref="CompoundSelector.ToString"/> tells the text of an id that a table does not hold. The text
+    /// uses the grammar of the stylesheet parser, so the parser reads the text back to an equal selector for each
+    /// name that the grammar of section 11 can read (an identifier for a type or a class, <c>[A-Za-z0-9_-]+</c> for a
+    /// name). Another name gives a text that the parser does not read back.
+    /// </remarks>
+    /// <returns>The CSS text of the selector.</returns>
+    public override string ToString()
+    {
+        if (IsEmpty)
+        {
+            return "(empty)";
+        }
+
+        return _combinator switch
+        {
+            SelectorCombinator.Child => _ancestor.ToString() + " > " + _subject.ToString(),
+            SelectorCombinator.Descendant => _ancestor.ToString() + " " + _subject.ToString(),
+            _ => _subject.ToString(),
+        };
+    }
+
+    /// <summary>Compares the subject, the ancestor, and the combinator with those of another selector.</summary>
+    /// <param name="other">The selector to compare.</param>
+    /// <returns><see langword="true"/> when the three parts are equal.</returns>
+    private bool EqualParts(in Selector other)
+    {
+        return _combinator == other._combinator
+            && _subject == other._subject
+            && _ancestor == other._ancestor;
     }
 
     /// <summary>

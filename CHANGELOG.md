@@ -15,6 +15,7 @@ This file lists each notable change of brutal-ui. The format follows [Keep a Cha
 - The HelloPanel sample shows a static brutal-ui screen with a panel, a label, and a procedural image, with the sample allocation gate and `TreeDrawBenchmark` (imgui-renderer/hello-panel-sample).
 - `StyleProperties`, `Selector`, `StyleRule`, `StyleSheet`, `InlineStyle` (`Element.Inline`), `ElementTypeId`, `ElementType`, `UiContext.AddSheet`, `UiContext.RemoveSheet`, the style pass with its cascade and text inheritance, and the text members `Color`, `Font`, and `FontSize` of `ComputedStyle` with the text defaults of `UiContext.CreateInfo` (style-system/stylesheet-model).
 - `CompoundSelector`, `SelectorCombinator`, `Selector.For`, `Selector.Child`, `Selector.Descendant`, `Selector.ForName`, and the getters `Subject`, `Ancestor`, and `Combinator`. A rule now matches the pseudo-states, the name (ordinal), a child chain (`.a > .b`), and a descendant chain (`.a .b`). The descendant chain reads the parent and the grandparent only (style-system/selector-matching).
+- `StyleSheetParser`, `StyleParseResult`, `StyleParseError`, and `StyleErrorKind` in `BrutalUi.Markup`. They read the stylesheet text format with theme variables (`:root` and `var()`) and the transition declaration. Each error has a position. `TransitionEasing`, `StyleTransition`, `StyleTransitions`, the `StyleRule.Transitions` field with a new `StyleRule` constructor, and a new `StyleSheet.Builder.Add` overload. The equality members (`IEquatable<T>`, `==`, `!=`, `GetHashCode`) and the CSS text form (`ToString`) of `CompoundSelector` and `Selector` (style-system/style-parser).
 
 ### Changed
 
@@ -22,6 +23,7 @@ This file lists each notable change of brutal-ui. The format follows [Keep a Cha
 - `AddRoot` now marks the new root and each descendant with `Style` and `DescendantStyle`. An attach (`Children.Add` and `Children.Insert`) marks the moved element and each descendant with `Style`, and each descendant with a child also gets `DescendantStyle`. The expected `Dirty` of `DirtyTrackingTests.AddRootOfAChildMarksTheOldParentForLayout` changed for this reason (style-system/stylesheet-model).
 - A label with no text value now draws in the default color of the context (opaque white). The old `Label.CreateInfo.Color` was `required`, and a game had to give a color (style-system/stylesheet-model).
 - `Selector.Specificity` uses one byte for each tier: `(names << 16) | ((classes + states) << 8) | types`. A class rule gives 256 in place of 10, and a type and class rule gives 257 in place of 11. The order of the existing rules does not change. `ClassList.Add`, `ClassList.Remove`, and a new `Element.States` value mark the full subtree with `Style`. The old mark was on the element only. A new value of `Element.Name` now marks the element and its full subtree with `Style`. The old name setter marked nothing (style-system/selector-matching).
+- The HelloPanel sample loads its sizes and colors from `HelloScreen.css` through `StyleSheetParser`, in place of inline values. A bad sheet gives exit code 1 before the window opens (style-system/style-parser).
 
 ### Fixed
 

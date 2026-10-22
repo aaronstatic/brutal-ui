@@ -1,6 +1,8 @@
 using System;
+using System.IO;
 using Brutal.Numerics;
 using BrutalUi.Core;
+using BrutalUi.Markup;
 
 namespace HelloPanel;
 
@@ -19,40 +21,29 @@ namespace HelloPanel;
 /// checker texture, so it opens a second draw command.
 /// </para>
 /// <para>
-/// Copy this file to start a screen of your game. Each size and each color is a named constant.
+/// The sizes and the colors of the screen live in <c>HelloScreen.css</c>. <see cref="LoadSheet"/> parses the file,
+/// and <see cref="Build"/> sets the classes of the sheet. The tree holds no inline value. The rules
+/// <c>.hello-panel &gt; Label</c> and <c>.hello-panel &gt; Image</c> are child rules, so the label and the image must
+/// stay direct children of the panel.
+/// </para>
+/// <para>
+/// Copy this file and <c>HelloScreen.css</c> to start a screen of your game. Change a size or a color in the sheet,
+/// not in the code.
 /// </para>
 /// </remarks>
 internal static class HelloScreen
 {
+    /// <summary>The file name of the sheet. The build copies the file next to the sample assembly.</summary>
+    private const string SheetFileName = "HelloScreen.css";
+
     /// <summary>The text of the label.</summary>
     private const string GreetingText = "Hello, brutal-ui";
 
-    /// <summary>The space between the edge of the viewport and the panel, in pixels.</summary>
-    private const float RootPadding = 24f;
+    /// <summary>The class of the root: the class of the <c>.hello-root</c> rule of the sheet.</summary>
+    private static readonly ClassId RootClass = ClassName.Intern("hello-root");
 
-    /// <summary>The space between the border of the panel and its content, in pixels.</summary>
-    private const float PanelPadding = 16f;
-
-    /// <summary>The width of the panel border, in pixels.</summary>
-    private const float PanelBorderWidth = 2f;
-
-    /// <summary>The radius of each corner of the panel, in pixels.</summary>
-    private const float PanelCornerRadius = 8f;
-
-    /// <summary>The font size of the label, in pixels.</summary>
-    private const float GreetingFontSize = 26f;
-
-    /// <summary>The fill color of the panel: an opaque dark blue-gray.</summary>
-    private static readonly Rgba8 PanelColor = new(30, 34, 44, 255);
-
-    /// <summary>The border color of the panel: an opaque light blue.</summary>
-    private static readonly Rgba8 BorderColor = new(96, 140, 220, 255);
-
-    /// <summary>The color of the label text: opaque white.</summary>
-    private static readonly Rgba8 GreetingColor = new(255, 255, 255, 255);
-
-    /// <summary>The space between the label and the image, in pixels.</summary>
-    private const float ImageTopMargin = 12f;
+    /// <summary>The class of the panel: the class of the <c>.hello-panel</c> rules of the sheet.</summary>
+    private static readonly ClassId PanelClass = ClassName.Intern("hello-panel");
 
     /// <summary>The tint of the image: opaque white, so the texels keep their colors.</summary>
     private static readonly Rgba8 ImageTint = new(255, 255, 255, 255);
@@ -119,11 +110,31 @@ internal static class HelloScreen
         }
     }
 
+    /// <summary>Reads and parses <c>HelloScreen.css</c> from the folder of the sample assembly.</summary>
+    /// <remarks>
+    /// The method reads the bytes of the file and passes them to the UTF-8 overload of
+    /// <see cref="StyleSheetParser.Parse(ReadOnlySpan{byte}, string)"/>. Each error of the parse names the file, the
+    /// line, and the column. The method needs no GPU and no window, so call it before the window opens.
+    /// </remarks>
+    /// <returns>The sheet of the screen. Add it to the context with <see cref="UiContext.AddSheet(StyleSheet)"/>.</returns>
+    /// <exception cref="InvalidOperationException">
+    /// The sheet has one error or more. The message holds one <c>HelloScreen.css(line,column): kind: text</c> line for
+    /// each error.
+    /// </exception>
+    /// <exception cref="System.IO.IOException">The sample cannot read the file.</exception>
+    public static StyleSheet LoadSheet()
+    {
+        byte[] bytes = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, SheetFileName));
+        return new StyleSheetParser().Parse(bytes, SheetFileName).GetSheetOrThrow();
+    }
+
     /// <summary>Builds the tree of the screen.</summary>
     /// <remarks>
     /// The root has an auto size, so it takes the viewport size of its <see cref="UiContext"/>. Add the result to a
-    /// context with <see cref="UiContext.AddRoot(Element)"/>. The context must have a measurer, because the tree holds a
-    /// <see cref="Label"/>. The image takes the size of <paramref name="checker"/>, one pixel for each texel.
+    /// context with <see cref="UiContext.AddRoot(Element)"/>, and add the sheet of <see cref="LoadSheet"/> to the same
+    /// context. The tree sets the classes of the sheet and no inline value. The context must have a measurer, because
+    /// the tree holds a <see cref="Label"/>. The image takes the size of <paramref name="checker"/>, one pixel for each
+    /// texel.
     /// </remarks>
     /// <param name="checker">
     /// The texture of the image. The none handle is valid: the image then takes no space and draws nothing.
@@ -131,35 +142,26 @@ internal static class HelloScreen
     /// <returns>The root element of the screen.</returns>
     public static Element Build(TextureHandle checker)
     {
+        // The rule .hello-panel > Label gives the color and the size. The label keeps font 0, the default font.
         Label greeting = new(new Label.CreateInfo { Text = GreetingText });
-        // The label keeps font 0, the default font of the renderer. The inline set gives the color and the size.
-        greeting.Inline.Color = GreetingColor;
-        greeting.Inline.FontSize = GreetingFontSize;
 
+        // The rule .hello-panel > Image gives the top margin. The tint is a value of the image, not of the style.
         Image checkerImage = new(new Image.CreateInfo
         {
             Texture = checker,
             Tint = ImageTint,
             ScaleMode = ImageScaleMode.StretchToFill,
         });
-        // The view gives a copy of the edges, so the write changes the top edge of a whole value.
-        checkerImage.Inline.Margin = checkerImage.Inline.Margin with { Top = ImageTopMargin };
 
+        // The two child rules read the parent, so the label and the image are direct children of the panel.
         Element panel = new();
-        panel.Inline.FlexDirection = FlexDirection.Column;
-        panel.Inline.AlignItems = Align.FlexStart;
-        panel.Inline.Padding = LengthEdges.All(PanelPadding);
-        panel.Inline.BorderWidth = LengthEdges.All(PanelBorderWidth);
-        panel.Inline.CornerRadius = Corners.All(PanelCornerRadius);
-        panel.Inline.BackgroundColor = PanelColor;
-        panel.Inline.BorderColor = BorderColor;
+        panel.Classes.Add(PanelClass);
         panel.Children.Add(greeting);
         panel.Children.Add(checkerImage);
 
-        // The root draws nothing. FlexStart stops the stretch, so the panel keeps the size of its content.
+        // The root draws nothing. The rule .hello-root stops the stretch, so the panel keeps the size of its content.
         Element root = new();
-        root.Inline.AlignItems = Align.FlexStart;
-        root.Inline.Padding = LengthEdges.All(RootPadding);
+        root.Classes.Add(RootClass);
         root.Children.Add(panel);
 
         return root;
