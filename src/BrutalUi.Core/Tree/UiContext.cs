@@ -105,6 +105,12 @@ public sealed class UiContext
     private HitFrame[] _hitStack = new HitFrame[HitWalk.InitialStackSize];
 
     /// <summary>
+    /// The frame stack of the focus walk. The walk grows it by doubling and never shrinks it (Decision 6 of
+    /// keyboard-focus). It is not the stack of the hit walk.
+    /// </summary>
+    private FocusFrame[] _focusStack = new FocusFrame[FocusWalk.InitialStackSize];
+
+    /// <summary>
     /// The result of the last hit test of a pointer entry. It is also the element with <see cref="PseudoStates.Hover"/>
     /// from this context (Decision 7).
     /// </summary>
@@ -121,6 +127,12 @@ public sealed class UiContext
     /// it and the release of the last button clears it (Decision 8).
     /// </summary>
     private Element? _activeElement;
+
+    /// <summary>
+    /// The element with <see cref="PseudoStates.Focus"/> from this context, or <see langword="null"/>. Each change
+    /// goes through <see cref="SetFocusOwner(Element?)"/> (Decision 1 of keyboard-focus).
+    /// </summary>
+    private Element? _focusOwner;
 
     /// <summary>
     /// The buttons that are down. The bit <c>1 &lt;&lt; (int)button</c> is set from the press to the release of a
@@ -651,6 +663,24 @@ public sealed class UiContext
     internal ReadOnlySpan<HitFrame> HitStackSlots => _hitStack;
 
     /// <summary>
+    /// The key code of the Tab key. The drain compares <see cref="KeyEvent.Key"/> with this value for the Tab move.
+    /// </summary>
+    /// <remarks>
+    /// The value is the GLFW value of <c>GLFW_KEY_TAB</c>. Core has no GLFW reference, so it holds the number. A test
+    /// of <c>BrutalUi.Glfw.Tests</c> checks the value against the GLFW enum.
+    /// </remarks>
+    internal const int TabKey = 258;
+
+    /// <summary>Gets the length of the frame stack of the focus walk. This member serves the tests.</summary>
+    internal int FocusStackLength => _focusStack.Length;
+
+    /// <summary>
+    /// Gets the slots of the frame stack of the focus walk. Each slot holds no element after a focus move.
+    /// </summary>
+    /// <remarks>Only the tests of <c>BrutalUi.Core.Tests</c> read this member.</remarks>
+    internal ReadOnlySpan<FocusFrame> FocusStackSlots => _focusStack;
+
+    /// <summary>
     /// Gets the result of the hit test of the last pointer entry with no target, or <see langword="null"/> when that
     /// entry hit nothing. This element also holds <see cref="PseudoStates.Hover"/> from this context.
     /// </summary>
@@ -686,6 +716,152 @@ public sealed class UiContext
     /// <c>Active</c> stays until the next press and release of that button. Drain the queue each frame.
     /// </remarks>
     internal Element? ActiveElement => _activeElement;
+
+    /// <summary>
+    /// Gets the element that holds the keyboard focus of this context, or <see langword="null"/> when no element
+    /// holds it.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Routing-gate reads this member (A6). The owner holds <see cref="PseudoStates.Focus"/> from this context. The
+    /// state goes on the owner only, not on its ancestors.
+    /// </para>
+    /// <para>
+    /// The value changes at a code call (<see cref="SetFocus(Element)"/>, <see cref="ClearFocus"/>,
+    /// <see cref="FocusNext"/>, or <see cref="FocusPrevious"/>) or during a drain. A key or char event with no target
+    /// walks to this element at the drain. A Tab key down with no target moves the value after its walk.
+    /// </para>
+    /// <para>
+    /// The click focus: a <see cref="UiEventType.PointerDown"/> with no target sets this value at the drain, before
+    /// its walk. The value becomes the hit element or its nearest ancestor with <see cref="Element.IsFocusable"/>. A
+    /// press on no such element, or over no element, sets it to <see langword="null"/>. A press with a target from the
+    /// caller does not change it.
+    /// </para>
+    /// <para>
+    /// The stale focus rule: at the start of each drain, the value becomes <see langword="null"/> when the owner is not
+    /// focusable, holds <see cref="PseudoStates.Disabled"/>, left the roots of this context, or is hidden
+    /// (<see cref="Display.None"/> or an opacity product of 0 or less on the owner or an ancestor). The style of the
+    /// last <see cref="Update(float)"/> decides. Between two drains, the value can hold an owner that turned stale.
+    /// A handler that disables the owner or clears <see cref="Element.IsFocusable"/> drops the owner at the next key
+    /// or char entry of the same drain.
+    /// </para>
+    /// <para>
+    /// The repair rule: code can clear <see cref="PseudoStates.Focus"/> on the owner through
+    /// <see cref="Element.States"/>. The owner then stays in this value. A drain and a
+    /// <see cref="SetFocus(Element)"/> call on the owner set the bit again. The repair touches the owner only. It marks
+    /// nothing when the bit is set already.
+    /// </para>
+    /// </remarks>
+    public Element? FocusedElement => _focusOwner;
+
+    /// <summary>
+    /// Moves the keyboard focus of this context to an element.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The call returns <see langword="false"/> when the element does not accept the focus
+    /// (<see cref="Element.IsFocusable"/> is <see langword="false"/>, or the element holds
+    /// <see cref="PseudoStates.Disabled"/>), when the top of its parent chain is not a root of this context, or when
+    /// the element is hidden. Hidden means <see cref="Display.None"/> or an opacity product of 0 or less on the element
+    /// or an ancestor. The style of the last <see cref="Update(float)"/> decides, as for the hit test. A style change
+    /// that shows or hides the element counts for this call after the next update.
+    /// </para>
+    /// <para>
+    /// A failed call for another element changes nothing. A failed call for the current owner clears the focus, so
+    /// no element holds it after the call. A call for the current owner that passes the checks returns
+    /// <see langword="true"/>. It sets <see cref="PseudoStates.Focus"/> again when code cleared the bit through
+    /// <see cref="Element.States"/>. It marks nothing when the bit is set already.
+    /// </para>
+    /// <para>
+    /// The call changes the owner and <see cref="PseudoStates.Focus"/> at once, with no queue (Decision 12). This is
+    /// also true outside a drain and from an event handler. A key or char event of the current drain that did not walk
+    /// yet goes to the new owner. The next <see cref="Update(float)"/> restyles the subtrees of the old and the new
+    /// owner. The call allocates nothing.
+    /// </para>
+    /// </remarks>
+    /// <param name="element">The element that gets the focus.</param>
+    /// <returns>
+    /// <see langword="true"/> only when the element holds the focus after the call. On <see langword="false"/>, the
+    /// element does not hold the focus.
+    /// </returns>
+    /// <exception cref="ArgumentNullException"><paramref name="element"/> is <see langword="null"/>.</exception>
+    public bool SetFocus(Element element)
+    {
+        ArgumentNullException.ThrowIfNull(element);
+
+        if (!element.AcceptsFocus || !IsInRootTree(element) || !FocusWalk.IsShown(element))
+        {
+            // A failed call on the owner clears the focus, so the result and the state agree (CR-4).
+            if (ReferenceEquals(element, _focusOwner))
+            {
+                SetFocusOwner(null);
+            }
+
+            return false;
+        }
+
+        SetFocusOwner(element);
+        return true;
+    }
+
+    /// <summary>
+    /// Removes the keyboard focus from the owner of this context. After the call, no element holds it.
+    /// </summary>
+    /// <remarks>
+    /// The call clears <see cref="PseudoStates.Focus"/> on the old owner at once, also outside a drain and from an
+    /// event handler (Decision 12). The next <see cref="Update(float)"/> restyles the subtree of the old owner. A call
+    /// with no owner changes nothing. A key or char event with no target then gets no walk.
+    /// </remarks>
+    public void ClearFocus()
+    {
+        SetFocusOwner(null);
+    }
+
+    /// <summary>
+    /// Moves the keyboard focus of this context to the next element that accepts the focus, in tree order.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This method is the Tab move. It is also the slot for gamepad navigation: an action map can bind a button or a
+    /// key to it (Decision 8 of keyboard-focus). This feature binds no gamepad button and no arrow key.
+    /// </para>
+    /// <para>
+    /// The order is the paint order: the roots in the order of add, and a parent before its children. The search
+    /// skips an element with <see cref="Display.None"/> and an element with an opacity product of 0 or less, and
+    /// their subtrees. It reads no clip, so a clipped element can take the focus. After the last element, the focus
+    /// wraps to the first element. With no owner, or with an owner that the search does not see, the focus goes to
+    /// the first element. When the owner is the only element that accepts the focus, the owner keeps it. With no
+    /// element that accepts the focus, the owner clears.
+    /// </para>
+    /// <para>
+    /// The call changes the owner and <see cref="PseudoStates.Focus"/> at once, with no queue (Decision 12). This is
+    /// also true outside a drain and from an event handler. The call allocates nothing after warm-up. A tree deeper
+    /// than the frame stack grows the stack one time.
+    /// </para>
+    /// </remarks>
+    public void FocusNext()
+    {
+        SetFocusOwner(FocusWalk.Find(_roots.AsSpan(), _focusOwner, false, ref _focusStack));
+    }
+
+    /// <summary>
+    /// Moves the keyboard focus of this context to the previous element that accepts the focus, in tree order.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This method is the Shift+Tab move. It is also the slot for gamepad navigation: an action map can bind a button
+    /// or a key to it (Decision 8 of keyboard-focus). This feature binds no gamepad button and no arrow key.
+    /// </para>
+    /// <para>
+    /// The rules of <see cref="FocusNext"/> apply in the reverse direction. Before the first element, the focus wraps
+    /// to the last element. With no owner, or with an owner that the search does not see, the focus goes to the last
+    /// element. With no element that accepts the focus, the owner clears.
+    /// </para>
+    /// </remarks>
+    public void FocusPrevious()
+    {
+        SetFocusOwner(FocusWalk.Find(_roots.AsSpan(), _focusOwner, true, ref _focusStack));
+    }
 
     /// <summary>
     /// Finds the top-most element whose border box holds a position: the last root first, the last child first, and a
@@ -725,8 +901,14 @@ public sealed class UiContext
     /// walk, but it clears <see cref="PseudoStates.Hover"/>.
     /// </para>
     /// <para>
-    /// A target from the caller skips the hit test, the states, and the store of the hit (Decision 2). The hit test
-    /// applies to the pointer types only. The drain skips an event of another type with no target.
+    /// A <see cref="UiEventType.PointerDown"/> with no target also moves the keyboard focus at the drain, before its
+    /// walk: to the hit element, or to its nearest ancestor with <see cref="Element.IsFocusable"/>. A press on no such
+    /// element, or over no element, clears the focus (Decision 4 of keyboard-focus). Each button runs this rule.
+    /// </para>
+    /// <para>
+    /// A target from the caller skips the hit test, the states, the click focus, and the store of the hit
+    /// (Decision 2). The hit test applies to the pointer types and the scroll only. A key or char event with no target
+    /// goes to the focus owner.
     /// </para>
     /// <para>
     /// A full ring drops its oldest event. The push allocates nothing, because the constructor creates the ring.
@@ -766,8 +948,23 @@ public sealed class UiContext
     /// Adds a key event at the end of the event ring. The next drain sends it along the path of its target.
     /// </summary>
     /// <remarks>
-    /// The rules of <see cref="PushEvent(in PointerEvent)"/> apply. The ring keeps the type, the timestamp, the
-    /// target, the key, the scan code, the modifiers, and the repeat flag.
+    /// <para>
+    /// The push only copies the event. The ring keeps the type, the timestamp, the target, the key, the scan code, the
+    /// modifiers, and the repeat flag. A full ring drops its oldest event. The push allocates nothing.
+    /// </para>
+    /// <para>
+    /// The focus rule: a key event with no <see cref="UiEventHeader.Target"/> goes to the focus owner
+    /// (<see cref="FocusedElement"/>) at the drain, not at the push. With no owner, it gets no walk. A target from the
+    /// caller keeps its target and changes no focus (Decision 3 of keyboard-focus).
+    /// </para>
+    /// <para>
+    /// The Tab rule: a <see cref="UiEventType.KeyDown"/> of the Tab key with no target moves the focus after its walk
+    /// (Decision 5 of keyboard-focus). Tab calls <see cref="FocusNext"/>, and Shift+Tab calls
+    /// <see cref="FocusPrevious"/>. A handler that stops the walk keeps the focus. A handler that calls
+    /// <see cref="SetFocus(Element)"/> during the walk must also stop the walk to keep its choice. A Tab with no owner
+    /// still moves the focus. A repeat moves the focus, and a key up does not. A Tab with Control, Alt, or Super down,
+    /// or with a target from the caller, does not move the focus.
+    /// </para>
     /// </remarks>
     /// <param name="e">The event. The call copies it.</param>
     /// <exception cref="ArgumentException">The type of the event is not a key type.</exception>
@@ -780,8 +977,15 @@ public sealed class UiContext
     /// Adds a char event at the end of the event ring. The next drain sends it along the path of its target.
     /// </summary>
     /// <remarks>
-    /// The rules of <see cref="PushEvent(in PointerEvent)"/> apply. The ring keeps the type, the timestamp, the
-    /// target, and the code point.
+    /// <para>
+    /// The push only copies the event. The ring keeps the type, the timestamp, the target, and the code point. A full
+    /// ring drops its oldest event. The push allocates nothing.
+    /// </para>
+    /// <para>
+    /// The focus rule: a char event with no <see cref="UiEventHeader.Target"/> goes to the focus owner
+    /// (<see cref="FocusedElement"/>) at the drain, not at the push. With no owner, it gets no walk. A target from the
+    /// caller keeps its target and changes no focus (Decision 3 of keyboard-focus).
+    /// </para>
     /// </remarks>
     /// <param name="e">The event. The call copies it.</param>
     /// <exception cref="ArgumentException">The type of the event is not <see cref="UiEventType.Char"/>.</exception>
@@ -886,7 +1090,14 @@ public sealed class UiContext
     /// <see cref="Update(float)"/>. The step moves <see cref="PseudoStates.Hover"/> to the hit element and stores the
     /// hit before the walk runs, so a handler reads the new state. An entry over no element clears
     /// <see cref="PseudoStates.Hover"/> and gets no walk. An entry with a target from the caller skips the hit test
-    /// and changes no state.
+    /// and changes no state and no focus.
+    /// </para>
+    /// <para>
+    /// The focus rule (Decision 3 of keyboard-focus): a <see cref="UiEventType.KeyDown"/>,
+    /// <see cref="UiEventType.KeyUp"/>, or <see cref="UiEventType.Char"/> entry with no target gets the focus owner
+    /// (<see cref="FocusedElement"/>) as its target in the target step. With no owner, it gets no walk. An entry with
+    /// a target from the caller keeps its target and changes no focus. A handler that moves the focus changes the
+    /// target of each later key or char entry of the same drain.
     /// </para>
     /// <para>
     /// The Active rule: a <see cref="UiEventType.PointerDown"/> sets <see cref="PseudoStates.Active"/> on its hit
@@ -895,7 +1106,26 @@ public sealed class UiContext
     /// walks to the element under the pointer, which can be another element. A move and a scroll leave the state.
     /// </para>
     /// <para>
-    /// The method skips an entry with no target after the target step (A4). It skips an entry when the top of the
+    /// The click focus rule (Decision 4 of keyboard-focus): a <see cref="UiEventType.PointerDown"/> with no target
+    /// moves the focus after the Active step and before the walk. The focus goes to the hit element, or to its nearest
+    /// ancestor with <see cref="Element.IsFocusable"/>. When that element does not accept the focus, or when the press
+    /// hit no such element or no element at all, the focus clears. Each button runs the rule. A move, a release, and a
+    /// scroll keep the focus. A press with a target from the caller keeps the focus. A press moves the target of each
+    /// later key or char entry of the same drain.
+    /// </para>
+    /// <para>
+    /// The Tab rule (Decision 5 of keyboard-focus): a <see cref="UiEventType.KeyDown"/> entry with no target and the
+    /// key <c>TabKey</c> (the GLFW Tab key) first walks to the focus owner. After the walk, the method calls
+    /// <see cref="FocusPrevious"/> when <see cref="UiModifiers.Shift"/> is down and <see cref="FocusNext"/> otherwise.
+    /// A handler that stops the walk keeps the focus: the move does not occur. A handler that calls
+    /// <see cref="SetFocus(Element)"/> during the walk must also stop the walk to keep its choice. Otherwise the move
+    /// starts from the new owner. A Tab with no owner gets no walk, but it still moves the focus. A repeat moves the
+    /// focus. A <see cref="UiEventType.KeyUp"/> does not. A Tab with <see cref="UiModifiers.Control"/>,
+    /// <see cref="UiModifiers.Alt"/>, or <see cref="UiModifiers.Super"/> down does not move the focus. A Tab with a
+    /// target from the caller walks to that target and never moves the focus.
+    /// </para>
+    /// <para>
+    /// The method skips the walk of an entry with no target after the target step (A4). It skips an entry when the top of the
     /// parent chain of the target is not a root of this context (Decision 7): the target left the tree, or it belongs
     /// to another context.
     /// It also skips an entry with a type that no event struct carries. <see cref="PushEvent(in PointerEvent)"/> and
@@ -905,6 +1135,21 @@ public sealed class UiContext
     /// The stale rule (Decision 10): at the start of each drain, the method clears <see cref="PseudoStates.Hover"/> and
     /// <see cref="PseudoStates.Active"/> on a stored element that left the roots, and drops the reference. It keeps
     /// the button mask, so a later release still clears its bit.
+    /// </para>
+    /// <para>
+    /// The stale focus rule (Decision 7 of keyboard-focus): right after the stale rule, the method clears the focus
+    /// when the owner does not accept the focus (it is not focusable, or it holds <see cref="PseudoStates.Disabled"/>),
+    /// is not in the roots of this context, or is hidden. Hidden means <see cref="Display.None"/> or an opacity product
+    /// of 0 or less on the owner or an ancestor. The style of the last <see cref="Update(float)"/> decides, as for the
+    /// hit test. After the drain starts, <see cref="FocusedElement"/> is <see langword="null"/> or an element that can
+    /// hold the focus. When the owner stays, the method sets <see cref="PseudoStates.Focus"/> on it again, in case
+    /// code cleared the bit through <see cref="Element.States"/>.
+    /// </para>
+    /// <para>
+    /// Limit of the stale focus rule during a drain: a handler that disables the owner or clears
+    /// <see cref="Element.IsFocusable"/> drops the owner at the next key or char entry of the same drain. That entry
+    /// gets no walk. A removed owner gets no walk, because the walk step checks the roots. A style change that hides
+    /// the owner takes effect after the next <see cref="Update(float)"/>.
     /// </para>
     /// <para>
     /// The states follow the pointer events only. A layout change under a still pointer, or a change that hides an
@@ -917,8 +1162,9 @@ public sealed class UiContext
     /// queue each frame to keep the ring below its capacity. <see cref="DroppedEventCount"/> shows a drop.
     /// </para>
     /// <para>
-    /// Limit of the stale rule: the check of one context can clear a state that another context set. Drain the old
-    /// context after you remove an element and before you add it to another context.
+    /// Limit of the stale rules: the check of one context can clear a state that another context set. This is true
+    /// for <see cref="PseudoStates.Hover"/>, <see cref="PseudoStates.Active"/>, and <see cref="PseudoStates.Focus"/>.
+    /// Drain the old context after you remove an element and before you add it to another context.
     /// </para>
     /// <para>
     /// A call from a handler of the drain throws. The flag is cleared in a <c>finally</c> block, so the context stays
@@ -940,6 +1186,9 @@ public sealed class UiContext
             // The stale rule (Decision 10): a stored element that left its roots loses its state before any entry runs.
             DropStalePointerState();
 
+            // The stale focus rule (Decision 7 of keyboard-focus): an owner that cannot take the focus loses it here.
+            DropStaleFocus();
+
             // Read the count one time. An event that a handler pushes waits for the next drain (Decision 6).
             int remaining = _events.Count;
             int walks = 0;
@@ -949,56 +1198,92 @@ public sealed class UiContext
                 remaining--;
 
                 // The target step. A pointer entry with no target gets the hit element here, before the walk
-                // (Decision 1 of pointer-routing). Keyboard-focus sets the target of a key entry here. An entry with
-                // no target after this step, or with a target outside the roots of this context, gets no walk.
+                // (Decision 1 of pointer-routing). A key or char entry with no target gets the focus owner here
+                // (Decision 3 of keyboard-focus). A target from the caller keeps its target and changes no focus. An
+                // entry with no target after this step, or with a target outside the roots of this context, gets no walk.
                 Element? target = entry.Header.Target;
+
+                // True when the drain gives the target. Only such an entry can move the focus after its walk.
+                bool routed = target is null;
                 if (target is null
                     && entry.Header.Type is UiEventType.PointerMove or UiEventType.PointerDown or UiEventType.PointerUp
                         or UiEventType.Scroll)
                 {
                     target = RoutePointer(ref entry);
                 }
-
-                if (target is null || !IsInRootTree(target))
+                else if (target is null
+                    && entry.Header.Type is UiEventType.KeyDown or UiEventType.KeyUp or UiEventType.Char)
                 {
-                    continue;
+                    // A handler of an earlier entry can disable the owner or clear IsFocusable. Drop such an owner
+                    // before the entry walks to it (CR-5). The check reads two fields and walks no parent.
+                    if (_focusOwner is { AcceptsFocus: false })
+                    {
+                        SetFocusOwner(null);
+                    }
+
+                    target = _focusOwner;
+                    entry.Header.Target = target;
                 }
 
-                long droppedBefore = _events.Dropped;
-
-                switch (entry.Header.Type)
+                // The walk step. An entry with no target, or with a target outside the roots, gets no walk. The step
+                // after the walk still runs for it.
+                bool stopped = false;
+                if (target is not null && IsInRootTree(target))
                 {
-                    case UiEventType.PointerMove:
-                    case UiEventType.PointerDown:
-                    case UiEventType.PointerUp:
-                        DispatchQueued<PointerEvent>(in entry);
-                        walks++;
-                        break;
+                    long droppedBefore = _events.Dropped;
 
-                    case UiEventType.Scroll:
-                        DispatchQueued<ScrollEvent>(in entry);
-                        walks++;
-                        break;
+                    switch (entry.Header.Type)
+                    {
+                        case UiEventType.PointerMove:
+                        case UiEventType.PointerDown:
+                        case UiEventType.PointerUp:
+                            stopped = DispatchQueued<PointerEvent>(in entry);
+                            walks++;
+                            break;
 
-                    case UiEventType.KeyDown:
-                    case UiEventType.KeyUp:
-                        DispatchQueued<KeyEvent>(in entry);
-                        walks++;
-                        break;
+                        case UiEventType.Scroll:
+                            stopped = DispatchQueued<ScrollEvent>(in entry);
+                            walks++;
+                            break;
 
-                    case UiEventType.Char:
-                        DispatchQueued<CharEvent>(in entry);
-                        walks++;
-                        break;
+                        case UiEventType.KeyDown:
+                        case UiEventType.KeyUp:
+                            stopped = DispatchQueued<KeyEvent>(in entry);
+                            walks++;
+                            break;
 
-                    default:
-                        // No event struct carries the type, so the entry gets no walk. The push rejects such a type.
-                        break;
+                        case UiEventType.Char:
+                            stopped = DispatchQueued<CharEvent>(in entry);
+                            walks++;
+                            break;
+
+                        default:
+                            // No event struct carries the type, so the entry gets no walk. The push rejects such a type.
+                            break;
+                    }
+
+                    // A push from a handler into a full ring drops the oldest entry. While entries of this drain wait,
+                    // that entry belongs to this drain, so the drain must not pop one more entry in its place.
+                    remaining -= (int)Math.Min(remaining, _events.Dropped - droppedBefore);
                 }
 
-                // A push from a handler into a full ring drops the oldest entry. While entries of this drain wait,
-                // that entry belongs to this drain, so the drain must not pop one more entry in its place.
-                remaining -= (int)Math.Min(remaining, _events.Dropped - droppedBefore);
+                // The Tab move (Decision 5 of keyboard-focus). It runs after the walk, so a handler that stops the
+                // Tab keeps the focus. A Tab with no owner got no walk, but it still moves the focus.
+                if (routed
+                    && !stopped
+                    && entry.Header.Type == UiEventType.KeyDown
+                    && entry.Payload.Key.Key == TabKey
+                    && (entry.Payload.Key.Modifiers & (UiModifiers.Control | UiModifiers.Alt | UiModifiers.Super)) == 0)
+                {
+                    if ((entry.Payload.Key.Modifiers & UiModifiers.Shift) != 0)
+                    {
+                        FocusPrevious();
+                    }
+                    else
+                    {
+                        FocusNext();
+                    }
+                }
             }
 
             return walks;
@@ -1044,6 +1329,57 @@ public sealed class UiContext
     }
 
     /// <summary>
+    /// Clears the keyboard focus when the owner cannot hold it now: the owner does not accept the focus, is not in the
+    /// roots of this context, or is hidden.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The method runs at the start of each drain, after <see cref="DropStalePointerState"/> (Decision 7 of
+    /// keyboard-focus). "Does not accept" means that <see cref="Element.IsFocusable"/> is <see langword="false"/> or
+    /// that the owner holds <see cref="PseudoStates.Disabled"/>. "Hidden" means <see cref="Display.None"/> or an
+    /// opacity product of 0 or less on the owner or an ancestor, in the style of the last <see cref="Update(float)"/>.
+    /// <see cref="SetFocus(Element)"/> checks the same rule.
+    /// </para>
+    /// <para>
+    /// The repair rule: when the owner stays, the method sets <see cref="PseudoStates.Focus"/> on it again. Code can
+    /// clear the bit through <see cref="Element.States"/>. The <see cref="Element.States"/> setter returns at once for
+    /// an equal value, so the repair marks nothing when the bit is set already.
+    /// </para>
+    /// <para>
+    /// The method costs two parent walks at most and allocates nothing. It creates no delegate, no closure, and no
+    /// boxed value. With no owner, it does nothing.
+    /// </para>
+    /// <para>
+    /// Limit: the state is a bit on the element. When the owner is in the roots of another context, that context can
+    /// have set the bit too. This method then clears it. Drain the old context after you remove an element and before
+    /// you add it to another context.
+    /// </para>
+    /// <para>
+    /// Limit: the method runs at the start of the drain only. A handler that disables the owner or clears
+    /// <see cref="Element.IsFocusable"/> drops the owner at the next key or char entry of the same drain. A removed
+    /// owner gets no walk. A style change that hides the owner takes effect after the next
+    /// <see cref="Update(float)"/>.
+    /// </para>
+    /// </remarks>
+    private void DropStaleFocus()
+    {
+        if (_focusOwner is not { } owner)
+        {
+            return;
+        }
+
+        if (!owner.AcceptsFocus || !IsInRootTree(owner) || !FocusWalk.IsShown(owner))
+        {
+            SetFocusOwner(null);
+        }
+        else
+        {
+            // The repair rule (CR-3): code can clear the bit through States while the owner stays.
+            owner.States |= PseudoStates.Focus;
+        }
+    }
+
+    /// <summary>
     /// Finds out whether the top of the parent chain of an element is a root of this context. The method uses a loop and
     /// allocates nothing.
     /// </summary>
@@ -1063,18 +1399,25 @@ public sealed class UiContext
     /// <summary>
     /// Hit-tests the position of a pointer or scroll entry with no target. The method writes the hit into the target
     /// of the entry, stores the hit and the position, and moves <see cref="PseudoStates.Hover"/> to the hit. A press
-    /// and a release also change <see cref="PseudoStates.Active"/>.
+    /// and a release also change <see cref="PseudoStates.Active"/>. A press also moves the keyboard focus.
     /// </summary>
     /// <remarks>
     /// <para>
     /// The method runs in the target step of the drain, before the walk (Decision 9), so a handler reads the new
-    /// state. It creates no delegate, no closure, and no boxed value.
+    /// state and the new focus owner. It creates no delegate, no closure, and no boxed value.
     /// </para>
     /// <para>
     /// The payloads of a pointer and of a scroll overlap in memory, so the method branches on the type before it reads
     /// the position. A press sets <see cref="PseudoStates.Active"/> on the hit when no element holds it. The release of
     /// the last button clears it on the stored element (Decision 8). The release walks to the element under the
     /// pointer and not to the stored element.
+    /// </para>
+    /// <para>
+    /// The click focus (Decision 4 of keyboard-focus): after the Active step, a press of each button moves the focus
+    /// to the hit element or to its nearest ancestor with <see cref="Element.IsFocusable"/>. When that element does not
+    /// accept the focus, or when the press hit no such element or no element at all, the focus clears. A move, a
+    /// release, and a scroll keep the focus. The drain calls this method for an entry with no target only, so a target
+    /// from the caller skips the click focus, as it skips the states.
     /// </para>
     /// </remarks>
     /// <param name="entry">The ring entry. Its type is a pointer type or <see cref="UiEventType.Scroll"/>, and its target is <see langword="null"/>.</param>
@@ -1099,14 +1442,44 @@ public sealed class UiContext
         if (type == UiEventType.PointerDown)
         {
             PressButton(entry.Payload.Pointer.Button, hit);
+
+            // The click focus (Decision 4 of keyboard-focus): a press of each button moves the focus to the hit or to
+            // its nearest focusable ancestor. A press on no such element, or over nothing, clears the focus. The move
+            // runs before the walk, so a handler of this press reads the new owner.
+            FocusOnPress(hit);
         }
         else if (type == UiEventType.PointerUp)
         {
             ReleaseButton(entry.Payload.Pointer.Button);
         }
 
-        // Keyboard-focus adds the focus move to the hit element in the PointerDown branch.
         return hit;
+    }
+
+    /// <summary>
+    /// Moves the keyboard focus for a press: to the hit element, or to its nearest ancestor with
+    /// <see cref="Element.IsFocusable"/>. A press on no such element, or over nothing, clears the focus.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The method stops at the first element with <see cref="Element.IsFocusable"/> (Notes Q3 of keyboard-focus).
+    /// When that element does not accept the focus, the focus clears. The method does not look past it to a higher
+    /// ancestor. The hit element comes from the hit test, so it is in the roots and needs no root check (P1-3).
+    /// </para>
+    /// <para>
+    /// The parent walk is a loop. It creates no delegate, no closure, and no boxed value.
+    /// </para>
+    /// </remarks>
+    /// <param name="hit">The element under the pointer, or <see langword="null"/>.</param>
+    private void FocusOnPress(Element? hit)
+    {
+        Element? candidate = hit;
+        while (candidate is not null && !candidate.IsFocusable)
+        {
+            candidate = candidate.Parent;
+        }
+
+        SetFocusOwner(candidate is not null && candidate.AcceptsFocus ? candidate : null);
     }
 
     /// <summary>
@@ -1180,6 +1553,44 @@ public sealed class UiContext
     }
 
     /// <summary>
+    /// Moves <see cref="PseudoStates.Focus"/> from the focus owner of this context to another element, and stores
+    /// that element in <see cref="FocusedElement"/>.
+    /// </summary>
+    /// <remarks>
+    /// The method copies the pattern of <see cref="SetHover(Element?)"/>. For the same element, the call sets
+    /// <see cref="PseudoStates.Focus"/> on it again and returns, so a repeated set marks nothing when the bit is set
+    /// (the repair rule). Else it clears <see cref="PseudoStates.Focus"/> on the old owner and sets it on the new
+    /// element. Each change marks one subtree for <see cref="DirtyFlags.Style"/>. The state goes on
+    /// the element only (Decision 1 of keyboard-focus). The method does not check the accept rule. The caller checks it.
+    /// </remarks>
+    /// <param name="next">The new focus owner, or <see langword="null"/> for no owner.</param>
+    private void SetFocusOwner(Element? next)
+    {
+        Element? old = _focusOwner;
+        if (ReferenceEquals(old, next))
+        {
+            // The repair rule (CR-3): code can clear the bit through States while the owner stays.
+            if (next is not null)
+            {
+                next.States |= PseudoStates.Focus;
+            }
+
+            return;
+        }
+
+        if (old is not null)
+        {
+            old.States &= ~PseudoStates.Focus;
+        }
+
+        _focusOwner = next;
+        if (next is not null)
+        {
+            next.States |= PseudoStates.Focus;
+        }
+    }
+
+    /// <summary>
     /// Copies an event into a ring entry and pushes the entry. The entry header gets the phase
     /// <see cref="UiEventPhase.None"/> and no current target.
     /// </summary>
@@ -1231,11 +1642,13 @@ public sealed class UiContext
     /// <summary>Makes an event from a ring entry and sends it along the path of its target.</summary>
     /// <typeparam name="T">The event struct of the entry type.</typeparam>
     /// <param name="entry">The ring entry.</param>
-    private void DispatchQueued<T>(in UiQueuedEvent entry)
+    /// <returns><see langword="true"/> when a handler stopped the walk.</returns>
+    private bool DispatchQueued<T>(in UiQueuedEvent entry)
         where T : struct, IUiEvent<T>
     {
         T e = T.Load(in entry.Header, in entry.Payload);
         EventWalk.Dispatch(ref e, ref _eventPath);
+        return T.HeaderOf(ref e).IsPropagationStopped;
     }
 
     /// <summary>

@@ -5,8 +5,9 @@ namespace BrutalUi.Core;
 /// </summary>
 /// <remarks>
 /// <para>
-/// The caller can set the target (A4). The drain hit-tests a pointer event with no target and puts the element
-/// under the pointer in <see cref="Target"/>. The drain skips an event of another type with no target.
+/// The caller can set the target (A4). The drain hit-tests a pointer or scroll event with no target and puts the
+/// element under the pointer in <see cref="Target"/>. A key or char event with no target goes to the focus owner
+/// (<see cref="UiContext.FocusedElement"/>) at the drain. With no owner, it gets no walk.
 /// </para>
 /// <para>
 /// The walk writes <see cref="Phase"/> and <see cref="CurrentTarget"/> before each handler call. Only the
@@ -51,8 +52,12 @@ public struct UiEventHeader
     /// <see cref="PseudoStates.Hover"/> to the hit element. A pointer event over no element gets no walk.
     /// </para>
     /// <para>
-    /// A target from the caller skips the hit test and the states (Decision 2). The drain skips an event of another
-    /// type with no target.
+    /// A key or char event with no target gets the focus owner (<see cref="UiContext.FocusedElement"/>) as its target
+    /// at the drain, not at the push. With no owner, it gets no walk.
+    /// </para>
+    /// <para>
+    /// A target from the caller skips the hit test and the states (Decision 2). It keeps its target, and a key or char
+    /// event with a target changes no focus.
     /// </para>
     /// </remarks>
     public Element? Target;

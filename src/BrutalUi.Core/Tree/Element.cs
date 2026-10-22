@@ -185,6 +185,37 @@ public class Element
     public bool IsPickable { get; set; } = true;
 
     /// <summary>
+    /// Gets or sets a value that tells if the element can hold the keyboard focus. The default is
+    /// <see langword="false"/>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A change of this value sets no dirty bit. <see cref="UiContext.SetFocus(Element)"/>, a click, and a Tab read
+    /// it. A change does not move the focus at once.
+    /// </para>
+    /// <para>
+    /// A disabled element takes no focus by click, by Tab, or by code. An element is disabled when
+    /// <see cref="States"/> holds <see cref="PseudoStates.Disabled"/>. A press on a disabled element with this value
+    /// clears the focus. The press does not give the focus to a focusable ancestor.
+    /// </para>
+    /// <para>
+    /// At the start of each drain, the context drops the focus of an owner that turns unfocusable or disabled. The
+    /// owner holds the focus until that drain.
+    /// </para>
+    /// </remarks>
+    public bool IsFocusable { get; set; }
+
+    /// <summary>
+    /// Gets a value that tells if the element accepts the keyboard focus now: <see cref="IsFocusable"/> is
+    /// <see langword="true"/> and <see cref="States"/> does not hold <see cref="PseudoStates.Disabled"/>.
+    /// </summary>
+    /// <remarks>
+    /// Each focus rule reads this member only: <see cref="UiContext.SetFocus(Element)"/>, the click, the Tab search,
+    /// and the stale rule. The member reads no style, so the hidden rule is not part of it.
+    /// </remarks>
+    internal bool AcceptsFocus => IsFocusable && (States & PseudoStates.Disabled) == 0;
+
+    /// <summary>
     /// Gets the handler slots of the element, or <see langword="null"/> when no handler was set on the element.
     /// </summary>
     /// <remarks>

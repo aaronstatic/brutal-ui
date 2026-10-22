@@ -22,7 +22,7 @@ public sealed class GlfwUiInputTests
     private static readonly float2 OverRight = new(175f, 75f);
     private static readonly float2 OverLeft = new(50f, 50f);
 
-    /// <summary>The names of the six window events that the adapter subscribes to.</summary>
+    /// <summary>The names of the eight window events that the adapter subscribes to.</summary>
     private static readonly string[] EventNames =
     [
         nameof(GlfwWindow.OnCursorPos),
@@ -31,6 +31,8 @@ public sealed class GlfwUiInputTests
         nameof(GlfwWindow.OnCursorEnter),
         nameof(GlfwWindow.OnDrop),
         nameof(GlfwWindow.OnContentScale),
+        nameof(GlfwWindow.OnKey),
+        nameof(GlfwWindow.OnChar),
     ];
 
     /// <summary>
@@ -304,8 +306,11 @@ public sealed class GlfwUiInputTests
     }
 
     /// <summary>
-    /// A real hidden window: the constructor adds one handler to each of the six events, seeds the last cursor
-    /// position from the window, and converts a cursor event. <see cref="GlfwUiInput.Dispose"/> removes the handlers.
+    /// A real hidden window: the constructor adds one handler to each of the eight events, seeds the last cursor
+    /// position from the window, and converts a cursor event, a Tab key press, and a char. The Tab press focuses the
+    /// only focusable element, and the char reaches it. A key repeat, a key release, and a key press with all the
+    /// modifier bits reach it with the type, the repeat flag, and the modifiers of decision 9.
+    /// <see cref="GlfwUiInput.Dispose"/> removes the handlers.
     /// The test skips when GLFW cannot start or cannot create a window (no display). The constructor checks for null
     /// arguments run first, because they need no display.
     /// </summary>
@@ -365,6 +370,37 @@ public sealed class GlfwUiInputTests
             Assert.Equal(1, tree.Context.DrainEvents());
             Assert.Same(tree.Right, tree.Context.PointerHit);
             Assert.Equal(OverRight, tree.Context.PointerPosition);
+
+            tree.Right.IsFocusable = true;
+            GlfwKeyCallback key = (GlfwKeyCallback)ReadEvent(window, nameof(GlfwWindow.OnKey))!;
+            key(window, GlfwKey.Tab, 15, GlfwKeyAction.Press, (GlfwModifier)0);
+            Assert.Equal(0, tree.Context.DrainEvents());
+            Assert.Same(tree.Right, tree.Context.FocusedElement);
+
+            GlfwCharCallback character = (GlfwCharCallback)ReadEvent(window, nameof(GlfwWindow.OnChar))!;
+            EventRecorder recorder = new();
+            recorder.Register(tree.Right);
+            character(window, 'a');
+            Assert.Equal(1, tree.Context.DrainEvents());
+            Assert.Equal(97u, recorder.LastChar.CodePoint);
+
+            key(window, GlfwKey.A, 30, GlfwKeyAction.Repeat, (GlfwModifier)0);
+            Assert.Equal(1, tree.Context.DrainEvents());
+            Assert.Equal(UiEventType.KeyDown, recorder.LastKey.Header.Type);
+            Assert.True(recorder.LastKey.IsRepeat);
+            Assert.Equal(UiModifiers.None, recorder.LastKey.Modifiers);
+
+            key(window, GlfwKey.A, 30, GlfwKeyAction.Release, (GlfwModifier)0);
+            Assert.Equal(1, tree.Context.DrainEvents());
+            Assert.Equal(UiEventType.KeyUp, recorder.LastKey.Header.Type);
+            Assert.False(recorder.LastKey.IsRepeat);
+            Assert.Equal(UiModifiers.None, recorder.LastKey.Modifiers);
+
+            key(window, GlfwKey.A, 30, GlfwKeyAction.Press, (GlfwModifier)0xFF);
+            Assert.Equal(1, tree.Context.DrainEvents());
+            Assert.Equal(UiEventType.KeyDown, recorder.LastKey.Header.Type);
+            Assert.False(recorder.LastKey.IsRepeat);
+            Assert.Equal((UiModifiers)0x3F, recorder.LastKey.Modifiers);
 
             input.Dispose();
             foreach (string name in EventNames)

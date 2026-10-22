@@ -1,7 +1,7 @@
 # Input Routing — Human Testing
 
 **Epic:** input-routing
-**Last Updated:** 2026-10-22 12:50
+**Last Updated:** 2026-10-22 14:48
 
 > An `/autorun-epic` run adds one section per feature, and one demo line per slice as the slice lands. Check an item after you test it.
 
@@ -26,3 +26,15 @@
 - Note (pointer-routing): the cross-phase review added tests. `PointerPressTests` now gives a total of 8 (the Phase 2 line says 6), and `PointerStateEdgeTests` gives 8 (the Phase 5 line says 7). Expect `failed: 0` in each run.
 - [ ] Real-window tests (pointer-routing): on a machine with a display, or under `xvfb-run -a`, run `dotnet run --project tests/BrutalUi.Glfw.Tests/BrutalUi.Glfw.Tests.csproj`. Expect a total of 12 with `failed: 0` and no skip.
 - [ ] Windows run (pointer-routing): on Windows, after `git pull --ff-only`, run `.\scripts\test-windows.ps1`. Expect the PASS line and `$LASTEXITCODE` 0. Then run the Glfw test project, and expect no skip.
+
+## keyboard-focus
+
+- [ ] Phase 1 demo: a unit test marks `Right` of the pointer tree focusable, adds a `:focus` rule, calls `SetFocus(Right)`, pushes a key down with no target, drains, and runs `Update`. It reads `PseudoStates.Focus` and the focus fill on `Right`. A recorder on the root and `Right` reads root capture, `Right` target capture, `Right` target bubble, and root bubble. The developer runs `dotnet run --project tests/BrutalUi.Core.Tests/BrutalUi.Core.Tests.csproj -- --filter-class '*FocusOwnerTests'` and reads a total of 8 with `failed: 0`.
+- [ ] Phase 2 demo: a unit test marks `Right` focusable, adds the `:focus` rule, pushes a pointer down with no target over `Right` outside `Inner`, drains, and runs `Update`. It reads `Focus` and the focus fill on `Right`, and the `PointerDown` handler of `Right` reads `Focus` already. A press over the gap of the root then clears the focus. The developer runs `dotnet run --project tests/BrutalUi.Core.Tests/BrutalUi.Core.Tests.csproj -- --filter-class '*ClickFocusTests'` and reads a total of 8 with `failed: 0`.
+- [ ] Phase 3 demo: a unit test marks `Left`, `Right`, and `Inner` focusable, pushes four Tab key downs with no target, and drains after each. The owner goes `Left`, `Right`, `Inner`, and `Left` again. A Shift+Tab then gives `Inner`. The developer runs `dotnet run --project tests/BrutalUi.Core.Tests/BrutalUi.Core.Tests.csproj -- --filter-class '*TabNavigationTests'` and reads a total of 12 with `failed: 0`.
+- [ ] Phase 4 demo: a unit test in `BrutalUi.Glfw.Tests` creates a `GlfwUiInput` with the test seam (no window), focuses `Right` of the pointer tree, calls the internal `PushKey` for the A key (65) and `PushChar` for `'a'` (97), and drains. A handler on `Right` reads a `KeyDown` with the key 65 and a `Char` with the code point 97. A `PushKey` of Tab (258) then moves the focus. The developer runs `dotnet run --project tests/BrutalUi.Glfw.Tests/BrutalUi.Glfw.Tests.csproj -- --filter-class '*GlfwUiInputKeyTests'` and reads a total of 8 with `failed: 0`.
+- [ ] Phase 5 demo: a unit test focuses `Right`, removes it from the root, and drains an empty queue. It reads no `Focus` on `Right` and a null `FocusedElement`. The developer runs `dotnet run --project tests/BrutalUi.Core.Tests/BrutalUi.Core.Tests.csproj -- --filter-class '*FocusStateEdgeTests'` and reads a total of 8 with `failed: 0`.
+- [ ] Phase 6 demo: the developer runs `dotnet run --project tests/BrutalUi.Core.Tests/BrutalUi.Core.Tests.csproj -- --filter-class '*FocusAllocationTests'` and reads a total of 3 with `failed: 0`. A planted allocation at the start of `FocusWalk.Find` makes `dotnet test --solution brutal-ui.sln` exit non-zero.
+- [ ] Real-window tests (keyboard-focus): on a machine with a display, or under `xvfb-run -a`, run `dotnet run --project tests/BrutalUi.Glfw.Tests/BrutalUi.Glfw.Tests.csproj`. Expect a total of 20 with `failed: 0` and no skip.
+- [ ] Windows run (keyboard-focus): on Windows, after `git pull --ff-only`, run `.\scripts\test-windows.ps1`. Expect the PASS line and `$LASTEXITCODE` 0. Then run the Glfw test project, and expect no skip.
+- [ ] BRUTAL issue (keyboard-focus): file the issue text of "Phase 4 Results" in `docs/features/input-routing/keyboard-focus/context.md` with BRUTAL. The native char callback casts the code point to `ushort`, so a code point above U+FFFF arrives cut.

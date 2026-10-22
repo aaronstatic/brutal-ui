@@ -17,12 +17,14 @@ namespace BrutalUi.Glfw.Tests;
 /// <remarks>
 /// <para>
 /// The first gate calls the internal push methods of the test seam (no window): <c>PushCursorMove</c>,
-/// <c>PushButton</c>, <c>PushScroll</c>, and <c>PushCursorLeave</c>.
+/// <c>PushButton</c>, <c>PushScroll</c>, <c>PushCursorLeave</c>, <c>PushKey</c> (a press, a repeat, and a release in
+/// turn), and <c>PushChar</c>.
 /// </para>
 /// <para>
 /// The second gate measures the real handlers with a hidden window. It calls the delegates behind
-/// <see cref="GlfwWindow.OnCursorPos"/>, <see cref="GlfwWindow.OnScroll"/>, and <see cref="GlfwWindow.OnMouseButton"/>.
-/// This path also calls <c>GlfwWindow.GetKey</c> and <c>Glfw.Time</c> in the BRUTAL binding. The gate skips with the
+/// <see cref="GlfwWindow.OnCursorPos"/>, <see cref="GlfwWindow.OnScroll"/>, <see cref="GlfwWindow.OnMouseButton"/>,
+/// <see cref="GlfwWindow.OnKey"/> (a press, a repeat, and a release in turn), and <see cref="GlfwWindow.OnChar"/>.
+/// The key and char delegates are the real <c>HandleKey</c> and <c>HandleChar</c> of the adapter. This path also calls <c>GlfwWindow.GetKey</c> and <c>Glfw.Time</c> in the BRUTAL binding. The gate skips with the
 /// reason when <c>Glfw.Init</c> or the window creation fails, for example on a machine with no display. Use
 /// <c>xvfb-run -a</c> or <c>scripts/test-windows.ps1</c> to run it.
 /// </para>
@@ -47,6 +49,10 @@ public sealed class GlfwUiInputAllocationTests
     private const int QueueCapacity = 8;
     private const int PushCount = 1000;
 
+    private const int LetterKey = 65;
+    private const int LetterScanCode = 30;
+    private const uint LetterChar = 'a';
+
     private static readonly float2 MovePosition = new(175f, 75f);
     private static readonly float2 ScrollDelta = new(0f, -1f);
     private static readonly double2 RealCursorPosition = new(175d, 75d);
@@ -68,6 +74,10 @@ public sealed class GlfwUiInputAllocationTests
         public required GlfwScrollCallback Scroll { get; init; }
 
         public required GlfwMouseButtonCallback MouseButton { get; init; }
+
+        public required GlfwKeyCallback Key { get; init; }
+
+        public required GlfwCharCallback Char { get; init; }
     }
 
     private static Scene BuildScene()
@@ -103,6 +113,18 @@ public sealed class GlfwUiInputAllocationTests
         {
             input.PushCursorLeave(1d);
         }
+
+        // A press, a repeat, and a release in turn.
+        for (int i = 0; i < count; i++)
+        {
+            int phase = i % 3;
+            input.PushKey(LetterKey, LetterScanCode, down: phase != 2, repeat: phase == 1, UiModifiers.None, 1d);
+        }
+
+        for (int i = 0; i < count; i++)
+        {
+            input.PushChar(LetterChar, 1d);
+        }
     }
 
     /// <summary>
@@ -113,6 +135,8 @@ public sealed class GlfwUiInputAllocationTests
         GlfwCursorPosCallback cursorPos = handlers.CursorPos;
         GlfwScrollCallback scroll = handlers.Scroll;
         GlfwMouseButtonCallback mouseButton = handlers.MouseButton;
+        GlfwKeyCallback key = handlers.Key;
+        GlfwCharCallback character = handlers.Char;
 
         for (int i = 0; i < count; i++)
         {
@@ -127,6 +151,23 @@ public sealed class GlfwUiInputAllocationTests
         for (int i = 0; i < count; i++)
         {
             mouseButton(window, GlfwMouseButton.Left, GlfwButtonAction.Press, default);
+        }
+
+        // A press, a repeat, and a release in turn.
+        for (int i = 0; i < count; i++)
+        {
+            GlfwKeyAction action = (i % 3) switch
+            {
+                0 => GlfwKeyAction.Press,
+                1 => GlfwKeyAction.Repeat,
+                _ => GlfwKeyAction.Release,
+            };
+            key(window, GlfwKey.A, LetterScanCode, action, (GlfwModifier)0);
+        }
+
+        for (int i = 0; i < count; i++)
+        {
+            character(window, LetterChar);
         }
     }
 
@@ -165,7 +206,7 @@ public sealed class GlfwUiInputAllocationTests
         long drops = context.DroppedEventCount - dropsBefore;
 
         Assert.Equal(0L, after - before);
-        Assert.Equal(4L * PushCount, drops);
+        Assert.Equal(6L * PushCount, drops);
         Assert.Equal(QueueCapacity, context.QueuedEventCount);
     }
 
@@ -210,6 +251,8 @@ public sealed class GlfwUiInputAllocationTests
                 CursorPos = ReadEvent<GlfwCursorPosCallback>(window, nameof(GlfwWindow.OnCursorPos)),
                 Scroll = ReadEvent<GlfwScrollCallback>(window, nameof(GlfwWindow.OnScroll)),
                 MouseButton = ReadEvent<GlfwMouseButtonCallback>(window, nameof(GlfwWindow.OnMouseButton)),
+                Key = ReadEvent<GlfwKeyCallback>(window, nameof(GlfwWindow.OnKey)),
+                Char = ReadEvent<GlfwCharCallback>(window, nameof(GlfwWindow.OnChar)),
             };
 
             // Fill the ring, then warm up with full-ring calls.
@@ -225,7 +268,7 @@ public sealed class GlfwUiInputAllocationTests
             long drops = context.DroppedEventCount - dropsBefore;
 
             Assert.Equal(0L, after - before);
-            Assert.Equal(3L * PushCount, drops);
+            Assert.Equal(5L * PushCount, drops);
             Assert.Equal(QueueCapacity, context.QueuedEventCount);
         }
         finally

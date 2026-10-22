@@ -1,4 +1,5 @@
 using System;
+using System.Text;
 using Brutal.GlfwApi;
 using Brutal.Numerics;
 using BrutalUi.Core;
@@ -7,10 +8,27 @@ using GlfwApi = Brutal.GlfwApi.Glfw;
 namespace BrutalUi.Glfw;
 
 /// <summary>
-/// The GLFW input adapter. It converts the pointer, scroll, drop, and content-scale events of a
+/// The GLFW input adapter. It converts the pointer, scroll, key, char, drop, and content-scale events of a
 /// <see cref="GlfwWindow"/> into the events of <see cref="UiContext"/> and pushes them.
 /// </summary>
 /// <remarks>
+/// <para>
+/// The adapter adds one handler to each of eight window events: <see cref="GlfwWindow.OnCursorPos"/>,
+/// <see cref="GlfwWindow.OnMouseButton"/>, <see cref="GlfwWindow.OnScroll"/>, <see cref="GlfwWindow.OnCursorEnter"/>,
+/// <see cref="GlfwWindow.OnDrop"/>, <see cref="GlfwWindow.OnContentScale"/>, <see cref="GlfwWindow.OnKey"/>, and
+/// <see cref="GlfwWindow.OnChar"/>. It does not use <see cref="GlfwWindow.OnCharMods"/>. A key event and a char event
+/// have no target. The drain sends them to the focus owner of the context.
+/// </para>
+/// <para>
+/// The ImGui rule: the ImGui <c>GlfwBackend</c> and this adapter both get each key event and each char event. The
+/// binding has no consume rule. To give the keyboard to ImGui, set <see cref="KeyboardEnabled"/> to
+/// <see langword="false"/> while ImGui wants the keyboard. The pointer events keep no switch.
+/// </para>
+/// <para>
+/// The char limit of the binding: the native char callback of <see cref="GlfwWindow"/> casts the code point to
+/// <see cref="ushort"/>. A code point above U+FFFF therefore arrives cut to its low 16 bits, and the adapter cannot
+/// restore it. The adapter pushes the code point that it gets and drops a value that is not a Unicode scalar value.
+/// </para>
 /// <para>
 /// Create the adapter on the main thread. GLFW calls the window events on the main thread only, from
 /// <c>Glfw.PollEvents</c> or <c>Glfw.WaitEvents</c>. The adapter has no lock.
@@ -61,7 +79,7 @@ public sealed class GlfwUiInput : IDisposable
         public required UiContext Context;
     }
 
-    /// <summary>The GLFW modifier bits that a button event keeps: Shift, Control, Alt, Super, Caps Lock, and Num Lock.</summary>
+    /// <summary>The GLFW modifier bits that a button event and a key event keep: Shift, Control, Alt, Super, Caps Lock, and Num Lock.</summary>
     private const int ButtonModifierMask = 0x3F;
 
     /// <summary>The position of a cursor leave. A move to this position hits no element and clears the hover.</summary>
@@ -87,6 +105,12 @@ public sealed class GlfwUiInput : IDisposable
 
     /// <summary>The handler of <see cref="GlfwWindow.OnContentScale"/>. The adapter creates it one time.</summary>
     private readonly GlfwWindowContentScaleCallback _onContentScale;
+
+    /// <summary>The handler of <see cref="GlfwWindow.OnKey"/>. The adapter creates it one time.</summary>
+    private readonly GlfwKeyCallback _onKey;
+
+    /// <summary>The handler of <see cref="GlfwWindow.OnChar"/>. The adapter creates it one time.</summary>
+    private readonly GlfwCharCallback _onChar;
 
     /// <summary>The last cursor position. A button event and a scroll event use it.</summary>
     private float2 _lastCursorPosition;
@@ -116,6 +140,8 @@ public sealed class GlfwUiInput : IDisposable
         window.OnCursorEnter += _onCursorEnter;
         window.OnDrop += _onDrop;
         window.OnContentScale += _onContentScale;
+        window.OnKey += _onKey;
+        window.OnChar += _onChar;
     }
 
     /// <summary>
@@ -133,12 +159,36 @@ public sealed class GlfwUiInput : IDisposable
         _onCursorEnter = HandleCursorEnter;
         _onDrop = HandleDrop;
         _onContentScale = HandleContentScale;
+        _onKey = HandleKey;
+        _onChar = HandleChar;
     }
 
     /// <summary>
     /// Gets the context that gets the events.
     /// </summary>
     public UiContext Context { get; }
+
+    /// <summary>
+    /// Gets or sets a value that tells the adapter to push the key events and the char events. The default is
+    /// <see langword="true"/>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// With <see langword="false"/>, the adapter pushes no key event and no char event. The pointer, scroll, cursor
+    /// leave, drop, and content-scale events still go.
+    /// </para>
+    /// <para>
+    /// Use this switch to give the keyboard to ImGui. Set the value before <c>Glfw.PollEvents()</c>, for example
+    /// <c>input.KeyboardEnabled = !io.WantCaptureKeyboard;</c>. The adapter reads the value when GLFW calls the
+    /// handler.
+    /// </para>
+    /// <para>
+    /// The switch does not keep the key state. A key down before the switch and a key up after it give an element a
+    /// key down with no key up. A key down while the value is <see langword="false"/> and a key up after the value
+    /// becomes <see langword="true"/> again give a key up with no key down.
+    /// </para>
+    /// </remarks>
+    public bool KeyboardEnabled { get; set; } = true;
 
     /// <summary>
     /// Removes the handlers from the events of the window. After this call, the adapter pushes no event. A second
@@ -164,6 +214,8 @@ public sealed class GlfwUiInput : IDisposable
         window.OnCursorEnter -= _onCursorEnter;
         window.OnDrop -= _onDrop;
         window.OnContentScale -= _onContentScale;
+        window.OnKey -= _onKey;
+        window.OnChar -= _onChar;
     }
 
     /// <summary>
@@ -275,6 +327,63 @@ public sealed class GlfwUiInput : IDisposable
         Context.RaiseContentScale(scale);
     }
 
+    /// <summary>
+    /// Pushes a <see cref="UiEventType.KeyDown"/> for a press or a repeat, or a <see cref="UiEventType.KeyUp"/> for a
+    /// release, with no target. The drain sends it to the focus owner.
+    /// </summary>
+    /// <remarks>
+    /// The method returns at once after <see cref="Dispose"/> or when <see cref="KeyboardEnabled"/> is
+    /// <see langword="false"/>. <see cref="KeyEvent.IsRepeat"/> is <see langword="true"/> only for a key down with
+    /// <paramref name="repeat"/>.
+    /// </remarks>
+    /// <param name="key">The GLFW key value. The method keeps it with no table, also for the unknown key (-1).</param>
+    /// <param name="scanCode">The system-specific scan code of the key.</param>
+    /// <param name="down"><see langword="true"/> for a press or a repeat, <see langword="false"/> for a release.</param>
+    /// <param name="repeat"><see langword="true"/> for a repeat.</param>
+    /// <param name="modifiers">The modifier keys that are down.</param>
+    /// <param name="timestamp">The time of the event, in seconds.</param>
+    internal void PushKey(int key, int scanCode, bool down, bool repeat, UiModifiers modifiers, double timestamp)
+    {
+        if (_disposed || !KeyboardEnabled)
+        {
+            return;
+        }
+
+        UiEventType type = down ? UiEventType.KeyDown : UiEventType.KeyUp;
+        Context.PushEvent(new KeyEvent
+        {
+            Header = new UiEventHeader(type, timestamp, null),
+            Key = key,
+            ScanCode = scanCode,
+            Modifiers = modifiers,
+            IsRepeat = down && repeat,
+        });
+    }
+
+    /// <summary>
+    /// Pushes a <see cref="UiEventType.Char"/> with no target. The drain sends it to the focus owner.
+    /// </summary>
+    /// <remarks>
+    /// The method returns at once after <see cref="Dispose"/>, when <see cref="KeyboardEnabled"/> is
+    /// <see langword="false"/>, or when <paramref name="codePoint"/> is not a Unicode scalar value: a surrogate
+    /// (U+D800 to U+DFFF) or a value above U+10FFFF.
+    /// </remarks>
+    /// <param name="codePoint">The Unicode code point.</param>
+    /// <param name="timestamp">The time of the event, in seconds.</param>
+    internal void PushChar(uint codePoint, double timestamp)
+    {
+        if (_disposed || !KeyboardEnabled || !Rune.IsValid(codePoint))
+        {
+            return;
+        }
+
+        Context.PushEvent(new CharEvent
+        {
+            Header = new UiEventHeader(UiEventType.Char, timestamp, null),
+            CodePoint = codePoint,
+        });
+    }
+
     /// <summary>Checks the window and the context of the create info and returns the context.</summary>
     /// <param name="info">The create info.</param>
     /// <returns>The context of <paramref name="info"/>.</returns>
@@ -362,7 +471,8 @@ public sealed class GlfwUiInput : IDisposable
     }
 
     /// <summary>
-    /// Converts the GLFW modifier bits of a button event: the cast keeps the bits <c>0x3F</c> and uses no table.
+    /// Converts the GLFW modifier bits of a button event or a key event: the cast keeps the bits <c>0x3F</c> and uses
+    /// no table.
     /// </summary>
     /// <param name="mods">The GLFW modifier bits.</param>
     /// <returns>The modifier keys.</returns>
@@ -406,5 +516,42 @@ public sealed class GlfwUiInput : IDisposable
     private void HandleContentScale(GlfwWindow window, float2 scale)
     {
         PushContentScale(scale);
+    }
+
+    /// <summary>
+    /// Converts a key press, repeat, or release and pushes it. The key casts to <see cref="int"/> with no table, also
+    /// for <see cref="GlfwKey.Unknown"/>.
+    /// </summary>
+    /// <param name="window">The window that sends the event.</param>
+    /// <param name="key">The GLFW key.</param>
+    /// <param name="scancode">The system-specific scan code.</param>
+    /// <param name="action">The press, the repeat, or the release.</param>
+    /// <param name="mods">The GLFW modifier bits.</param>
+    private void HandleKey(GlfwWindow window, GlfwKey key, int scancode, GlfwKeyAction action, GlfwModifier mods)
+    {
+        KeyArgs(action, out bool down, out bool repeat);
+        PushKey((int)key, scancode, down, repeat, ButtonModifiers(mods), GlfwApi.Time);
+    }
+
+    /// <summary>
+    /// Converts a GLFW key action: <see cref="GlfwKeyAction.Release"/> gives a key up,
+    /// <see cref="GlfwKeyAction.Press"/> gives a key down, and <see cref="GlfwKeyAction.Repeat"/> gives a key down with
+    /// the repeat flag. The method allocates nothing.
+    /// </summary>
+    /// <param name="action">The press, the repeat, or the release.</param>
+    /// <param name="down"><see langword="true"/> for a key down, <see langword="false"/> for a key up.</param>
+    /// <param name="repeat"><see langword="true"/> when the system repeats a held key.</param>
+    internal static void KeyArgs(GlfwKeyAction action, out bool down, out bool repeat)
+    {
+        down = action != GlfwKeyAction.Release;
+        repeat = action == GlfwKeyAction.Repeat;
+    }
+
+    /// <summary>Converts a char and pushes it.</summary>
+    /// <param name="window">The window that sends the event.</param>
+    /// <param name="codepoint">The code point. The binding cuts a value above U+FFFF to 16 bits.</param>
+    private void HandleChar(GlfwWindow window, uint codepoint)
+    {
+        PushChar(codepoint, GlfwApi.Time);
     }
 }

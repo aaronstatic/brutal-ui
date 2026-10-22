@@ -4,7 +4,8 @@ namespace BrutalUi.Core.Tests;
 
 /// <summary>
 /// The shared test tree of the pointer tests: a root of 400 x 300 in a row, two children of 100 x 100, and one child
-/// of 50 x 50 in the second child.
+/// of 50 x 50 in the second child. It is the shared small scene of the pointer and focus tests. The tree order is
+/// <see cref="Root"/>, <see cref="Left"/>, <see cref="Right"/>, and <see cref="Inner"/>.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -28,6 +29,9 @@ internal sealed class PointerTree
 
     /// <summary>The background color of the active rule of <see cref="AddActiveSheet"/>.</summary>
     public static readonly Rgba8 ActiveFill = new(200, 64, 64, 255);
+
+    /// <summary>The background color of the focus rule of <see cref="AddFocusSheet"/>.</summary>
+    public static readonly Rgba8 FocusFill = new(64, 160, 96, 255);
 
     /// <summary>Creates the tree, adds the root to a new context, and interns the hover class.</summary>
     /// <param name="prefix">The name prefix of the hover class. Use a prefix that is unique to the test.</param>
@@ -105,6 +109,17 @@ internal sealed class PointerTree
         Context.AddSheet(sheet);
     }
 
+    /// <summary>Adds a sheet with the rule <c>.hoverable:focus</c>, which sets <see cref="FocusFill"/>.</summary>
+    public void AddFocusSheet()
+    {
+        StyleSheet sheet = new StyleSheet.Builder()
+            .Add(
+                Selector.For(new CompoundSelector { Class = Hoverable, States = PseudoStates.Focus }),
+                new StyleProperties { BackgroundColor = FocusFill })
+            .Build();
+        Context.AddSheet(sheet);
+    }
+
     /// <summary>Runs one update with a time step of 0, so the layout and the style are current.</summary>
     public void Settle()
     {
@@ -149,6 +164,43 @@ internal sealed class PointerTree
             Position = p,
             Delta = delta,
             Modifiers = UiModifiers.None,
+        };
+    }
+
+    /// <summary>Creates a key event with no target, the scan code 0, and no repeat.</summary>
+    /// <param name="type"><see cref="UiEventType.KeyDown"/> or <see cref="UiEventType.KeyUp"/>.</param>
+    /// <param name="key">The key code.</param>
+    /// <param name="modifiers">The modifier keys.</param>
+    /// <returns>The event.</returns>
+    public static KeyEvent Key(UiEventType type, int key, UiModifiers modifiers)
+    {
+        return new KeyEvent
+        {
+            Header = new UiEventHeader(type, 0d, null),
+            Key = key,
+            ScanCode = 0,
+            Modifiers = modifiers,
+            IsRepeat = false,
+        };
+    }
+
+    /// <summary>Creates a Tab key down with no target, the scan code 0, and no repeat.</summary>
+    /// <param name="shift"><see langword="true"/> to set <see cref="UiModifiers.Shift"/>.</param>
+    /// <returns>The event.</returns>
+    public static KeyEvent Tab(bool shift)
+    {
+        return Key(UiEventType.KeyDown, UiContext.TabKey, shift ? UiModifiers.Shift : UiModifiers.None);
+    }
+
+    /// <summary>Creates a char event with no target.</summary>
+    /// <param name="codePoint">The Unicode code point.</param>
+    /// <returns>The event.</returns>
+    public static CharEvent Char(uint codePoint)
+    {
+        return new CharEvent
+        {
+            Header = new UiEventHeader(UiEventType.Char, 0d, null),
+            CodePoint = codePoint,
         };
     }
 
