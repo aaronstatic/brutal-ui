@@ -1,8 +1,8 @@
 # Style System - Epic Overview
 
 **Epic:** style-system
-**Status:** 🔵 Planned
-**Last Updated:** 2026-10-21 09:35
+**Status:** ✅ Complete
+**Last Updated:** 2026-10-22 05:19
 
 > **This file is the epic marker.** Its presence in `docs/features/style-system/` tells every Beast Mode command that this folder is an **epic**, not a plain feature. Keep it present and keep the required sections filled in. The master `docs/overview.md` tracks this epic as **one row**. The per-feature detail lives **here**.
 
@@ -22,10 +22,10 @@ The constituent features of this epic, in build order. Each feature is a subfold
 
 | # | Feature | Status | Tasks | Description |
 |---|---------|--------|-------|-------------|
-| 1 | stylesheet-model | Planned | — | `StyleProperties`, `StyleRule`, `StyleSheet`, the inline set with its mask, the text members of `ComputedStyle` with inheritance, and the style pass with class and type match. |
-| 2 | selector-matching | Planned | — | Name and pseudo-state match, the depth-2 parent chain, specificity, and the dirty propagation on a class or state change. |
-| 3 | style-parser | Planned | — | The text format, the tokenizer, the parser, theme variables, the error report, and the HelloPanel sample on a stylesheet. |
-| 4 | transitions | Planned | — | The transition pool, easing, and the per-frame interpolation of colors, corner radius, and opacity into `ComputedStyle`. |
+| 1 | stylesheet-model | Complete | 112/112 (100%) | `StyleProperties`, `StyleRule`, `StyleSheet`, the inline set with its mask, the text members of `ComputedStyle` with inheritance, and the style pass with class and type match. |
+| 2 | selector-matching | Complete | 31/31 (100%) | Name and pseudo-state match, the depth-2 parent chain, specificity, and the dirty propagation on a class or state change. |
+| 3 | style-parser | Complete | 54/54 (100%) | The text format, the tokenizer, the parser, theme variables, the error report, and the HelloPanel sample on a stylesheet. |
+| 4 | transitions | Complete | 37/37 (100%) | The transition pool, easing, and the per-frame interpolation of colors, corner radius, and opacity into `ComputedStyle`. |
 
 > Reference a feature with the slash form `style-system/<feature-name>`. Task counts come from each feature's own `tasks.md` and `/update-epic` refreshes them.
 
@@ -60,6 +60,13 @@ The constituent features of this epic, in build order. Each feature is a subfold
   - A8 Only code sets `Element.States` in this epic.
   - A9 Theme variables resolve at parse time, for each sheet. The selector depth is a constant of 2.
   - `Update` allocates no managed memory after warm-up with an active sheet and with running transitions.
+- **Decisions made during the build:**
+  - Code sets an inline value through `Element.Inline`, and `Element.Style` is `ref readonly`. Every old `Element.Style` write moved to `Element.Inline`.
+  - `UiContext.CreateInfo` gives `DefaultColor`, `DefaultFont`, and `DefaultFontSize`. A root inherits them.
+  - Specificity uses one byte per tier: names, then classes and pseudo-states, then types.
+  - A descendant selector walks to the grandparent only. A name rule uses an ordinal compare.
+  - The parser maps a font name through `StyleSheetParser.CreateInfo.Fonts`. A rule stores its transitions in `StyleTransitions`, a sparse set of five slots.
+  - The transition sets of the matched rules merge per slot. The easings use the CSS cubic Bezier curves. A `Color` tween writes into each inheriting descendant with no own tween.
 
 ---
 
@@ -73,8 +80,8 @@ Cross-feature tech debt and review findings. `/review-epic` fills this section. 
 
 ## Master Overview Rollup
 
-- **Rollup status:** Planned (0/4 features)
-- **One-line summary for master:** Stylesheets, selectors with pseudo-states, a zero-allocation cascade into `ComputedStyle`, a text format with a parser, and paint transitions.
+- **Rollup status:** Complete (4/4 features, 234/234 tasks)
+- **One-line summary for master:** Stylesheets, selectors with pseudo-states and a depth-2 chain, a zero-allocation cascade into `ComputedStyle`, a CSS-subset parser, and paint transitions. HelloPanel loads a stylesheet. 2121 tests pass.
 
 ---
 
