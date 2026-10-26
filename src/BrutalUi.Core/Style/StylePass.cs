@@ -219,9 +219,9 @@ internal static class StylePass
         element.FollowsColor = (applied & (1UL << (int)StyleProperty.Color)) == 0
             && !TransitionPool.CanRun(in merged, StyleTransitions.SlotOf(StyleProperty.Color));
 
-        // A label measures its text with the font and the font size, so a change of either one measures it again.
-        // The color does not change the size.
-        if (sizeTextChanged && element is Label)
+        // A label or a button measures its text with the font and the font size, so a change of either one measures
+        // it again. The color does not change the size.
+        if (sizeTextChanged && element is Label or Button)
         {
             bits |= DirtyFlags.Layout;
         }

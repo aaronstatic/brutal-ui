@@ -124,9 +124,17 @@ public sealed class UiContext
 
     /// <summary>
     /// The element with <see cref="PseudoStates.Active"/> from this context, or <see langword="null"/>. A press sets
-    /// it and the release of the last button clears it (Decision 8).
+    /// it and the release of the last button clears it after the walk of the release (Decision 8, and Decision 2 of
+    /// button-and-toggle).
     /// </summary>
     private Element? _activeElement;
+
+    /// <summary>
+    /// True from the release of the last button to the end of the walk of that release. Then
+    /// <see cref="FinishRelease"/> clears <see cref="PseudoStates.Active"/> on <see cref="_activeElement"/> (Decision 2
+    /// of button-and-toggle).
+    /// </summary>
+    private bool _releasePending;
 
     /// <summary>
     /// The element with <see cref="PseudoStates.Focus"/> from this context, or <see langword="null"/>. Each change
@@ -740,6 +748,9 @@ public sealed class UiContext
     /// </summary>
     /// <remarks>
     /// Only the tests of <c>BrutalUi.Core.Tests</c> read this member. The value changes only during a drain.
+    /// A <see cref="UiEventType.PointerUp"/> handler of the last button reads the pressed element here, because the
+    /// drain clears the value after the walk of the release (Decision 2 of button-and-toggle). This amends Decision 9
+    /// of pointer-routing for the release only.
     /// Limit: the ring drops its oldest entry when it is full. A dropped <c>PointerUp</c> leaves the button bit set, so
     /// <c>Active</c> stays until the next press and release of that button. Call <see cref="Update(float)"/> each frame to keep the ring below its capacity.
     /// </remarks>
@@ -1160,6 +1171,14 @@ public sealed class UiContext
     /// walks to the element under the pointer, which can be another element. A move and a scroll leave the state.
     /// </para>
     /// <para>
+    /// The release order (Decision 2 of button-and-toggle): the release clears its button bit before the walk, but
+    /// it clears <see cref="PseudoStates.Active"/> after its walk. Thus a <see cref="UiEventType.PointerUp"/> handler
+    /// reads <see cref="PseudoStates.Active"/> on the pressed element. This amends Decision 9 of pointer-routing ("The
+    /// state changes before the walk") for the release only. A release over no element gets no walk, and the state
+    /// still clears after the walk step. The <c>finally</c> block clears the state when a handler throws. After the
+    /// drain, the states are the same as before the amendment.
+    /// </para>
+    /// <para>
     /// The click focus rule (Decision 4 of keyboard-focus): a <see cref="UiEventType.PointerDown"/> with no target
     /// moves the focus after the Active step and before the walk. The focus goes to the hit element, or to its nearest
     /// ancestor with <see cref="Element.IsFocusable"/>. When that element does not accept the focus, or when the press
@@ -1321,6 +1340,10 @@ public sealed class UiContext
                     remaining -= (int)Math.Min(remaining, _events.Dropped - droppedBefore);
                 }
 
+                // The end of a release (Decision 2 of button-and-toggle): Active stays on the pressed element through
+                // the walk of the release, and goes off here. A release with no walk also clears Active here.
+                FinishRelease();
+
                 // The Tab move (Decision 5 of keyboard-focus). It runs after the walk, so a handler that stops the
                 // Tab keeps the focus. A Tab with no owner got no walk, but it still moves the focus.
                 if (routed
@@ -1344,7 +1367,10 @@ public sealed class UiContext
         }
         finally
         {
+            // A handler that throws in the walk of a release skips the call after the walk step. This call clears
+            // Active then (Decision 2 of button-and-toggle). The flag clears first, so the context stays valid.
             _draining = false;
+            FinishRelease();
         }
     }
 
@@ -1453,17 +1479,21 @@ public sealed class UiContext
     /// <summary>
     /// Hit-tests the position of a pointer or scroll entry with no target. The method writes the hit into the target
     /// of the entry, stores the hit and the position, and moves <see cref="PseudoStates.Hover"/> to the hit. A press
-    /// and a release also change <see cref="PseudoStates.Active"/>. A press also moves the keyboard focus.
+    /// sets <see cref="PseudoStates.Active"/> and moves the keyboard focus. A release of the last button marks the
+    /// clear of <see cref="PseudoStates.Active"/> as pending until the end of its walk.
     /// </summary>
     /// <remarks>
     /// <para>
     /// The method runs in the target step of the drain, before the walk (Decision 9), so a handler reads the new
-    /// state and the new focus owner. It creates no delegate, no closure, and no boxed value.
+    /// state and the new focus owner. The release is the one exception (Decision 2 of button-and-toggle): its
+    /// handler still reads <see cref="PseudoStates.Active"/> on the pressed element. It creates no delegate, no
+    /// closure, and no boxed value.
     /// </para>
     /// <para>
     /// The payloads of a pointer and of a scroll overlap in memory, so the method branches on the type before it reads
     /// the position. A press sets <see cref="PseudoStates.Active"/> on the hit when no element holds it. The release of
-    /// the last button clears it on the stored element (Decision 8). The release walks to the element under the
+    /// the last button clears its bit here, and <see cref="FinishRelease"/> clears the state on the stored element
+    /// after the walk (Decision 8, and Decision 2 of button-and-toggle). The release walks to the element under the
     /// pointer and not to the stored element.
     /// </para>
     /// <para>
@@ -1557,9 +1587,15 @@ public sealed class UiContext
     }
 
     /// <summary>
-    /// Records a button as up. When no button is down after that, the method clears
-    /// <see cref="PseudoStates.Active"/> on the stored element and drops it.
+    /// Records a button as up. When no button is down after that and an element holds
+    /// <see cref="PseudoStates.Active"/>, the method marks the release as pending. The state stays on the stored
+    /// element through the walk of the release. <see cref="FinishRelease"/> then clears it (Decision 2 of
+    /// button-and-toggle).
     /// </summary>
+    /// <remarks>
+    /// The method clears the bit of the button at once, before the walk, as Decision 9 of pointer-routing tells. Only
+    /// the clear of <see cref="PseudoStates.Active"/> waits for the end of the walk.
+    /// </remarks>
     /// <param name="button">The button that goes up.</param>
     private void ReleaseButton(PointerButton button)
     {
@@ -1570,8 +1606,38 @@ public sealed class UiContext
 
         if (_pressedButtons == 0 && _activeElement is not null)
         {
-            _activeElement.States &= ~PseudoStates.Active;
+            _releasePending = true;
+        }
+    }
+
+    /// <summary>
+    /// Clears <see cref="PseudoStates.Active"/> on the stored element and drops it, when a release of the last button
+    /// is pending. Else the method does nothing.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The drain calls the method after the walk step of each entry, before the Tab step. A release over no element
+    /// gets no walk, and this call still clears the state. The <c>finally</c> block of the drain calls the method one
+    /// more time, so a handler that throws does not leave <see cref="PseudoStates.Active"/> on an element (Decision 2
+    /// of button-and-toggle).
+    /// </para>
+    /// <para>
+    /// A handler of the release can remove the stored element from the tree. The method then clears the state on the
+    /// removed element, as the stale rule (Decision 10) does at the start of the next drain.
+    /// </para>
+    /// </remarks>
+    private void FinishRelease()
+    {
+        if (!_releasePending)
+        {
+            return;
+        }
+
+        _releasePending = false;
+        if (_activeElement is { } active)
+        {
             _activeElement = null;
+            active.States &= ~PseudoStates.Active;
         }
     }
 
@@ -1706,9 +1772,9 @@ public sealed class UiContext
     }
 
     /// <summary>
-    /// Reads the localized text of each <see cref="Label"/> with a <see cref="Label.LocalizedText"/> again, in each
-    /// root and its subtree. A label with a new text gets <see cref="DirtyFlags.Layout"/> and
-    /// <see cref="DirtyFlags.Paint"/>.
+    /// Reads the localized text of each <see cref="Label"/> with a <see cref="Label.LocalizedText"/> and of each
+    /// <see cref="Button"/> with a <see cref="Button.LocalizedText"/> again, in each root and its subtree. A label or a
+    /// button with a new text gets <see cref="DirtyFlags.Layout"/> and <see cref="DirtyFlags.Paint"/>.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -1719,13 +1785,14 @@ public sealed class UiContext
     /// <see cref="Update(float)"/> does not call it.
     /// </para>
     /// <para>
-    /// The method walks each element of each root. It marks a label only when the content of its localized text
-    /// changed (ordinal). A new string with the same content marks nothing. The method marks no other element.
+    /// The method walks each element of each root. It marks a label or a button only when the content of its
+    /// localized text changed (ordinal). A new string with the same content marks nothing. The method marks no other
+    /// element.
     /// </para>
     /// <para>
-    /// The method allocates nothing when the buffer of each label is large enough. A longer text grows the buffer of
-    /// its label one time. The method needs no <see cref="Measurer"/>. The next <see cref="Update(float)"/> measures
-    /// the new text.
+    /// The method allocates nothing when the buffer of each label and each button is large enough. A longer text grows
+    /// the buffer of its element one time. The method needs no <see cref="Measurer"/>. The next
+    /// <see cref="Update(float)"/> measures the new text.
     /// </para>
     /// </remarks>
     public void RefreshLocalizedText()
@@ -1737,14 +1804,24 @@ public sealed class UiContext
         }
     }
 
-    /// <summary>Calls <see cref="Label.RefreshLocalized"/> on each label in a subtree, in tree order.</summary>
-    /// <remarks>The recursion depth is the depth of the tree. A refresh changes no child list.</remarks>
+    /// <summary>
+    /// Calls <see cref="Label.RefreshLocalized"/> on each label and <see cref="Button.RefreshLocalized"/> on each
+    /// button in a subtree, in tree order.
+    /// </summary>
+    /// <remarks>
+    /// The recursion depth is the depth of the tree. A refresh changes no child list. The method checks the two types
+    /// one after the other (Decision 7 of interactive-elements/button-and-toggle).
+    /// </remarks>
     /// <param name="element">The root of the subtree.</param>
     private static void RefreshSubtree(Element element)
     {
         if (element is Label label)
         {
             label.RefreshLocalized();
+        }
+        else if (element is Button button)
+        {
+            button.RefreshLocalized();
         }
 
         ReadOnlySpan<Element> children = element.ChildStorage.AsSpan();

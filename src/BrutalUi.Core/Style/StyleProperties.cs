@@ -17,7 +17,9 @@ namespace BrutalUi.Core;
 /// </para>
 /// <para>
 /// The last 3 members are text members (bits 29 to 31). They inherit: an element with no value gets the value of
-/// its parent. A change of one of them changes the draw. A change of <see cref="StyleProperty.Font"/> or <see cref="StyleProperty.FontSize"/> also changes the layout of a <see cref="Label"/>.
+/// its parent. A change of one of them changes the draw. A change of <see cref="StyleProperty.Font"/> or
+/// <see cref="StyleProperty.FontSize"/> also changes the layout of a <see cref="Label"/> and of a
+/// <see cref="Button"/>.
 /// </para>
 /// </remarks>
 public enum StyleProperty : byte

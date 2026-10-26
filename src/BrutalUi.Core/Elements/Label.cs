@@ -1,7 +1,4 @@
 using System;
-using System.Buffers;
-using System.Text;
-using System.Text.Unicode;
 using Brutal.Localization;
 using Brutal.Numerics;
 
@@ -69,38 +66,17 @@ namespace BrutalUi.Core;
 /// </remarks>
 public sealed class Label : Element
 {
-    /// <summary>The start length of the owned UTF-8 buffer, in bytes.</summary>
-    private const int InitialTextCapacity = 32;
-
-    /// <summary>The length of the stack buffer of <see cref="Utf8Equals(ReadOnlySpan{byte}, ReadOnlySpan{char})"/>, in bytes.</summary>
-    private const int CompareChunkLength = 256;
-
-    /// <summary>The distance in pixels from a whole number that <see cref="SnapWrapWidth(float)"/> snaps: 1/64 pixel.</summary>
-    private const float WrapSnapTolerance = 1f / 64f;
-
     /// <summary>The measure callback of each label. The constructor sets it one time, so the layout pass allocates nothing.</summary>
     private static readonly MeasureCallback s_measure = MeasureLabel;
 
     /// <summary>The type id of each label.</summary>
     private static readonly ElementTypeId s_typeId = ElementType.Intern("Label");
 
-    /// <summary>The owned UTF-8 text. The buffer grows by doubling and never shrinks.</summary>
-    private byte[] _utf8 = new byte[InitialTextCapacity];
-
-    /// <summary>The count of the text bytes in <see cref="_utf8"/>.</summary>
-    private int _length;
-
     /// <summary>
-    /// The string that <see cref="_utf8"/> holds, or <see langword="null"/> when the label does not know it (a text
-    /// from a span). The string compare of <see cref="ApplyText(string)"/> uses it.
+    /// The owned text. The field has no <see langword="readonly"/> modifier, because each call changes the struct in
+    /// place. A copy of the struct loses the change.
     /// </summary>
-    private string? _lastText;
-
-    /// <summary>The localizable text, or <see langword="null"/> for a text from a span or a string.</summary>
-    private LString? _localized;
-
-    /// <summary>The value of <see cref="LString.Localized"/> that the label encoded last.</summary>
-    private string? _lastLocalized;
+    private Utf8Text _text;
 
     /// <summary>Creates a label with the text of the create-info.</summary>
     /// <remarks>
@@ -118,17 +94,7 @@ public sealed class Label : Element
                 nameof(info));
         }
 
-        if (info.LocalizedText is not null)
-        {
-            _localized = info.LocalizedText;
-            _lastLocalized = info.LocalizedText.Localized;
-            EncodeText(_lastLocalized);
-        }
-        else
-        {
-            EncodeText(info.Text);
-        }
-
+        _text = new Utf8Text(info.Text, info.LocalizedText);
         Layout.Measure = s_measure;
     }
 
@@ -137,7 +103,7 @@ public sealed class Label : Element
 
     /// <summary>Gets the owned UTF-8 text.</summary>
     /// <remarks>The span is valid until the next change of the text.</remarks>
-    public ReadOnlySpan<byte> Text => _utf8.AsSpan(0, _length);
+    public ReadOnlySpan<byte> Text => _text.Span;
 
     /// <summary>
     /// Gets the localizable text, or <see langword="null"/> when the text comes from a span or a string.
@@ -146,7 +112,7 @@ public sealed class Label : Element
     /// <see cref="SetText(LString?)"/> and <see cref="CreateInfo.LocalizedText"/> set it.
     /// <see cref="SetText(ReadOnlySpan{byte})"/> and <see cref="SetText(string?)"/> clear it.
     /// </remarks>
-    public LString? LocalizedText => _localized;
+    public LString? LocalizedText => _text.Localized;
 
     /// <summary>Copies a UTF-8 text into the owned buffer and clears <see cref="LocalizedText"/>.</summary>
     /// <remarks>
@@ -163,17 +129,10 @@ public sealed class Label : Element
     /// <param name="utf8">The UTF-8 text. An empty span gives an empty text.</param>
     public void SetText(ReadOnlySpan<byte> utf8)
     {
-        ClearLocalized();
-        if (utf8.SequenceEqual(Text))
+        if (_text.Set(utf8))
         {
-            return;
+            MarkDirty(DirtyFlags.Layout | DirtyFlags.Paint);
         }
-
-        EnsureCapacity(utf8.Length);
-        utf8.CopyTo(_utf8);
-        _length = utf8.Length;
-        _lastText = null;
-        MarkDirty(DirtyFlags.Layout | DirtyFlags.Paint);
     }
 
     /// <summary>Encodes a text to UTF-8 into the owned buffer and clears <see cref="LocalizedText"/>.</summary>
@@ -189,8 +148,10 @@ public sealed class Label : Element
     /// <param name="text">The text. <see langword="null"/> gives an empty text.</param>
     public void SetText(string? text)
     {
-        ClearLocalized();
-        ApplyText(text ?? string.Empty);
+        if (_text.Set(text))
+        {
+            MarkDirty(DirtyFlags.Layout | DirtyFlags.Paint);
+        }
     }
 
     /// <summary>
@@ -210,17 +171,10 @@ public sealed class Label : Element
     /// <param name="text">The localizable text. <see langword="null"/> clears <see cref="LocalizedText"/> and gives an empty text.</param>
     public void SetText(LString? text)
     {
-        if (text is null)
+        if (_text.Set(text))
         {
-            ClearLocalized();
-            ApplyText(string.Empty);
-            return;
+            MarkDirty(DirtyFlags.Layout | DirtyFlags.Paint);
         }
-
-        string localized = text.Localized;
-        _localized = text;
-        _lastLocalized = localized;
-        ApplyText(localized);
     }
 
     /// <summary>
@@ -234,19 +188,10 @@ public sealed class Label : Element
     /// </remarks>
     internal void RefreshLocalized()
     {
-        if (_localized is null)
+        if (_text.Refresh())
         {
-            return;
+            MarkDirty(DirtyFlags.Layout | DirtyFlags.Paint);
         }
-
-        string localized = _localized.Localized;
-        if (ReferenceEquals(localized, _lastLocalized))
-        {
-            return;
-        }
-
-        _lastLocalized = localized;
-        ApplyText(localized);
     }
 
     /// <summary>
@@ -271,117 +216,41 @@ public sealed class Label : Element
     /// <param name="opacity">The product of the opacities from the root to the label, from 0 to 1.</param>
     internal override void PaintContent(IUiRenderer renderer, in float4 borderBox, float opacity)
     {
-        ref readonly ComputedStyle style = ref Style;
         float4 content = Layout.ContentBox(in borderBox);
-        Rgba8 color = style.Color.ScaleAlpha(opacity);
-        ReadOnlySpan<byte> text = Text;
-        if (text.IsEmpty || color.A == 0)
-        {
-            return;
-        }
-
-        float2 position = new(content.X, content.Y);
-        renderer.Text(in position, style.Font, style.FontSize, in color, text, DrawWrapWidth(content.Z, borderBox.Z));
+        Utf8Text.Paint(renderer, in Style, in content, borderBox.Z, opacity, Text);
     }
 
     /// <summary>
     /// Gives the wrap width of the draw for the width of the content box and the width of the border box.
     /// </summary>
-    /// <remarks>
-    /// <para>
-    /// The method snaps the content width with <see cref="SnapWrapWidth(float)"/>. A result of 0 or a whole number
-    /// stays the same. A fractional result gets two units in the last place of the border box width on top.
-    /// </para>
-    /// <para>
-    /// Under <see cref="MeasureMode.AtMost"/>, the box width is the measured width <c>w</c> plus the padding and the
-    /// border, and the draw takes them off again. The float noise of the sum and of the subtraction is at most one
-    /// unit in the last place of the box width. Thus the raise keeps the draw width at <c>w</c> or above, and the widest
-    /// line does not wrap. Under <see cref="MeasureMode.Exactly"/>, the raise puts the draw width above the measure
-    /// limit by the same noise. A break can differ only when a line fills the limit to within this noise.
-    /// </para>
-    /// <para>
-    /// A whole number needs no raise: the snap already removes the noise there. A raise that is not finite gives the
-    /// snapped width.
-    /// </para>
-    /// </remarks>
+    /// <remarks>The method calls <see cref="Utf8Text.DrawWrapWidth(float, float)"/>. That method holds the rule.</remarks>
     /// <param name="contentWidth">The width of the content box in pixels.</param>
     /// <param name="borderBoxWidth">The width of the border box in pixels.</param>
     /// <returns>The wrap width in pixels. 0 means no wrap.</returns>
     internal static float DrawWrapWidth(float contentWidth, float borderBoxWidth)
     {
-        float wrap = SnapWrapWidth(contentWidth);
-        if (wrap <= 0f || wrap == MathF.Round(wrap))
-        {
-            return wrap;
-        }
-
-        float raised = wrap + (2f * (MathF.BitIncrement(borderBoxWidth) - borderBoxWidth));
-        return float.IsFinite(raised) ? raised : wrap;
+        return Utf8Text.DrawWrapWidth(contentWidth, borderBoxWidth);
     }
 
     /// <summary>
     /// Gives the wrap width that the measure sends to the renderer for an available width. The draw starts from the
     /// same value (see <see cref="DrawWrapWidth(float, float)"/>).
     /// </summary>
-    /// <remarks>
-    /// <para>
-    /// A value that is not finite, or 0 or less, gives 0 (no wrap). A value within 1/64 pixel of a whole number gives
-    /// that whole number. Another value stays the same.
-    /// </para>
-    /// <para>
-    /// The snap removes float noise near a whole number. The layout pass adds the padding and the border to the
-    /// measured width, and the draw takes them off again. The result can differ from the measured width by one unit
-    /// in the last place. A line that fits the measured width exactly can then wrap in the draw. For a whole-pixel
-    /// measured width, the snap gives the same value on both sides. For a fractional measured width, the snap keeps
-    /// the noise, and <see cref="DrawWrapWidth(float, float)"/> raises the draw width above it.
-    /// </para>
-    /// <para>
-    /// The limit: a measured width within 1/64 pixel above a whole number snaps down in the draw. The widest line can
-    /// then wrap in the draw. A measurer that gives whole-pixel widths does not meet this limit.
-    /// </para>
-    /// </remarks>
+    /// <remarks>The method calls <see cref="Utf8Text.SnapWrapWidth(float)"/>. That method holds the rule.</remarks>
     /// <param name="width">The available width in pixels.</param>
     /// <returns>The wrap width in pixels. 0 means no wrap.</returns>
     internal static float SnapWrapWidth(float width)
     {
-        if (!float.IsFinite(width) || width <= 0f)
-        {
-            return 0f;
-        }
-
-        float whole = MathF.Round(width);
-        return MathF.Abs(width - whole) <= WrapSnapTolerance ? whole : width;
+        return Utf8Text.SnapWrapWidth(width);
     }
 
     /// <summary>
     /// Measures the text of a label with the measurer of the current <see cref="UiContext.Update(float)"/> call.
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// The rule: measure the text with no wrap first. An undefined width gives that size. Otherwise the limit is
-    /// <see cref="SnapWrapWidth(float)"/> of the width. A text that fits the limit, or a limit of 0, gives the size with
-    /// no wrap. Another text wraps at the limit.
-    /// </para>
-    /// <para>
-    /// The rule keeps the contract of <see cref="MeasureCallback"/>: with <see cref="MeasureMode.AtMost"/>, a text
-    /// that fits gives the size of <see cref="MeasureMode.Undefined"/>. The callback gives the content size only, and
-    /// it does not clamp to the limit. The engine adds the padding and the border, and it applies
-    /// <see cref="MeasureMode.Exactly"/>, the minimum, and the maximum.
-    /// </para>
-    /// <para>
-    /// The draw wraps at the same lines. With <see cref="MeasureMode.Exactly"/>, the measure and the draw both wrap at
-    /// the snapped width. With <see cref="MeasureMode.AtMost"/>, the measure wraps at the limit and gives the widest
-    /// line. The engine gives the label that width, and the draw wraps at it. A greedy break at the limit takes the
-    /// longest prefix that fits the limit. That prefix also fits the widest line, so the draw takes the same prefix.
-    /// </para>
-    /// <para>
-    /// The callback calls the measurer one or two times. The layout cache stops a repeat of the same constraint, so
-    /// the label keeps no measure cache of its own.
-    /// </para>
-    /// <para>
-    /// The callback gives a finite size. A component of a measurer result that is not finite, or that is below 0,
-    /// becomes 0 (<see cref="FiniteSize(float2)"/>).
-    /// </para>
+    /// The callback checks for a measurer first. Then it calls
+    /// <see cref="Utf8Text.Measure(IUiRenderer, in ComputedStyle, ReadOnlySpan{byte}, float, MeasureMode)"/>. That
+    /// method holds the measure rule. The callback gives a finite size.
     /// </remarks>
     /// <param name="element">The label.</param>
     /// <param name="width">The available inner width in pixels.</param>
@@ -402,150 +271,22 @@ public sealed class Label : Element
                 "A Label needs a UiContext with a measurer. Create the context with UiContext.CreateInfo.");
 
         Label label = (Label)element;
-        ref readonly ComputedStyle style = ref label.Style;
-        float2 free = FiniteSize(measurer.MeasureText(style.Font, style.FontSize, label.Text, 0f));
-        if (widthMode == MeasureMode.Undefined)
-        {
-            return free;
-        }
-
-        float limit = SnapWrapWidth(width);
-        if (limit <= 0f || free.X <= limit)
-        {
-            return free;
-        }
-
-        return FiniteSize(measurer.MeasureText(style.Font, style.FontSize, label.Text, limit));
-    }
-
-    /// <summary>
-    /// Gives a size with each component that is not finite, or that is below 0, set to 0.
-    /// </summary>
-    /// <remarks>
-    /// The contract of <see cref="MeasureCallback"/> asks for a finite size. A measurer result that is not finite
-    /// would give the label an infinite or a <c>NaN</c> rect.
-    /// </remarks>
-    /// <param name="size">The size from the measurer.</param>
-    /// <returns>The size with each component finite and 0 or more.</returns>
-    private static float2 FiniteSize(float2 size)
-    {
-        return new float2(FiniteLength(size.X), FiniteLength(size.Y));
-    }
-
-    /// <summary>Gives a length, or 0 for a length that is not finite or that is below 0.</summary>
-    /// <param name="length">The length.</param>
-    /// <returns>The length, or 0.</returns>
-    private static float FiniteLength(float length)
-    {
-        return float.IsFinite(length) && length > 0f ? length : 0f;
+        return Utf8Text.Measure(measurer, in label.Style, label.Text, width, widthMode);
     }
 
     /// <summary>
     /// Compares a UTF-8 text with the UTF-8 form of a UTF-16 text, with no allocation.
     /// </summary>
     /// <remarks>
-    /// The method encodes the UTF-16 text in chunks into a stack buffer. It replaces an invalid surrogate with U+FFFD,
-    /// as <see cref="Encoding.UTF8"/> does.
+    /// The method calls <see cref="Utf8Text.Utf8Equals(ReadOnlySpan{byte}, ReadOnlySpan{char})"/>. That method holds
+    /// the rule.
     /// </remarks>
     /// <param name="utf8">The UTF-8 text.</param>
     /// <param name="text">The UTF-16 text.</param>
     /// <returns><see langword="true"/> when the UTF-8 form of <paramref name="text"/> has the same bytes as <paramref name="utf8"/>.</returns>
     internal static bool Utf8Equals(ReadOnlySpan<byte> utf8, ReadOnlySpan<char> text)
     {
-        Span<byte> chunk = stackalloc byte[CompareChunkLength];
-        while (!text.IsEmpty)
-        {
-            OperationStatus status = Utf8.FromUtf16(
-                text,
-                chunk,
-                out int read,
-                out int written,
-                replaceInvalidSequences: true,
-                isFinalBlock: true);
-            if (read == 0 || (status != OperationStatus.Done && status != OperationStatus.DestinationTooSmall))
-            {
-                return false;
-            }
-
-            if (written > utf8.Length || !chunk[..written].SequenceEqual(utf8[..written]))
-            {
-                return false;
-            }
-
-            utf8 = utf8[written..];
-            text = text[read..];
-        }
-
-        return utf8.IsEmpty;
-    }
-
-    /// <summary>
-    /// Shows a string. The method compares it with the current text first, and marks
-    /// <see cref="DirtyFlags.Layout"/> and <see cref="DirtyFlags.Paint"/> for a new text only.
-    /// </summary>
-    /// <remarks>
-    /// The compare is ordinal with <see cref="_lastText"/> when the label knows the string of its buffer. Otherwise
-    /// the compare is on the UTF-8 bytes. The method does not change <see cref="_localized"/>.
-    /// </remarks>
-    /// <param name="text">The text. It must not be <see langword="null"/>.</param>
-    private void ApplyText(string text)
-    {
-        bool same = (_lastText is not null && string.Equals(_lastText, text, StringComparison.Ordinal))
-            || Utf8Equals(Text, text);
-        if (same)
-        {
-            _lastText = text;
-            return;
-        }
-
-        EncodeText(text);
-        MarkDirty(DirtyFlags.Layout | DirtyFlags.Paint);
-    }
-
-    /// <summary>Clears <see cref="_localized"/> and <see cref="_lastLocalized"/>. The text does not change.</summary>
-    private void ClearLocalized()
-    {
-        _localized = null;
-        _lastLocalized = null;
-    }
-
-    /// <summary>
-    /// Makes the owned buffer hold at least a count of bytes. The buffer grows by doubling and never shrinks.
-    /// </summary>
-    /// <remarks>A growth does not copy the old text. The caller writes the new text after the call.</remarks>
-    /// <param name="needed">The count of bytes.</param>
-    private void EnsureCapacity(int needed)
-    {
-        if (needed <= _utf8.Length)
-        {
-            return;
-        }
-
-        int length = _utf8.Length;
-        while (length < needed)
-        {
-            length = length > int.MaxValue / 2 ? needed : length * 2;
-        }
-
-        _utf8 = new byte[length];
-    }
-
-    /// <summary>
-    /// Encodes a text to UTF-8 into the owned buffer. The buffer grows by doubling when the text does not fit.
-    /// </summary>
-    /// <remarks>The method sets <see cref="_lastText"/>. It sets no dirty bit.</remarks>
-    /// <param name="text">The text. <see langword="null"/> gives an empty text.</param>
-    private void EncodeText(string? text)
-    {
-        _lastText = text ?? string.Empty;
-        if (string.IsNullOrEmpty(text))
-        {
-            _length = 0;
-            return;
-        }
-
-        EnsureCapacity(Encoding.UTF8.GetByteCount(text));
-        _length = Encoding.UTF8.GetBytes(text, _utf8.AsSpan());
+        return Utf8Text.Utf8Equals(utf8, text);
     }
 
     /// <summary>The create-info of a <see cref="Label"/>.</summary>
