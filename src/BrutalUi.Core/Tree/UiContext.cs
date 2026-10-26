@@ -125,7 +125,8 @@ public sealed class UiContext
     /// <summary>
     /// The element with <see cref="PseudoStates.Active"/> from this context, or <see langword="null"/>. A press sets
     /// it and the release of the last button clears it after the walk of the release (Decision 8, and Decision 2 of
-    /// button-and-toggle).
+    /// button-and-toggle). <see cref="_activeButton"/> and <see cref="_activeChord"/> tell which press set it
+    /// (Decision 13 of slider).
     /// </summary>
     private Element? _activeElement;
 
@@ -135,6 +136,39 @@ public sealed class UiContext
     /// of button-and-toggle).
     /// </summary>
     private bool _releasePending;
+
+    /// <summary>
+    /// The button of the press that set <see cref="PseudoStates.Active"/> on <see cref="_activeElement"/> (Decision 13
+    /// of slider). <see cref="PressButton"/> writes it when it sets the state.
+    /// </summary>
+    /// <remarks>
+    /// The value is valid only while <see cref="_activeElement"/> is not <see langword="null"/>. The release does not
+    /// clear it, because <see cref="LeftPressElement"/> reads <see cref="_activeElement"/> first.
+    /// </remarks>
+    private PointerButton _activeButton;
+
+    /// <summary>
+    /// True when the gesture of <see cref="_activeElement"/> is a chord (Decision 13 of slider): another button was
+    /// down at the press that set <see cref="PseudoStates.Active"/>, or a button went down while an element held
+    /// the state.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="PressButton"/> writes the flag when it sets the state, and it sets the flag for each later press of
+    /// the gesture. The value is valid only while <see cref="_activeElement"/> is not <see langword="null"/>.
+    /// </remarks>
+    private bool _activeChord;
+
+    /// <summary>
+    /// The press target of the walk that runs on this thread (Decision 13 of slider), or <see langword="null"/>.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="DrainEvents"/> sets the value after the target step of each entry and writes the old value back
+    /// after the walk step and in its <c>finally</c> block, as <see cref="Update(float)"/> does with
+    /// <see cref="t_measurer"/>. Thus no value stays between drains, a nested drain of another context does not change
+    /// the value of the outer walk, and two contexts on two threads do not share it.
+    /// </remarks>
+    [ThreadStatic]
+    private static Element? t_pressTarget;
 
     /// <summary>
     /// The element with <see cref="PseudoStates.Focus"/> from this context, or <see langword="null"/>. Each change
@@ -751,10 +785,52 @@ public sealed class UiContext
     /// A <see cref="UiEventType.PointerUp"/> handler of the last button reads the pressed element here, because the
     /// drain clears the value after the walk of the release (Decision 2 of button-and-toggle). This amends Decision 9
     /// of pointer-routing for the release only.
+    /// <c>Active</c> marks the element of the first press of a gesture, with each button. It is not the click target.
+    /// The press target (<see cref="CurrentPressTarget"/>) holds the element of a left press with no chord only
+    /// (Decision 13 of slider). This amends Decision 2 of button-and-toggle: a widget reads the press target, not
+    /// <c>Active</c>, to find a click or a drag.
+    /// The drag capture (Decision 3 of slider) reads the same element of the left press with no chord. While that
+    /// element implements <see cref="IDragCapture"/> and captures its moves, each move with no target walks to it. The
+    /// capture thus ends when <c>Active</c> clears. This amends Decision 8 of pointer-routing for such a move only.
     /// Limit: the ring drops its oldest entry when it is full. A dropped <c>PointerUp</c> leaves the button bit set, so
     /// <c>Active</c> stays until the next press and release of that button. Call <see cref="Update(float)"/> each frame to keep the ring below its capacity.
     /// </remarks>
     internal Element? ActiveElement => _activeElement;
+
+    /// <summary>
+    /// Gets the element of the left press with no chord that set <see cref="PseudoStates.Active"/>, or
+    /// <see langword="null"/> (Decision 13 of slider).
+    /// </summary>
+    /// <remarks>
+    /// The value is <see cref="_activeElement"/> when <see cref="_activeButton"/> is <see cref="PointerButton.Left"/>
+    /// and <see cref="_activeChord"/> is <see langword="false"/>. Else it is <see langword="null"/>.
+    /// </remarks>
+    private Element? LeftPressElement =>
+        _activeElement is not null && _activeButton == PointerButton.Left && !_activeChord ? _activeElement : null;
+
+    /// <summary>
+    /// Gets the press target of the walk that runs on this thread: the element of the left press with no chord that
+    /// the current pointer gesture holds, or <see langword="null"/> (Decision 13 of slider).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The drain sets the value for the walk of each entry that it routes. A <see cref="UiEventType.PointerDown"/> and
+    /// a <see cref="UiEventType.PointerMove"/> get the element of the left press with no chord. A
+    /// <see cref="UiEventType.PointerUp"/> gets that element only when the release ends the press (no button stays
+    /// down). Each other entry gets <see langword="null"/>: an entry with a target from the caller, a scroll, a key,
+    /// and a char.
+    /// </para>
+    /// <para>
+    /// For the walk of a release, the press target is the click target. <see cref="WidgetInput.IsClick"/> compares
+    /// the widget with this value, and the drag checks of the later widgets read the same value.
+    /// </para>
+    /// <para>
+    /// The value is <see langword="null"/> outside a walk. It is thread-static and lives for one walk only, so a
+    /// nested drain of another context does not change it, and two contexts on two threads do not share it. It
+    /// allocates nothing.
+    /// </para>
+    /// </remarks>
+    internal static Element? CurrentPressTarget => t_pressTarget;
 
     /// <summary>
     /// Gets the element that holds the keyboard focus of this context, or <see langword="null"/> when no element
@@ -1171,12 +1247,33 @@ public sealed class UiContext
     /// walks to the element under the pointer, which can be another element. A move and a scroll leave the state.
     /// </para>
     /// <para>
+    /// The move rule (Decision 3 of slider): a <see cref="UiEventType.PointerMove"/> with no target walks to the hit
+    /// element. During a captured drag, it walks to the capture element: the element of the left press with no chord
+    /// (Decision 13 of slider) that implements <see cref="IDragCapture"/> with <see cref="IDragCapture.CapturesMoves"/>
+    /// set, when that element is in the roots of this context and is shown. Shown means no <see cref="Display.None"/>
+    /// and no opacity product of 0 or less on the element or an ancestor, as for the focus. A removed or hidden capture
+    /// element gets no captured move: the move walks to the hit. The move then reaches the capture element also
+    /// outside its rect. The hit test, <see cref="PseudoStates.Hover"/>, <see cref="PointerHit"/>, and the routing
+    /// gate still follow the hit. This amends Decision 8 of pointer-routing for a move during a captured drag only.
+    /// The release of the last button ends the capture.
+    /// </para>
+    /// <para>
     /// The release order (Decision 2 of button-and-toggle): the release clears its button bit before the walk, but
     /// it clears <see cref="PseudoStates.Active"/> after its walk. Thus a <see cref="UiEventType.PointerUp"/> handler
     /// reads <see cref="PseudoStates.Active"/> on the pressed element. This amends Decision 9 of pointer-routing ("The
     /// state changes before the walk") for the release only. A release over no element gets no walk, and the state
     /// still clears after the walk step. The <c>finally</c> block clears the state when a handler throws. After the
     /// drain, the states are the same as before the amendment.
+    /// </para>
+    /// <para>
+    /// The press target (Decision 13 of slider): after the target step of each entry, the method sets
+    /// <see cref="CurrentPressTarget"/> for the walk of that entry. A <see cref="UiEventType.PointerDown"/> and a
+    /// <see cref="UiEventType.PointerMove"/> that the drain routes get the element of the left press with no chord. A
+    /// routed <see cref="UiEventType.PointerUp"/> gets that element only when the release ends the press. Each other
+    /// entry gets <see langword="null"/>. The method saves the old value at its start, and it writes the old value
+    /// back after each walk step and in its <c>finally</c> block. Thus a chord gives no click, and a release with a
+    /// target from the caller gives no click. <see cref="PseudoStates.Active"/> keeps its life. This amends
+    /// Decision 2 of button-and-toggle: a widget reads the press target, not <see cref="PseudoStates.Active"/>.
     /// </para>
     /// <para>
     /// The click focus rule (Decision 4 of keyboard-focus): a <see cref="UiEventType.PointerDown"/> with no target
@@ -1253,6 +1350,10 @@ public sealed class UiContext
             throw new InvalidOperationException("A drain of this UiContext runs already. Do not call Update or the drain from an event handler.");
         }
 
+        // The press target of an outer walk (Decision 13 of slider). The drain writes it back after each walk step and
+        // in the finally block, as Update does with t_measurer.
+        Element? previousPressTarget = t_pressTarget;
+
         _draining = true;
         try
         {
@@ -1298,6 +1399,18 @@ public sealed class UiContext
                     entry.Header.Target = target;
                 }
 
+                // The press target (Decision 13 of slider). A press and a move that the drain routes get the element of
+                // the left press with no chord. A routed release gets it only when the release ends the press. An entry
+                // with a target from the caller, a scroll, a key, and a char get null.
+                t_pressTarget = !routed
+                    ? null
+                    : entry.Header.Type switch
+                    {
+                        UiEventType.PointerDown or UiEventType.PointerMove => LeftPressElement,
+                        UiEventType.PointerUp when _releasePending => LeftPressElement,
+                        _ => null,
+                    };
+
                 // The walk step. An entry with no target, or with a target outside the roots, gets no walk. The step
                 // after the walk still runs for it.
                 bool stopped = false;
@@ -1340,6 +1453,9 @@ public sealed class UiContext
                     remaining -= (int)Math.Min(remaining, _events.Dropped - droppedBefore);
                 }
 
+                // The press target lives for the walk of this entry only (Decision 13 of slider).
+                t_pressTarget = previousPressTarget;
+
                 // The end of a release (Decision 2 of button-and-toggle): Active stays on the pressed element through
                 // the walk of the release, and goes off here. A release with no walk also clears Active here.
                 FinishRelease();
@@ -1369,7 +1485,10 @@ public sealed class UiContext
         {
             // A handler that throws in the walk of a release skips the call after the walk step. This call clears
             // Active then (Decision 2 of button-and-toggle). The flag clears first, so the context stays valid.
+            // A handler that throws also skips the write-back after the walk step, so the press target goes back here
+            // (Decision 13 of slider).
             _draining = false;
+            t_pressTarget = previousPressTarget;
             FinishRelease();
         }
     }
@@ -1478,9 +1597,10 @@ public sealed class UiContext
 
     /// <summary>
     /// Hit-tests the position of a pointer or scroll entry with no target. The method writes the hit into the target
-    /// of the entry, stores the hit and the position, and moves <see cref="PseudoStates.Hover"/> to the hit. A press
-    /// sets <see cref="PseudoStates.Active"/> and moves the keyboard focus. A release of the last button marks the
-    /// clear of <see cref="PseudoStates.Active"/> as pending until the end of its walk.
+    /// of the entry, stores the hit and the position, and moves <see cref="PseudoStates.Hover"/> to the hit. A move
+    /// during a captured drag gets the capture element as its target in place of the hit. A press sets
+    /// <see cref="PseudoStates.Active"/> and moves the keyboard focus. A release of the last button marks the clear of
+    /// <see cref="PseudoStates.Active"/> as pending until the end of its walk.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -1503,9 +1623,26 @@ public sealed class UiContext
     /// release, and a scroll keep the focus. The drain calls this method for an entry with no target only, so a target
     /// from the caller skips the click focus, as it skips the states.
     /// </para>
+    /// <para>
+    /// The drag capture (Decision 3 of slider): after the hover step, a <see cref="UiEventType.PointerMove"/> goes to
+    /// the element of the left press with no chord (Decision 13 of slider) when that element implements
+    /// <see cref="IDragCapture"/>, its <see cref="IDragCapture.CapturesMoves"/> is <see langword="true"/>, it is
+    /// in the roots of this context, and it is shown. The method writes that element into the target of the entry and
+    /// returns it. This amends Decision 8 of pointer-routing for a move during a captured drag only: a move and a
+    /// scroll still leave <see cref="PseudoStates.Active"/>. The hit test, <see cref="PseudoStates.Hover"/>,
+    /// <see cref="PointerHit"/>, and the routing gate still follow the hit. A press, a release, and a scroll keep the
+    /// route of the hit. The root check sends the move to the hit when a handler of the same drain removed the capture
+    /// element. The shown rule is the rule of the focus: no <see cref="Display.None"/> and no opacity product of 0 or
+    /// less on the element or an ancestor. The style of the last <see cref="Update(float)"/> decides. A hidden element
+    /// keeps <see cref="PseudoStates.Active"/>, but its moves walk to the hit, so a hidden slider does not go to its
+    /// minimum. The type pattern and the shown check allocate nothing.
+    /// </para>
     /// </remarks>
     /// <param name="entry">The ring entry. Its type is a pointer type or <see cref="UiEventType.Scroll"/>, and its target is <see langword="null"/>.</param>
-    /// <returns>The hit element, or <see langword="null"/> when no element holds the position.</returns>
+    /// <returns>
+    /// The capture element for a move during a captured drag. Else the hit element, or <see langword="null"/> when no
+    /// element holds the position.
+    /// </returns>
     private Element? RoutePointer(ref UiQueuedEvent entry)
     {
         UiEventType type = entry.Header.Type;
@@ -1521,6 +1658,20 @@ public sealed class UiContext
         // One field is both the hover owner and the last hit (Decision 7). SetHover reads the old value of the field
         // and then stores the hit in it, so the store of the hit happens there.
         SetHover(hit);
+
+        // The drag capture (Decision 3 of slider): a move goes to the element of the left press with no chord
+        // (Decision 13 of slider) when that element captures its moves. The hit test, Hover, and PointerHit above
+        // stay on the hit. The root check sends the move to the hit when a handler of this drain removed the element.
+        // The shown check sends the move to the hit when a style change hid the element or an ancestor. The layout
+        // gives a hidden element a rect of 0, so a captured move would set the minimum.
+        if (type == UiEventType.PointerMove
+            && LeftPressElement is IDragCapture { CapturesMoves: true } and Element capture
+            && IsInRootTree(capture)
+            && FocusWalk.IsShown(capture))
+        {
+            entry.Header.Target = capture;
+            return capture;
+        }
 
         // The state of Active follows the press and the release only (Decision 8). A move and a scroll leave it.
         if (type == UiEventType.PointerDown)
@@ -1568,21 +1719,41 @@ public sealed class UiContext
 
     /// <summary>
     /// Records a button as down. When no element holds <see cref="PseudoStates.Active"/> and the press hit an
-    /// element, the method sets the state on that element and stores it.
+    /// element, the method sets the state on that element and stores it. It also stores the button of that press and
+    /// the chord flag (Decision 13 of slider).
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The method reads the other buttons of the mask before the bit of this press goes in. When this press sets
+    /// <see cref="PseudoStates.Active"/>, it writes <see cref="_activeButton"/>, and it writes
+    /// <see cref="_activeChord"/> as <see langword="true"/> when another button is down. A press over no element sets
+    /// no state, but its bit stays in the mask, so a later press that sets the state is a chord.
+    /// </para>
+    /// <para>
+    /// When an element holds <see cref="PseudoStates.Active"/> already, the method sets <see cref="_activeChord"/>.
+    /// This is true for a press of each button, also over no element, and also for a second press of the same button
+    /// after a dropped release. The state stays on the element of the first press (Decision 2 of button-and-toggle).
+    /// </para>
+    /// </remarks>
     /// <param name="button">The button that goes down.</param>
     /// <param name="hit">The element under the pointer, or <see langword="null"/>.</param>
     private void PressButton(PointerButton button, Element? hit)
     {
-        if ((uint)button < 32u)
-        {
-            _pressedButtons |= 1 << (int)button;
-        }
+        int bit = (uint)button < 32u ? 1 << (int)button : 0;
+        bool otherDown = (_pressedButtons & ~bit) != 0;
+        _pressedButtons |= bit;
 
-        if (_activeElement is null && hit is not null)
+        if (_activeElement is not null)
+        {
+            // A button goes down while an element holds Active: the gesture is a chord (Decision 13 of slider).
+            _activeChord = true;
+        }
+        else if (hit is not null)
         {
             hit.States |= PseudoStates.Active;
             _activeElement = hit;
+            _activeButton = button;
+            _activeChord = otherDown;
         }
     }
 

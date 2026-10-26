@@ -1,4 +1,5 @@
 using System;
+using Brutal.Numerics;
 
 namespace BrutalUi.Core;
 
@@ -18,8 +19,16 @@ namespace BrutalUi.Core;
 /// check.
 /// </para>
 /// <para>
-/// A check reads the event and the states of the widget only. It changes no state, it does not stop the walk, and it
-/// allocates nothing.
+/// <see cref="IsDragStart(Element, in PointerEvent)"/> and <see cref="IsDragMove(Element, in PointerEvent)"/> serve
+/// each widget with a drag rule.
+/// </para>
+/// <para>
+/// The pointer checks read <see cref="UiContext.CurrentPressTarget"/>, the press target of the current walk
+/// (Decision 13 of slider). The drag checks read the same press target, so a chord gives no click and no drag.
+/// </para>
+/// <para>
+/// A check reads the event, the states of the widget, and the press target only. It changes no state, it does not stop
+/// the walk, and it allocates nothing.
 /// </para>
 /// <para>
 /// Each check returns <see langword="false"/> for a widget that holds <see cref="PseudoStates.Disabled"/> (Decision 6
@@ -31,18 +40,25 @@ internal static class WidgetInput
 {
     /// <summary>
     /// Tells if a <see cref="UiEventType.PointerUp"/> is a click on the widget: the button is
-    /// <see cref="PointerButton.Left"/>, and <see cref="Element.States"/> of the widget holds
-    /// <see cref="PseudoStates.Active"/>, and the widget does not hold <see cref="PseudoStates.Disabled"/>.
+    /// <see cref="PointerButton.Left"/>, <see cref="UiContext.CurrentPressTarget"/> is the widget, and the widget does
+    /// not hold <see cref="PseudoStates.Disabled"/>.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The release clears <see cref="PseudoStates.Active"/> after its walk (Decision 2 of button-and-toggle), so a
-    /// release handler reads <see cref="PseudoStates.Active"/> on the pressed element. Thus a click needs a press on
-    /// the widget and a release that walks to the widget.
+    /// The check also reads the event type, so a copy of the handler in another slot does nothing. The drain sets the
+    /// press target for a press and a move too, and the type check stops a click during the press.
     /// </para>
     /// <para>
-    /// <see cref="PseudoStates.Active"/> marks the first press of a gesture, so a chord of two buttons can give a click
-    /// after a left press on another element.
+    /// The drain sets the press target for the walk of the release that ends the press (Decision 13 of slider). The
+    /// press target is the element of the left press with no chord. Thus a click needs a left press on the widget and
+    /// a release that walks to the widget.
+    /// </para>
+    /// <para>
+    /// The chord rule: a click needs the left press that set <see cref="PseudoStates.Active"/>, with no other button
+    /// down during the gesture. A chord of two buttons gives no click, in each press order and each release order. A
+    /// <see cref="UiEventType.PointerUp"/> with a target from the caller gives no click, because the drain gives it no
+    /// press target. The check no longer reads <see cref="PseudoStates.Active"/> (this amends Decision 2 of
+    /// button-and-toggle).
     /// </para>
     /// <para>
     /// Only the left button clicks (A1). A press or a release of another button gives no click.
@@ -58,7 +74,85 @@ internal static class WidgetInput
             return false;
         }
 
-        return e.Button == PointerButton.Left && (widget.States & PseudoStates.Active) != 0;
+        return e.Header.Type == UiEventType.PointerUp
+            && e.Button == PointerButton.Left
+            && ReferenceEquals(UiContext.CurrentPressTarget, widget);
+    }
+
+    /// <summary>
+    /// Tells if a <see cref="UiEventType.PointerDown"/> starts a drag on the widget: the button is
+    /// <see cref="PointerButton.Left"/> and <see cref="UiContext.CurrentPressTarget"/> is the widget.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The drain sets the press target for the walk of the left press with no chord (Decision 13 of slider). Thus a
+    /// right press, a chord press, and a press that hits another element give no drag start.
+    /// </para>
+    /// <para>
+    /// A widget that holds <see cref="PseudoStates.Disabled"/> gets <see langword="false"/> (Decision 11 of slider).
+    /// </para>
+    /// </remarks>
+    /// <param name="widget">The widget that the handler runs on: the current target of the walk.</param>
+    /// <param name="e">The press event.</param>
+    /// <returns><see langword="true"/> when the press starts a drag on the widget.</returns>
+    internal static bool IsDragStart(Element widget, in PointerEvent e)
+    {
+        return (widget.States & PseudoStates.Disabled) == 0
+            && e.Header.Type == UiEventType.PointerDown
+            && e.Button == PointerButton.Left
+            && ReferenceEquals(UiContext.CurrentPressTarget, widget);
+    }
+
+    /// <summary>
+    /// Tells if a <see cref="UiEventType.PointerMove"/> is a drag move on the widget: the type is
+    /// <see cref="UiEventType.PointerMove"/> and <see cref="UiContext.CurrentPressTarget"/> is the widget.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The press target rule: the drain gives the press target to the walk of a move. The press target is the element of
+    /// a left press with no chord (Decisions 2 and 13 of slider). Thus a right press gives no drag, and a chord of two
+    /// buttons gives no drag until the last button goes up. A move with no press and a move after the release give no
+    /// drag.
+    /// </para>
+    /// <para>
+    /// The check does not read <see cref="PointerEvent.Button"/>, because the walk does not set it for a move. A widget
+    /// that holds <see cref="PseudoStates.Disabled"/> gets <see langword="false"/> (Decision 11 of slider). A disable
+    /// during a drag thus ends the drag at once.
+    /// </para>
+    /// </remarks>
+    /// <param name="widget">The widget that the handler runs on: the current target of the walk.</param>
+    /// <param name="e">The move event.</param>
+    /// <returns><see langword="true"/> when the move drags the widget.</returns>
+    internal static bool IsDragMove(Element widget, in PointerEvent e)
+    {
+        return (widget.States & PseudoStates.Disabled) == 0
+            && e.Header.Type == UiEventType.PointerMove
+            && ReferenceEquals(UiContext.CurrentPressTarget, widget);
+    }
+
+    /// <summary>
+    /// Gives the viewport position of the border box of an element: the sum of the rect positions of the element and
+    /// each ancestor.
+    /// </summary>
+    /// <remarks>
+    /// This is the origin rule of the hit walk and of the paint walk. When scroll-view adds a scroll offset to those
+    /// walks, subtract here the scroll offset of each ancestor scroll view, not the offset of the element itself. Keep
+    /// the three rules the same, and add a test with a slider inside a scrolled view.
+    /// </remarks>
+    /// <param name="element">The element.</param>
+    /// <returns>The viewport position of the top left corner of the border box.</returns>
+    internal static float2 ViewportOrigin(Element element)
+    {
+        float x = 0f;
+        float y = 0f;
+        for (Element? current = element; current is not null; current = current.Parent)
+        {
+            float4 r = current.Layout.Rect;
+            x += r.X;
+            y += r.Y;
+        }
+
+        return new float2(x, y);
     }
 
     /// <summary>
@@ -102,6 +196,56 @@ internal static class WidgetInput
             _ => false,
         };
     }
+
+    /// <summary>
+    /// Tells if a <see cref="UiEventType.KeyDown"/> is a Left or Right arrow key for the widget: the widget is the target
+    /// of the event, no <see cref="UiModifiers.Control"/>, <see cref="UiModifiers.Alt"/>, or
+    /// <see cref="UiModifiers.Super"/> is down, and the key is <see cref="LeftKey"/> or <see cref="RightKey"/>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A repeat passes (Decision 8 of slider), so a held key moves the widget again. <see cref="UiModifiers.Shift"/> does
+    /// not block the key. The target rule and the modifier rule are the rules of
+    /// <see cref="IsKeyActivation(Element, in KeyEvent, ActivationKeys)"/>.
+    /// A widget that holds <see cref="PseudoStates.Disabled"/> gets <see langword="false"/> (Decision 11 of slider).
+    /// </para>
+    /// <para>
+    /// The check also reads the event type, so a copy of the handler in another slot does nothing.
+    /// </para>
+    /// </remarks>
+    /// <param name="widget">The widget that the handler runs on: the current target of the walk.</param>
+    /// <param name="e">The key event.</param>
+    /// <param name="direction">The direction: -1 for the Left key, +1 for the Right key, and 0 when the result is false.</param>
+    /// <returns><see langword="true"/> when the key is an arrow key for the widget.</returns>
+    internal static bool IsArrowKey(Element widget, in KeyEvent e, out int direction)
+    {
+        direction = 0;
+        if ((widget.States & PseudoStates.Disabled) != 0
+            || e.Header.Type != UiEventType.KeyDown
+            || !ReferenceEquals(e.Header.Target, widget)
+            || (e.Modifiers & (UiModifiers.Control | UiModifiers.Alt | UiModifiers.Super)) != 0)
+        {
+            return false;
+        }
+
+        switch (e.Key)
+        {
+            case RightKey:
+                direction = 1;
+                return true;
+            case LeftKey:
+                direction = -1;
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    /// <summary>The GLFW key code of the right arrow key (<c>GLFW_KEY_RIGHT</c>).</summary>
+    internal const int RightKey = 262;
+
+    /// <summary>The GLFW key code of the left arrow key (<c>GLFW_KEY_LEFT</c>).</summary>
+    internal const int LeftKey = 263;
 
     /// <summary>The GLFW key code of the space key (<c>GLFW_KEY_SPACE</c>).</summary>
     internal const int SpaceKey = 32;

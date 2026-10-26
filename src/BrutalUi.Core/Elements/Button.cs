@@ -14,15 +14,14 @@ namespace BrutalUi.Core;
 /// element gives no click. A release after a press on another element gives no click. Only the left button clicks.
 /// </para>
 /// <para>
-/// The limit of a chord: <see cref="PseudoStates.Active"/> marks the element of the first press of a gesture, and it
-/// stays until the last button goes up. A left release then clicks a button that holds
-/// <see cref="PseudoStates.Active"/>, also when the left press of that release was on another element. Example: a
-/// right press on the button, a left press on another element, and a left release over the button give a click.
+/// The chord rule (Decision 13 of slider): a click needs the left press that set <see cref="PseudoStates.Active"/>,
+/// with no other button down during the gesture. A chord gives no click, in each press order and each release order.
+/// Example: a right press on the button, a left press on another element, and a left release over the button give no
+/// click.
 /// </para>
 /// <para>
-/// A <c>PointerUp</c> with a caller target does not end a press. When the button holds
-/// <see cref="PseudoStates.Active"/>, that event clicks the button, and the real release clicks it again. Push a
-/// pointer event with no target to click a button from code.
+/// A <c>PointerUp</c> with a caller target does not end a press, and it gives no click. The real release then clicks
+/// the button one time. Push a pointer event with no target to click a button from code.
 /// </para>
 /// <para>
 /// A click stops the walk of the release (A4). The ancestors of the button get no bubble call for that release. The

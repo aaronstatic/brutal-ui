@@ -51,14 +51,12 @@ namespace BrutalUi.Core;
 /// then gives no flip. Set <see cref="Element.IsPickable"/> to <see langword="false"/> on each child of the toggle.
 /// </para>
 /// <para>
-/// A <c>PointerUp</c> with a caller target does not end a press. When the toggle holds
-/// <see cref="PseudoStates.Active"/>, that event flips the toggle, and the real release flips it again. Push a pointer
-/// event with no target to flip a toggle from code.
+/// A <c>PointerUp</c> with a caller target does not end a press, and it gives no flip. The real release then flips
+/// the toggle one time. Push a pointer event with no target to flip a toggle from code.
 /// </para>
 /// <para>
-/// The limit of a chord: <see cref="PseudoStates.Active"/> marks the element of the first press of a gesture, and it
-/// stays until the last button goes up. A left release then flips a toggle that holds
-/// <see cref="PseudoStates.Active"/>, also when the left press of that release was on another element.
+/// The chord rule (Decision 13 of slider): a flip needs the left press that set <see cref="PseudoStates.Active"/>,
+/// with no other button down during the gesture. A chord gives no flip, in each press order and each release order.
 /// </para>
 /// </remarks>
 public sealed class Toggle : Element
