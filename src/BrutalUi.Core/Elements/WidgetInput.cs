@@ -23,6 +23,9 @@ namespace BrutalUi.Core;
 /// each widget with a drag rule.
 /// </para>
 /// <para>
+/// <see cref="IsScroll(Element, in ScrollEvent)"/> serves each widget that takes the wheel. It reads no press target.
+/// </para>
+/// <para>
 /// The pointer checks read <see cref="UiContext.CurrentPressTarget"/>, the press target of the current walk
 /// (Decision 13 of slider). The drag checks read the same press target, so a chord gives no click and no drag.
 /// </para>
@@ -131,13 +134,46 @@ internal static class WidgetInput
     }
 
     /// <summary>
-    /// Gives the viewport position of the border box of an element: the sum of the rect positions of the element and
-    /// each ancestor.
+    /// Tells if a <see cref="UiEventType.Scroll"/> is a wheel scroll for the widget: the type is
+    /// <see cref="UiEventType.Scroll"/>, and the widget does not hold <see cref="PseudoStates.Disabled"/>.
     /// </summary>
     /// <remarks>
-    /// This is the origin rule of the hit walk and of the paint walk. When scroll-view adds a scroll offset to those
-    /// walks, subtract here the scroll offset of each ancestor scroll view, not the offset of the element itself. Keep
-    /// the three rules the same, and add a test with a slider inside a scrolled view.
+    /// <para>
+    /// The check reads the type and the disabled bit only. It does not read the target, so a scroll on a child of the
+    /// widget counts. The scroll then bubbles from the child to the widget.
+    /// </para>
+    /// <para>
+    /// The check reads no press target, because a scroll is not part of a press.
+    /// </para>
+    /// <para>
+    /// The check also reads the event type, as the other checks do. Each <see cref="ScrollEvent"/> has the type
+    /// <see cref="UiEventType.Scroll"/>, so the check does not tell <c>OnScroll</c> from <c>OnScrollCapture</c>.
+    /// </para>
+    /// </remarks>
+    /// <param name="widget">The widget that the handler runs on: the current target of the walk.</param>
+    /// <param name="e">The scroll event.</param>
+    /// <returns><see langword="true"/> when the scroll is for the widget.</returns>
+    internal static bool IsScroll(Element widget, in ScrollEvent e)
+    {
+        return (widget.States & PseudoStates.Disabled) == 0
+            && e.Header.Type == UiEventType.Scroll;
+    }
+
+    /// <summary>
+    /// Gives the viewport position of the border box of an element: the sum of the rect positions of the element and
+    /// each ancestor, minus the applied offset of each ancestor <see cref="ScrollView"/>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This is the origin rule of the hit walk and of the draw walk. A <see cref="ScrollView"/> moves its children by
+    /// <see cref="ScrollView.AppliedOffset"/>, and not its own border box. Thus the method subtracts the offset of each
+    /// ancestor view, and not the offset of the element itself. In a view in a view, the offsets add up. Keep the three
+    /// rules the same. <c>ScrollViewSliderTests</c> holds a slider in a scrolled view.
+    /// </para>
+    /// <para>
+    /// The method calls <see cref="ScrollView.AppliedOffset"/> and never reads the stored offset, so it applies the
+    /// offset that the walks apply.
+    /// </para>
     /// </remarks>
     /// <param name="element">The element.</param>
     /// <returns>The viewport position of the top left corner of the border box.</returns>
@@ -150,6 +186,14 @@ internal static class WidgetInput
             float4 r = current.Layout.Rect;
             x += r.X;
             y += r.Y;
+
+            // An ancestor view moves the element by its offset. The view does not move itself.
+            if (!ReferenceEquals(current, element) && current is ScrollView view)
+            {
+                float2 offset = view.AppliedOffset();
+                x -= offset.X;
+                y -= offset.Y;
+            }
         }
 
         return new float2(x, y);

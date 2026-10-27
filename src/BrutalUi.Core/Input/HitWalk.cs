@@ -12,8 +12,18 @@ internal struct HitFrame
     /// <summary>The element of the frame.</summary>
     public Element Element;
 
-    /// <summary>The viewport position of the border box of the element, in pixels.</summary>
+    /// <summary>
+    /// The viewport position of the border box of the element, in pixels. The element test uses it. For a
+    /// <see cref="ScrollView"/>, it has no offset, so the border box of the view does not move.
+    /// </summary>
     public float2 Origin;
+
+    /// <summary>
+    /// The child origin: the viewport position that each child adds its rect position to, in pixels. For a
+    /// <see cref="ScrollView"/>, it is <see cref="Origin"/> minus the applied offset. For each other element, it is
+    /// <see cref="Origin"/>.
+    /// </summary>
+    public float2 ChildOrigin;
 
     /// <summary>
     /// The index of the next child to visit. The walk counts down from the last child. A value below 0 means that
@@ -43,9 +53,16 @@ internal struct HitFrame
 /// in the draw.
 /// </para>
 /// <para>
-/// The origin of an element is the origin of its parent plus the position of <see cref="LayoutNode.Rect"/>, as in
-/// step 3 of the enter step of <see cref="PaintWalk"/>. The walk reads <see cref="LayoutNode.Rect"/> of the last
+/// The origin of an element is the child origin of its parent plus the position of <see cref="LayoutNode.Rect"/>, as
+/// in step 3 of the enter step of <see cref="PaintWalk"/>. The walk reads <see cref="LayoutNode.Rect"/> of the last
 /// <see cref="UiContext.Update(float)"/>.
+/// </para>
+/// <para>
+/// The origin rule: a <see cref="ScrollView"/> moves its children by its offset. The child origin of the view is its
+/// origin minus <see cref="ScrollView.AppliedOffset"/>. The child origin of each other element is its origin. The own
+/// border box and the clip of the view do not move. In a view in a view, the offsets add up and the clips intersect.
+/// The hit walk and the draw walk read the same <see cref="ScrollView.AppliedOffset"/>, so a hit lands on the element
+/// that the draw shows under the point.
 /// </para>
 /// <para>
 /// The rules, in the order of the code:
@@ -131,7 +148,7 @@ internal static class HitWalk
                         // NextChild before the call. Do not use the ref after the call.
                         Element child = top.Element.ChildStorage.AsSpan()[top.NextChild];
                         top.NextChild--;
-                        float2 origin = top.Origin;
+                        float2 origin = top.ChildOrigin;
                         float opacity = top.Opacity;
                         float4 clip = top.ChildClip;
                         Enter(child, origin, opacity, in clip, point, ref stack, ref depth);
@@ -165,13 +182,22 @@ internal static class HitWalk
     }
 
     /// <summary>
-    /// Enters one element: it applies the hidden rule, then it pushes a frame with the origin, the opacity product, the
-    /// child clip, and the index of the next child. The index is the last child when the point is inside the child clip,
-    /// and -1 when it is not. A hidden subtree pushes no frame. The caller enters a child only when the point is inside
-    /// the child clip of the parent.
+    /// Enters one element: it applies the hidden rule, then it pushes a frame with the origin, the child origin, the
+    /// opacity product, the child clip, and the index of the next child. The index is the last child when the point is
+    /// inside the child clip, and -1 when it is not. A hidden subtree pushes no frame. The caller enters a child only
+    /// when the point is inside the child clip of the parent.
     /// </summary>
+    /// <remarks>
+    /// The element test and the clip use the origin: the parent origin plus the rect position. For a
+    /// <see cref="ScrollView"/>, the child origin is the origin minus <see cref="ScrollView.AppliedOffset"/>, so the view
+    /// moves its children and not itself. For each other element, the child origin is the origin. This is the same
+    /// rule as the enter step of <see cref="PaintWalk"/>.
+    /// </remarks>
     /// <param name="element">The element.</param>
-    /// <param name="parentOrigin">The viewport position of the border box of the parent, or (0, 0) for a root.</param>
+    /// <param name="parentOrigin">
+    /// The child origin of the parent (the position of the border box of the parent, less the offset of a scroll view), or
+    /// (0, 0) for a root.
+    /// </param>
     /// <param name="opacity">The opacity product of the parent, or 1 for a root.</param>
     /// <param name="parentClip">The child clip of the parent: min x, min y, max x, and max y. A root gets no clip.</param>
     /// <param name="point">The point in viewport pixels.</param>
@@ -221,6 +247,14 @@ internal static class HitWalk
             childClip = PaintWalk.Intersect(PaintWalk.PaddingBounds(in borderBox, in style), in parentClip);
         }
 
+        // The child origin: a ScrollView moves its children by its offset, and not its own box (as in PaintWalk).
+        float2 childOrigin = origin;
+        if (element is ScrollView view)
+        {
+            float2 offset = view.AppliedOffset();
+            childOrigin = new float2(origin.X - offset.X, origin.Y - offset.Y);
+        }
+
         // Step 4: grow the stack when it is full, then push the frame. This is the only clip cull (Decision CR-7).
         // A point outside the child clip sets NextChild to -1, so the walk skips each child and tests only the element.
         // The border of the element stays hittable.
@@ -233,6 +267,7 @@ internal static class HitWalk
         {
             Element = element,
             Origin = origin,
+            ChildOrigin = childOrigin,
             NextChild = InBounds(in childClip, point) ? element.ChildStorage.Count - 1 : -1,
             Opacity = opacity,
             ChildClip = childClip,

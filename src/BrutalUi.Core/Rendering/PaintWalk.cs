@@ -12,8 +12,12 @@ internal struct PaintFrame
     /// <summary>The element of the frame.</summary>
     public Element Element;
 
-    /// <summary>The viewport position of the border box of the element, in pixels.</summary>
-    public float2 Origin;
+    /// <summary>
+    /// The child origin: the viewport position that each child adds its rect position to, in pixels. For a
+    /// <see cref="ScrollView"/>, it is the position of the border box of the view minus the applied offset. For each
+    /// other element, it is the position of the border box of the element.
+    /// </summary>
+    public float2 ChildOrigin;
 
     /// <summary>
     /// The product of the opacities from the root to the element, each clamped from 0 to 1.
@@ -49,6 +53,11 @@ internal struct PaintFrame
 /// <para>
 /// The walk reads the tree only. It changes no dirty bit (A2). It reads <see cref="LayoutNode.Rect"/>, so the caller
 /// runs <see cref="UiContext.Update(float)"/> first.
+/// </para>
+/// <para>
+/// A <see cref="ScrollView"/> moves its children by its offset: the child origin of the view is its origin minus
+/// <see cref="ScrollView.AppliedOffset"/>. The own rect, the clip, and the paint hook of the view do not move. In a view
+/// in a view, the offsets add up and the clips intersect.
 /// </para>
 /// </remarks>
 internal static class PaintWalk
@@ -94,7 +103,7 @@ internal static class PaintWalk
                         // NextChild before the call. Do not use the ref after the call.
                         Element child = children[top.NextChild];
                         top.NextChild++;
-                        float2 origin = top.Origin;
+                        float2 origin = top.ChildOrigin;
                         float opacity = top.Opacity;
                         float4 clip = top.ClipBounds;
                         Enter(child, origin, opacity, clip, renderer, ref stack, ref depth);
@@ -125,8 +134,17 @@ internal static class PaintWalk
     /// <summary>
     /// Enters one element: it draws the fill, pushes the clip, and pushes a frame for the children.
     /// </summary>
+    /// <remarks>
+    /// The rect, the clip, and the paint hook of the element use its origin: the parent origin plus its rect position.
+    /// The frame holds the child origin. For a <see cref="ScrollView"/>, the child origin is the origin minus
+    /// <see cref="ScrollView.AppliedOffset"/>, so the view moves its children and not itself. For each other element,
+    /// the child origin is the origin.
+    /// </remarks>
     /// <param name="element">The element.</param>
-    /// <param name="parentOrigin">The viewport position of the border box of the parent, or (0, 0) for a root.</param>
+    /// <param name="parentOrigin">
+    /// The child origin of the parent (the position of the border box of the parent, less the offset of a scroll view), or
+    /// (0, 0) for a root.
+    /// </param>
     /// <param name="opacity">The opacity product of the parent, or 1 for a root.</param>
     /// <param name="parentClip">The clip bounds of the parent: min x, min y, max x, and max y.</param>
     /// <param name="renderer">The renderer.</param>
@@ -171,6 +189,14 @@ internal static class PaintWalk
         float2 origin = new(parentOrigin.X + r.X, parentOrigin.Y + r.Y);
         float4 borderBox = new(origin.X, origin.Y, r.Z, r.W);
 
+        // The child origin: a ScrollView moves its children by its offset, and not its own box.
+        float2 childOrigin = origin;
+        if (element is ScrollView view)
+        {
+            float2 offset = view.AppliedOffset();
+            childOrigin = new float2(origin.X - offset.X, origin.Y - offset.Y);
+        }
+
         // Step 4: the fill and the stroke with the opacity product (Q3), and the border rule (A4, Decision 4).
         Rgba8 fill = style.BackgroundColor.ScaleAlpha(opacity);
         Rgba8 stroke = style.BorderColor.ScaleAlpha(opacity);
@@ -207,7 +233,7 @@ internal static class PaintWalk
         stack[depth] = new PaintFrame
         {
             Element = element,
-            Origin = origin,
+            ChildOrigin = childOrigin,
             Opacity = opacity,
             ClipBounds = childClip,
             PushedClip = pushedClip,
