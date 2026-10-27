@@ -1,10 +1,10 @@
 # Text Field - Implementation Plan
 
 **Epic:** interactive-elements (feature 4 of 5)
-**Status:** Planning
+**Status:** Ready for Review
 **Started:** 2026-10-27
 **Target Completion:** TBD
-**Last Updated:** 2026-10-27 11:30
+**Last Updated:** 2026-10-27 07:35
 
 ---
 
@@ -28,13 +28,13 @@
 
 This feature adds `TextField`, a single-line text editor. It is a sealed `Element` subclass in `src/BrutalUi.Core/Elements/`, with the type id `TextField` (epic A2). It follows the widget pattern of button-and-toggle: two cached `static readonly` handler delegates (`OnChar` and `OnKeyDown`), checks in `WidgetInput`, `IsFocusable = true`, and a change delegate with the field as the sender (epic Q3).
 
-The text lives in one fixed `byte[]` of `CreateInfo.Capacity` bytes (A5). The caret and the selection anchor are byte offsets on code point boundaries. A char event inserts the UTF-8 form of its code point at the caret, or replaces the selection. Left, Right, Home, and End move the caret. Shift with a move extends the selection. Backspace and Delete remove one code point, or the selection. Enter calls `Submitted`. Each edit that changes the text calls `TextChanged`. `SetText` (span, string, and `LString`) and `GetText(Span<byte>)` read and write the buffer with no allocation. A set past the capacity cuts the text at the last whole code point that fits (Notes Q3).
+The text lives in one fixed `byte[]` of `CreateInfo.Capacity` bytes (A5). The caret and the selection anchor are byte offsets on code point boundaries. A char event inserts the UTF-8 form of its code point at the caret, or replaces the selection. Left, Right, Home, and End move the caret. Shift with a move extends the selection. Backspace and Delete remove one code point, or the selection. Enter calls `Submitted`. Each edit that changes the text calls `TextChanged`. `SetText` (span, string, and `LString`) and `GetText(Span<byte>)` read and write the buffer with no allocation. A set past the capacity cuts the text at the last whole code point that fits (Notes Q3). A left press places the caret at the nearest code point boundary, and a drag selects (Notes Q2).
 
 The constructor sets `Inline.Overflow = Overflow.Hidden`. The existing draw walk thus clips the text to the padding box before it calls `PaintContent`, so the walks do not change. `PaintContent` draws the selection, the text at the content box minus the text scroll, and a caret of 1 pixel.
 
 The draw reads the tree only, and a handler has no measurer during the drain. Thus `UiContext.Update` gets one new step, the caret pass, after the layout pass. When the focus owner is a `TextField`, the pass advances its blink timer and scrolls its text so the caret stays visible. `SetFocusOwner` restarts the blink of a field that gets the focus. These are the only changes outside the new file and `WidgetInput.cs`.
 
-The plan has 6 phases and 34 tasks.
+The plan has 7 phases and 38 tasks.
 
 ---
 
@@ -70,12 +70,13 @@ No `docs/user-personas.md` file exists. The personas come from `docs/mission-sta
 4. Read and write the text from code with no allocation.
 5. Scroll the text so the caret stays visible, and blink the caret.
 6. Select with Shift and a move. Replace and remove the selection.
-7. Block each input on a disabled field.
-8. Allocate 0 bytes in `Update`, `Draw`, and the input path after warm-up.
+7. Place the caret with a left press, and select with a drag.
+8. Block each input on a disabled field.
+9. Allocate 0 bytes in `Update`, `Draw`, and the input path after warm-up.
 
 ### Success Criteria
 - [ ] The phase 1 demo passes: `TextFieldTypeTests` reads a total of 10 with `failed: 0`, and the demo test reads the text `Hi`, two `TextChanged` calls, and a `Text` call `"Hi"` at (0, 0) inside the clip (0, 0, 81, 16).
-- [ ] The caret, delete, submit, text, scroll, blink, selection, and disabled test classes pass.
+- [ ] The caret, delete, submit, text, scroll, blink, selection, pointer, and disabled test classes pass.
 - [ ] Each existing test passes with no edit.
 - [ ] `TextFieldAllocationTests` measures 0 bytes, and a planted allocation in `TextField.HandleChar` fails it.
 - [ ] Section 4, 5, 8, 9, and 14 of the technical design hold the text field rules and the caret pass.
@@ -104,7 +105,8 @@ No `docs/user-personas.md` file exists. The personas come from `docs/mission-sta
 ```
 src/BrutalUi.Core/
 ├── Elements/TextField.cs           # phase 1 (buffer, char), 2 (keys, caret draw), 3 (Enter, SetText, GetText),
-│                                   # 4 (caret pass, scroll, blink), 5 (selection), 6 (plant and restore only)
+│                                   # 4 (caret pass, scroll, blink), 5 (selection), 6 (press, drag),
+│                                   # 7 (plant and restore only)
 ├── Elements/WidgetInput.cs         # phase 1 (IsCharInput), 2 (IsEditKey and four key codes)
 └── Tree/UiContext.cs               # phase 4 (the caret pass in Update, the blink restart in SetFocusOwner)
 tests/BrutalUi.Core.Tests/
@@ -117,12 +119,13 @@ tests/BrutalUi.Core.Tests/
 ├── Elements/TextFieldScrollTests.cs     # phase 4
 ├── Elements/TextFieldBlinkTests.cs      # phase 4
 ├── Elements/TextFieldSelectionTests.cs  # phase 5
-├── Elements/TextFieldDisabledTests.cs   # phase 6
-└── Elements/TextFieldAllocationTests.cs # phase 6
+├── Elements/TextFieldPointerTests.cs    # phase 6
+├── Elements/TextFieldDisabledTests.cs   # phase 7
+└── Elements/TextFieldAllocationTests.cs # phase 7
 tests/BrutalUi.Glfw.Tests/
 └── TextFieldKeyCodeTests.cs        # phase 2
-docs/technical-design.md            # phase 6: sections 4, 5, 8, 9, 14
-CHANGELOG.md                        # phase 6
+docs/technical-design.md            # phase 7: sections 4, 5, 8, 9, 14
+CHANGELOG.md                        # phase 7
 docs/features/interactive-elements/text-field/context.md   # each phase
 ```
 
@@ -167,7 +170,9 @@ public sealed class TextField : Element
   - `internal static int CutAtBoundary(ReadOnlySpan<byte> text, int maxBytes)`: the length of the longest prefix of at most `maxBytes` that ends on a boundary. Phase 3.
   - `internal void AdvanceCaret(float deltaTime, IUiRenderer? measurer)`: the caret pass (Decision 10). Phase 4.
   - `internal void RestartCaretBlink()`: sets the blink timer to 0. Phase 4.
-- `TextField` private members: `_buffer` (`byte[]`, `readonly`), `_length`, `_caret`, `_anchor` (phase 5), `_scroll` (phase 4), `_blink` (phase 4), the static `HandleChar` and `HandleKeyDown`, `bool Insert(ReadOnlySpan<byte> utf8)`, `void Remove(int start, int end)`, `void MoveCaret(int index, bool extend)`, and `void WriteText(...)`.
+  - `internal static int IndexAtX(ReadOnlySpan<byte> text, float x, IUiRenderer measurer, string? font, float fontSize)`: the code point boundary with the measured prefix width nearest to `x`. A tie goes to the lower index. An `x` at or below 0 gives 0, and an `x` past the text gives the length. Phase 6.
+  - `TextField` implements `IDragCapture` explicitly. `CapturesMoves` is `true` when the field does not hold `Disabled`. Phase 6.
+- `TextField` private members: `_buffer` (`byte[]`, `readonly`), `_length`, `_caret`, `_anchor` (phase 5), `_scroll` (phase 4), `_blink` (phase 4), `_pendingX` and `_pendingExtend` (phase 6), the static `HandleChar`, `HandleKeyDown`, `HandlePointerDown`, and `HandlePointerMove` (phase 6), `bool Insert(ReadOnlySpan<byte> utf8)`, `void Remove(int start, int end)`, `void MoveCaret(int index, bool extend)`, and `void WriteText(...)`.
 - `UiContext` (phase 4): in `Update`, after the `finally` block of the layout pass and before the clear pass: `if (_focusOwner is TextField field) { field.AdvanceCaret(deltaTime, _measurer); }`. In `SetFocusOwner`, after `next.States |= PseudoStates.Focus` in the change branch: `if (next is TextField field) { field.RestartCaretBlink(); }`.
 
 ### The Edit Rules
@@ -385,22 +390,47 @@ The test scene of each text field test is `TextFieldTree` (task 1.4), unless a t
 
 ---
 
-### Phase 6: Disabled Fields, the Allocation Gate, and the Record
+### Phase 6: A Press Places the Caret, and a Drag Selects
+**Goal:** A left press on the field places the caret at the nearest code point boundary under the pointer. A drag with the left button moves the caret and keeps the anchor at the press point, so the drag selects. Shift with a press keeps the old anchor and extends the selection.
+**Demo:** a unit test creates the field with the start text `hello`, pushes a left press at (21, 8) and a move to (37, 8), and runs `Update` and `Draw`. It reads `FocusedElement` as the field, the anchor at 3, the caret at 5, a selection rect at (24, 0, 16, 16), and no `TextChanged` call. The developer runs `dotnet run --project tests/BrutalUi.Core.Tests/BrutalUi.Core.Tests.csproj -- --filter-class '*TextFieldPointerTests'` and reads a total of 10 with `failed: 0`.
+**Needs:** Phase 5
+**Agent tier:** ADVANCED (opus)
+
+**Tier note:** A handler has no measurer during the drain. Thus the press handler and the move handler store the pointer x in text space (`_pendingX`: the pointer x minus `WidgetInput.ViewportOrigin(this).X`, minus the left border and padding, plus `_scroll`) and the extend flag (`_pendingExtend`). The caret pass maps `_pendingX` with `IndexAtX` before the scroll rule, writes the caret through `MoveCaret(index, extend)`, restarts the blink, and sets `_pendingX` to NaN. A press without Shift collapses the anchor to the new caret. A drag move always extends. Use `WidgetInput.IsDragStart` and `WidgetInput.IsDragMove`, as `Slider` does, so a right press and a chord place nothing. Implement `IDragCapture` explicitly, so the drag goes on outside the rect. The click focus of the drain still gives the focus, and the caret pass runs for the new owner in the same `Update`. A context with no measurer drops `_pendingX` and keeps the caret. A double press, a word select, and a drag scroll timer are out of scope. Add no allocation: `IndexAtX` measures each prefix with the span of the buffer.
+
+**Tasks:**
+- [ ] 6.1 Edit `src/BrutalUi.Core/Elements/TextField.cs`: add `_pendingX`, `_pendingExtend`, `IndexAtX`, the static `HandlePointerDown` and `HandlePointerMove` with their cached `static readonly UiEventHandler<PointerEvent>` fields, and the explicit `IDragCapture`. The constructor writes `OnPointerDown` and `OnPointerMove`. `AdvanceCaret` maps a pending x before the scroll rule. Extend the remarks: the press rule, the drag rule, the Shift rule, the pending map of the caret pass, the capture, "a write of `=` to `OnPointerDown` removes the press", and the no-measurer rule.
+- [ ] 6.2 Write `tests/BrutalUi.Core.Tests/Elements/TextFieldPointerTests.cs` with 10 tests: `APressAndADragSelect` (the demo), `APressPlacesTheCaretAtTheNearestBoundary` (`hello`: a press at x 11 gives 1, at x 13 gives 2, and at x 12, a tie, gives 1), `APressOutsideTheTextGoesToAnEnd` (a press at x 80 gives 5, and a press at x 0 gives 0), `APressStepsOverAWholeCodePoint` (`a€b`: the boundaries 0, 1, 4, and 5 at x 0, 8, 32, and 40. A press at x 19 gives 1, and a press at x 21 gives 4), `ShiftWithAPressExtendsTheSelection` (Home, Right, then a Shift press at x 37: the anchor 1, the caret 5), `APressInAScrolledFieldReadsTheScroll` (12 chars, `TextScroll` 16, a press at x 3: the caret at 2, and `TextScroll` stays 16), `ADragPastTheRightEdgeScrolls` (12 chars, Home, `Update(0)`, a press at x 2 and a move to x 200: the anchor 0, the caret 12, and `TextScroll` 16), `APressFocusesTheFieldAndShowsTheCaret` (`Other` holds the focus, then a press on the field: `FocusedElement` is the field, the caret moves, and `CaretVisible` is `true` after `Update(0)`), `ARightPressAndAChordPlaceNothing` (a right press and a left press during a right press keep the caret), and `AContextWithNoMeasurerKeepsTheCaret` (a field in a `UiContext()` with no measurer: a press does not throw and keeps the caret).
+- [ ] 6.3 Run the build, the tests, the demo class, each earlier text field class, and the regression set. Record the counts in `context.md`.
+- [ ] 6.4 Record in `context.md`: the pending map, the tie rule, the Shift rule, and each decision that this plan did not settle.
+
+**Estimated Steps:** about 26 (4 tasks, about six steps for one task)
+
+**Files (3):** `TextField.cs`, `TextFieldPointerTests.cs`, `context.md`
+
+**Acceptance Criteria:**
+- [ ] The 10 tests of `TextFieldPointerTests` pass.
+- [ ] The earlier text field classes pass with no edit.
+- [ ] Each class of the regression set passes with no edit. `SliderDragTests` and `ScrollViewDragTests` also pass with no edit.
+
+---
+
+### Phase 7: Disabled Fields, the Allocation Gate, and the Record
 **Goal:** Prove that a disabled field takes no input. Prove 0 bytes for `Update`, `Draw`, and the full text field input path after warm-up. Record the text field rules and the caret pass in the technical design and the changelog.
 **Demo:** the developer runs `dotnet run --project tests/BrutalUi.Core.Tests/BrutalUi.Core.Tests.csproj -- --filter-class '*TextFieldAllocationTests'` and reads a total of 3 with `failed: 0`, and the same command with `'*TextFieldDisabledTests'` reads a total of 5 with `failed: 0`. A planted allocation at the start of `TextField.HandleChar` makes `dotnet test --solution brutal-ui.sln` exit with a value that is not 0.
-**Needs:** Phase 5
+**Needs:** Phase 6
 **Agent tier:** STANDARD (sonnet)
 
 **Tier note:** Copy the gate shape of `ScrollViewAllocationTests` and `SliderAllocationTests`: a `Scene` class that the test builds before the measure, delegates from instance methods that the scene creates one time, `AllocationGate.ReleaseAllocationContext()` before the measured region, and a measured body with no lambda, no `$"`, no new `string`, and no `Assert`. Write each text as a `u8` literal or a static `byte[]`. Do not add warm-up rounds to hide an allocation. Do not run a plant and its restore in one parallel tool block (a gotcha of button-and-toggle).
 
 **Tasks:**
-- [ ] 6.1 Write `tests/BrutalUi.Core.Tests/Elements/TextFieldDisabledTests.cs` with 5 tests: `ADisabledFieldTakesNoChar` (a char with the disabled field as the caller target: no change, no call, and the root bubble handler gets it), `ADisabledFieldTakesNoKey` (Left, Backspace, and Enter with the field as the caller target: no change, no call, and the root gets each key), `ADisableDropsTheFocusAndTheCaret` (focus, `States |= Disabled`, `Update(0)`: `FocusedElement` is null and the frame has no caret rect), `APressOnADisabledFieldGivesNoFocus`, and `ACodeSetStillWorks` (`SetText` on a disabled field changes the text and calls nothing).
-- [ ] 6.2 Write `tests/BrutalUi.Core.Tests/Elements/TextFieldAllocationTests.cs` with 3 tests. The scene: a column root with 20 fields (81 x 16, capacity 32, the start text `field`, `FontSize` 16), the last one in `Disabled`, and a sheet with `TextField`, `TextField:focus`, and `:disabled` rules. The first field holds the focus. `UpdateAndDrawAllocateNothingWithTextFields` (100 rounds of `Update(0.016f)` and `Draw`, so the caret pass and the blink run). `TheTextFieldInputPathAllocatesNothing` (each step on the first field: `SetText("seed"u8)`, the chars `a`, `b`, and `€`, Left, Shift+Left, the char `c`, Backspace, Delete, Home, Shift+End, Delete, End, Enter, and a char past the capacity on a full second field set with `SetText`, then `GetText` into a stack span, `Update(0.016f)`, and `Draw`). `TheMeasuredBodyDoesRealWork` (after one step: the `TextChanged` count, one `Submitted` call, the expected text, 19 text draws, and one caret rect or none by the blink phase, with the blink phase read from `CaretVisible`).
-- [ ] 6.3 Copy `src/BrutalUi.Core/Elements/TextField.cs` to the scratchpad. Plant `GC.KeepAlive(new object());` as the first line of `TextField.HandleChar`. Run `dotnet test --solution brutal-ui.sln > /dev/null 2>&1; echo "exit=$?"` and expect a value that is not 0. Restore the file from the copy, in a later tool call, and check it with `cmp`. Record the result and the gates that failed in `context.md`.
-- [ ] 6.4 Edit `docs/technical-design.md` section 4 ("Frame order": the caret pass after the layout pass) and section 5: a "TextField" paragraph after the scroll view paragraph (the buffer rule, the char rule and the drop, the key rule, the selection, the Enter rule, the cut rule of `SetText`, `GetText`, the clip, the caret pass, the scroll rule, the blink, the disabled rule, `TextChanged`, and `Submitted`). Edit rule 5 of the widget rules (`WidgetInput` also holds `IsCharInput` and `IsEditKey`).
-- [ ] 6.5 Edit `docs/technical-design.md` section 8 ("The paint hook": a `TextField` draws its selection, its text, and its caret, and it measures with the renderer of the draw), section 9, item 7 of the flow (a focused `TextField` takes the char and the edit keys, and Tab walks on), and section 14 (the text field test classes and the twelfth gate with the plant). Edit `CHANGELOG.md` under `## [Unreleased]`: "Added" (`TextField`) and "Changed" (`UiContext.Update` runs the caret pass for a focused `TextField`).
-- [ ] 6.6 Run `python3 /home/aaronstatic/.claude/skills/asd-ste100/scripts/ste-lint.py --fail-over 2.5` on each changed doc and on this plan. Fix each finding above 2.5.
-- [ ] 6.7 Run the build, the tests, and `scripts/test-linux.sh; echo "exit=$?"`. Record the final test counts against the counts of task 1.1 in `context.md`.
+- [ ] 7.1 Write `tests/BrutalUi.Core.Tests/Elements/TextFieldDisabledTests.cs` with 5 tests: `ADisabledFieldTakesNoChar` (a char with the disabled field as the caller target: no change, no call, and the root bubble handler gets it), `ADisabledFieldTakesNoKey` (Left, Backspace, and Enter with the field as the caller target: no change, no call, and the root gets each key), `ADisableDropsTheFocusAndTheCaret` (focus, `States |= Disabled`, `Update(0)`: `FocusedElement` is null and the frame has no caret rect), `APressOnADisabledFieldGivesNoFocus` (also no caret move and no selection), and `ACodeSetStillWorks` (`SetText` on a disabled field changes the text and calls nothing).
+- [ ] 7.2 Write `tests/BrutalUi.Core.Tests/Elements/TextFieldAllocationTests.cs` with 3 tests. The scene: a column root with 20 fields (81 x 16, capacity 32, the start text `field`, `FontSize` 16), the last one in `Disabled`, and a sheet with `TextField`, `TextField:focus`, and `:disabled` rules. The first field holds the focus. `UpdateAndDrawAllocateNothingWithTextFields` (100 rounds of `Update(0.016f)` and `Draw`, so the caret pass and the blink run). `TheTextFieldInputPathAllocatesNothing` (each step on the first field: `SetText("seed"u8)`, the chars `a`, `b`, and `€`, Left, Shift+Left, the char `c`, Backspace, Delete, Home, Shift+End, Delete, End, a left press, a drag move, and its release, Enter, and a char past the capacity on a full second field set with `SetText`, then `GetText` into a stack span, `Update(0.016f)`, and `Draw`). `TheMeasuredBodyDoesRealWork` (after one step: the `TextChanged` count, one `Submitted` call, the expected text, 19 text draws, and one caret rect or none by the blink phase, with the blink phase read from `CaretVisible`).
+- [ ] 7.3 Copy `src/BrutalUi.Core/Elements/TextField.cs` to the scratchpad. Plant `GC.KeepAlive(new object());` as the first line of `TextField.HandleChar`. Run `dotnet test --solution brutal-ui.sln > /dev/null 2>&1; echo "exit=$?"` and expect a value that is not 0. Restore the file from the copy, in a later tool call, and check it with `cmp`. Record the result and the gates that failed in `context.md`.
+- [ ] 7.4 Edit `docs/technical-design.md` section 4 ("Frame order": the caret pass after the layout pass) and section 5: a "TextField" paragraph after the scroll view paragraph (the buffer rule, the char rule and the drop, the key rule, the selection, the press and drag rule, the Enter rule, the cut rule of `SetText`, `GetText`, the clip, the caret pass, the scroll rule, the blink, the disabled rule, `TextChanged`, and `Submitted`). Edit rule 5 of the widget rules (`WidgetInput` also holds `IsCharInput` and `IsEditKey`).
+- [ ] 7.5 Edit `docs/technical-design.md` section 8 ("The paint hook": a `TextField` draws its selection, its text, and its caret, and it measures with the renderer of the draw), section 9, item 7 of the flow (a focused `TextField` takes the char and the edit keys, and Tab walks on), and section 14 (the text field test classes and the twelfth gate with the plant). Edit `CHANGELOG.md` under `## [Unreleased]`: "Added" (`TextField`) and "Changed" (`UiContext.Update` runs the caret pass for a focused `TextField`).
+- [ ] 7.6 Run `python3 /home/aaronstatic/.claude/skills/asd-ste100/scripts/ste-lint.py --fail-over 2.5` on each changed doc and on this plan. Fix each finding above 2.5.
+- [ ] 7.7 Run the build, the tests, and `scripts/test-linux.sh; echo "exit=$?"`. Record the final test counts against the counts of task 1.1 in `context.md`.
 
 **Estimated Steps:** about 44 (7 tasks, about six steps for one task)
 
@@ -494,10 +524,10 @@ None (a draft with no interview).
 **Rationale:** Decision 10 of slider and Decision 13 of scroll-view. The field needs no measurer in the layout pass, so a context with no measurer can hold a field. widget-sample adds the size rules.
 **Alternatives:** Notes Q4, option B.
 
-### Decision 16: A press focuses the field and keeps the caret (Notes Q2)
-**Choice:** The field has no pointer handler. The click focus of the drain gives it the focus. The caret stays where it was.
-**Rationale:** The requirement names no pointer rule, and its test list has no pointer case. A press map needs a measurer during the drain or a pending position for the caret pass, and a hit test of each code point.
-**Alternatives:** Notes Q2, options B and C.
+### Decision 16: A press places the caret, and a drag selects (Notes Q2)
+**Choice:** A left press stores a pending x. The caret pass maps it to the nearest code point boundary with the measurer. A drag through `IDragCapture` moves the caret and keeps the anchor, so it selects. Shift with a press extends the selection.
+**Rationale:** The user chose option C. A handler has no measurer during the drain, so the map waits for the caret pass, which already reads `_measurer` (Decision 10).
+**Alternatives:** Notes Q2, options A and B.
 
 ---
 
@@ -554,13 +584,14 @@ All criteria below must pass. An independent evaluator runs the Verification Met
 - [ ] F8. The caret blinks with a cycle of 1 s, restarts on an edit, a move, and a focus gain, ignores a bad delta, and blinks in a context with no measurer (`TextFieldBlinkTests`, 6 tests).
 - [ ] F9. Shift with a move selects. A char replaces the selection, and a dropped char keeps it. Backspace and Delete remove it. A move with no Shift collapses it. The selection draws behind the text with the focus only and follows the scroll (`TextFieldSelectionTests`, 10 tests).
 - [ ] F10. A disabled field takes no char and no key, does not stop the walk, loses the focus at the next `Update`, draws no caret, and takes a set from code (`TextFieldDisabledTests`, 5 tests).
-- [ ] F11. `TextFieldAllocationTests` measures 0 bytes for `Update` and `Draw` and for the full input path (3 tests). A planted allocation in `TextField.HandleChar` gives a non-zero exit code of `dotnet test`.
+- [ ] F11. `TextFieldAllocationTests` measures 0 bytes for `Update` and `Draw` and for the full input path, with the press and the drag (3 tests). A planted allocation in `TextField.HandleChar` gives a non-zero exit code of `dotnet test`.
+- [ ] F12. A left press places the caret at the nearest code point boundary, with a tie to the lower index. A drag selects and scrolls. Shift with a press extends. A right press and a chord place nothing. A context with no measurer keeps the caret (`TextFieldPointerTests`, 10 tests).
 
 ### Quality Criteria
 - [ ] Q1. `dotnet build brutal-ui.sln` gives `0 Warning(s)` and `0 Error(s)`.
-- [ ] Q2. `dotnet test --solution brutal-ui.sln` gives 0 failed. `BrutalUi.Core.Tests` has 77 more tests than the count of task 1.1 (10 + 10 + 8 + 6 + 10 + 9 + 6 + 10 + 5 + 3). `BrutalUi.Glfw.Tests` has 1 more.
+- [ ] Q2. `dotnet test --solution brutal-ui.sln` gives 0 failed. `BrutalUi.Core.Tests` has 87 more tests than the count of task 1.1 (10 + 10 + 8 + 6 + 10 + 9 + 6 + 10 + 10 + 5 + 3). `BrutalUi.Glfw.Tests` has 1 more.
 - [ ] Q3. `TextField` is `public sealed`. `WidgetInput` stays internal. `TextField.CreateInfo.Capacity` is the only `required` member. `TextChanged` and `Submitted` are `Action<TextField>?`.
-- [ ] Q4. `TextField.cs` holds two `static readonly UiEventHandler` fields, no lambda, and exactly one `new byte[`.
+- [ ] Q4. `TextField.cs` holds four `static readonly UiEventHandler` fields, no lambda, and exactly one `new byte[`.
 - [ ] Q5. No existing test file has a diff against `<base>`.
 - [ ] Q6. The changed docs and the new doc comments use ASD-STE100 prose. The lint gives no score above 2.5.
 
@@ -577,12 +608,12 @@ Run each step from `/home/aaronstatic/dev/brutal-ui` on Linux. `<scratch>` is an
 
 1. `dotnet build brutal-ui.sln 2>&1 | tail -n 30`. Expect `0 Warning(s)` and `0 Error(s)` (Q1).
 2. `dotnet test --solution brutal-ui.sln 2>&1 | tail -n 30`. Expect 0 failed. Compare the Core total and the Glfw total with the counts of task 1.1 in `context.md` (Q2).
-3. For each class, run `dotnet run --project tests/BrutalUi.Core.Tests/BrutalUi.Core.Tests.csproj -- --filter-class '*<Class>' 2>&1 | tail -n 5`. Expect `failed: 0` and these totals: `TextFieldTypeTests` 10 (F1, F2), `TextFieldCaretTests` 10 (F3), `TextFieldDeleteTests` 8 (F4), `TextFieldSubmitTests` 6 (F5), `TextFieldTextTests` 10 (F6), `TextFieldScrollTests` 9 (F7), `TextFieldBlinkTests` 6 (F8), `TextFieldSelectionTests` 10 (F9), `TextFieldDisabledTests` 5 (F10), and `TextFieldAllocationTests` 3 (F11). Run `dotnet run --project tests/BrutalUi.Glfw.Tests/BrutalUi.Glfw.Tests.csproj -- --filter-class '*TextFieldKeyCodeTests' 2>&1 | tail -n 5` and expect a total of 1 with `failed: 0` (F3). Read the test names in each file and match them to the criteria.
+3. For each class, run `dotnet run --project tests/BrutalUi.Core.Tests/BrutalUi.Core.Tests.csproj -- --filter-class '*<Class>' 2>&1 | tail -n 5`. Expect `failed: 0` and these totals: `TextFieldTypeTests` 10 (F1, F2), `TextFieldCaretTests` 10 (F3), `TextFieldDeleteTests` 8 (F4), `TextFieldSubmitTests` 6 (F5), `TextFieldTextTests` 10 (F6), `TextFieldScrollTests` 9 (F7), `TextFieldBlinkTests` 6 (F8), `TextFieldSelectionTests` 10 (F9), `TextFieldPointerTests` 10 (F12), `TextFieldDisabledTests` 5 (F10), and `TextFieldAllocationTests` 3 (F11). Run `dotnet run --project tests/BrutalUi.Glfw.Tests/BrutalUi.Glfw.Tests.csproj -- --filter-class '*TextFieldKeyCodeTests' 2>&1 | tail -n 5` and expect a total of 1 with `failed: 0` (F3). Read the test names in each file and match them to the criteria.
 4. Copy `src/BrutalUi.Core/Elements/TextField.cs` to `<scratch>`. Add `GC.KeepAlive(new object());` as the first line of `HandleChar`. Run `dotnet test --solution brutal-ui.sln > /dev/null 2>&1; echo "exit=$?"`. Expect a value that is not 0. Restore the file from the copy, and check it with `cmp`. Run step 2 again (F11).
 5. `git diff <base> --diff-filter=M --name-only -- tests/`. Expect no line (Q5).
 6. `git diff <base> --stat -- src/BrutalUi.Core/Tree/Element.cs src/BrutalUi.Core/Tree/PseudoStates.cs src/BrutalUi.Core/Tree/LayoutNode.cs src/BrutalUi.Core/Input/ElementHandlers.cs src/BrutalUi.Core/Input/EventWalk.cs src/BrutalUi.Core/Input/FocusWalk.cs src/BrutalUi.Core/Input/HitWalk.cs src/BrutalUi.Core/Input/CharEvent.cs src/BrutalUi.Core/Input/KeyEvent.cs src/BrutalUi.Core/Input/IDragCapture.cs src/BrutalUi.Core/Rendering/PaintWalk.cs src/BrutalUi.Core/Rendering/IUiRenderer.cs src/BrutalUi.Core/Layout/ src/BrutalUi.Core/Style/ src/BrutalUi.Core/Elements/Utf8Text.cs src/BrutalUi.Core/Elements/Label.cs src/BrutalUi.Core/Elements/Image.cs src/BrutalUi.Core/Elements/Button.cs src/BrutalUi.Core/Elements/Toggle.cs src/BrutalUi.Core/Elements/Slider.cs src/BrutalUi.Core/Elements/ScrollView.cs src/BrutalUi.ImGui/ src/BrutalUi.Glfw/ Directory.Packages.props '*.csproj' samples/ scripts/`. Expect no output (I1, I2). When a path of this list does not exist, find the file with `git ls-files` and use its path.
 7. `git diff <base> --name-status -- src/` and `git status --porcelain -- src/`. Together they list only `src/BrutalUi.Core/Elements/TextField.cs` (added or untracked) and `WidgetInput.cs` and `UiContext.cs` (modified). Read `git diff <base> -- src/BrutalUi.Core/Tree/UiContext.cs`, and expect the parts of I3 only.
-8. `grep -n '^public sealed class TextField : Element$' src/BrutalUi.Core/Elements/TextField.cs` gives one line. `grep -c 'static readonly UiEventHandler' src/BrutalUi.Core/Elements/TextField.cs` gives 2. `grep -c 'new byte\[' src/BrutalUi.Core/Elements/TextField.cs` gives 1. `grep -nE '\(ref [A-Za-z]+ e\) =>|new UiEventHandler' src/BrutalUi.Core/Elements/TextField.cs` gives no line. `grep -nE '^\s*public required' src/BrutalUi.Core/Elements/TextField.cs` gives one line with `int Capacity`. `grep -n 'Inline.Overflow = Overflow.Hidden' src/BrutalUi.Core/Elements/TextField.cs` gives one line. `grep -nE 'public Action<TextField>\? (TextChanged|Submitted)' src/BrutalUi.Core/Elements/TextField.cs` gives two lines. `grep -c 'is TextField' src/BrutalUi.Core/Tree/UiContext.cs` gives 2 (Q3, Q4).
+8. `grep -n '^public sealed class TextField : Element$' src/BrutalUi.Core/Elements/TextField.cs` gives one line. `grep -c 'static readonly UiEventHandler' src/BrutalUi.Core/Elements/TextField.cs` gives 4. `grep -c 'new byte\[' src/BrutalUi.Core/Elements/TextField.cs` gives 1. `grep -nE '\(ref [A-Za-z]+ e\) =>|new UiEventHandler' src/BrutalUi.Core/Elements/TextField.cs` gives no line. `grep -nE '^\s*public required' src/BrutalUi.Core/Elements/TextField.cs` gives one line with `int Capacity`. `grep -n 'Inline.Overflow = Overflow.Hidden' src/BrutalUi.Core/Elements/TextField.cs` gives one line. `grep -nE 'public Action<TextField>\? (TextChanged|Submitted)' src/BrutalUi.Core/Elements/TextField.cs` gives two lines. `grep -c 'is TextField' src/BrutalUi.Core/Tree/UiContext.cs` gives 2 (Q3, Q4).
 9. `grep -rnE 'using .*(ImGui|Glfw)' src/BrutalUi.Core` gives no line (I1).
 10. `scripts/test-linux.sh; echo "exit=$?"`. Expect the PASS line and `exit=0` (I5).
 11. Read section 4 ("Frame order"), section 5 (the text field paragraph and rule 5 of the widget rules), section 8 ("The paint hook"), section 9 (item 7 of the flow), and section 14 of `docs/technical-design.md`, and the `## [Unreleased]` part of `CHANGELOG.md` (I4). Run `python3 /home/aaronstatic/.claude/skills/asd-ste100/scripts/ste-lint.py --fail-over 2.5` on each changed doc (Q6).
@@ -600,12 +631,13 @@ Run each step from `/home/aaronstatic/dev/brutal-ui` on Linux. `<scratch>` is an
 - `Elements/TextFieldScrollTests` (9): the demo, Home, a move inside the view, a move past the left edge, a remove at the end, text that fits, a resize, `SetText` and the focus owner rule, and the padding and the border.
 - `Elements/TextFieldBlinkTests` (6): the cycle, the restart on an edit, on a move, and on a focus gain, a bad delta, and no measurer.
 - `Elements/TextFieldSelectionTests` (10): the demo, Shift+Home and Shift+End, the collapse of Left and Right, the collapse of Home and End, the remove, a dropped char, the flip over the anchor, the draw order and the focus rule, the scroll, and `SetText`.
+- `Elements/TextFieldPointerTests` (10): the demo, the nearest boundary and the tie, the ends, a whole code point, Shift with a press, a scrolled field, a drag past the edge, the focus and the caret, a right press and a chord, and no measurer.
 - `Elements/TextFieldDisabledTests` (5): the char, the keys, the focus drop and the caret, the press, and a code set.
 - `Glfw.Tests/TextFieldKeyCodeTests` (1): the Core key codes equal the `GlfwKey` values.
 - Each Core test uses `TextFieldTree`, except the no-measurer test and the gate. Each test pushes events through `UiContext.PushEvent` and calls `Update`. A test computes the expected rects by hand with 8 pixels for each byte.
 
 ### Allocation Tests
-- `Elements/TextFieldAllocationTests` (3): `Update` and `Draw` with a focused field (the caret pass runs), the full input path (chars, the keys, the selection, the drop, Enter, `SetText`, and `GetText`), and the real-work check. widget-sample adds the 1000-element gate with each widget (epic A9).
+- `Elements/TextFieldAllocationTests` (3): `Update` and `Draw` with a focused field (the caret pass runs), the full input path (chars, the keys, the selection, the press, the drag, the drop, Enter, `SetText`, and `GetText`), and the real-work check. widget-sample adds the 1000-element gate with each widget (epic A9).
 
 ### Regression Tests
 - The regression set of the phase intro with no edit in each phase, and each class in `tests/BrutalUi.Core.Tests/Input/` in phase 4.
@@ -614,7 +646,7 @@ Run each step from `/home/aaronstatic/dev/brutal-ui` on Linux. `<scratch>` is an
 - `scripts/test-linux.sh` runs the full suite and the HelloPanel smoke run. HelloPanel does not change. widget-sample adds the field to it.
 
 ### Manual Testing
-- None in this feature. widget-sample adds the visible demo and the manual check of typing, the caret, the selection, the scroll, and Enter on screen.
+- None in this feature. widget-sample adds the visible demo and the manual check of typing, the caret, the press, the drag, the selection, the scroll, and Enter on screen.
 
 ---
 
@@ -635,7 +667,7 @@ Run each step from `/home/aaronstatic/dev/brutal-ui` on Linux. `<scratch>` is an
 
 ### Open Scope Questions
 
-No person answered these questions. The plan uses the recommended option of each one.
+The user answered these questions. Q1, Q3, and Q4 use the recommended option. Q2 uses option C.
 
 **Q1. What is the demo of phase 1?**
 - **A (recommended):** a unit test focuses the field, pushes the chars `H` and `i` through `UiContext.PushEvent`, and runs `Update` and `Draw` with a `RecordingRenderer`. It reads the text `Hi`, two `TextChanged` calls, and a `Text` call `"Hi"` at (0, 0) inside the clip (0, 0, 81, 16). The developer runs the class filter `'*TextFieldTypeTests'` and reads a total of 10 with `failed: 0`. Reason: it shows the buffer, the delegate, and the clipped draw in one test, the form of the sibling demos.
@@ -643,9 +675,9 @@ No person answered these questions. The plan uses the recommended option of each
 - C: a person types into a field in HelloPanel on screen. Reason: it moves widget-sample work into this feature and needs a GPU.
 
 **Q2. Does a press place the caret?**
-- **A (recommended):** no. A press focuses the field through the click focus of the drain, and the caret stays where it was (Decision 16). Reason: the requirement names no pointer rule, and the change needs no measurer in the drain.
+- A (recommended): no. A press focuses the field through the click focus of the drain, and the caret stays where it was. Reason: the requirement names no pointer rule, and the change needs no measurer in the drain.
 - B: a left press places the caret at the nearest code point boundary under the pointer. The press handler stores the x, and the caret pass maps it with the measurer. Reason: the desktop habit, but one more phase with a hit map of each code point.
-- C: B, and a drag selects. Reason: full mouse editing, but it also needs `IDragCapture` and two more phases.
+- **C (chosen):** B, and a drag selects (Decision 16, phase 6). Reason: full mouse editing, but it also needs `IDragCapture` and two more phases.
 
 **Q3. What does a set past the capacity do?**
 - **A (recommended):** `SetText` and the start text copy the longest prefix that fits and ends on a code point boundary (Decision 8). Reason: no exception in a hot path, and the buffer stays valid UTF-8 at each boundary.

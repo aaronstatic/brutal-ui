@@ -591,7 +591,8 @@ public sealed class UiContext
     /// rules, the inline set, and the parent text. An element with no rule and no inline value gets the defaults.
     /// </para>
     /// <para>
-    /// The frame order is: the input pass, the style pass, the transition pass, the layout pass, and the clear pass.
+    /// The frame order is: the input pass, the style pass, the transition pass, the layout pass, the caret pass, and
+    /// the clear pass.
     /// The input pass changes the states, so the style pass of the same call reads the new states. The style pass
     /// writes the target of each member and starts, keeps, turns, or ends the tweens of the transitions of the rules.
     /// The first style of an element starts no tween. The transition pass then advances each running tween by
@@ -609,10 +610,20 @@ public sealed class UiContext
     /// measurer into a scope of the current thread for the layout pass, and it restores the old scope at the end,
     /// also after an exception. A nested call thus keeps the scope of the outer call.
     /// </para>
+    /// <para>
+    /// The caret pass runs after the layout pass, so the text, the style, and the size of the frame are final. It runs
+    /// only when <see cref="FocusedElement"/> is a <see cref="TextField"/>. It advances the blink of the caret by
+    /// <paramref name="deltaTime"/> and writes the text scroll of the field, so the caret stays visible. The pass
+    /// measures the text with <see cref="Measurer"/> directly, not through the measure scope. A context with no
+    /// <see cref="Measurer"/> still advances the blink and keeps the scroll. An exception of the measurer stops the
+    /// call before the clear pass, as an exception of the layout pass does.
+    /// </para>
     /// </remarks>
     /// <param name="deltaTime">
     /// The time since the last update, in seconds. The transition pass reads it: each running tween advances by this
     /// time. A value of 0 or less, also <c>NaN</c>, advances no tween. An infinite value ends each tween at its target.
+    /// The caret pass reads it with the rule of the transition pass for a bad value: a value of 0 or less, also
+    /// <c>NaN</c>, advances no blink. An infinite value also advances no blink, so the caret does not hide for good.
     /// </param>
     /// <exception cref="InvalidOperationException">
     /// A <see cref="Label"/> needs a measure and the context has no <see cref="Measurer"/>.
@@ -649,6 +660,12 @@ public sealed class UiContext
         finally
         {
             t_measurer = previousMeasurer;
+        }
+
+        // The caret pass. It advances the blink of the focused text field and writes its text scroll.
+        if (_focusOwner is TextField field)
+        {
+            field.AdvanceCaret(deltaTime, _measurer);
         }
 
         // The clear pass. It clears the bits that no earlier pass cleared.
@@ -1853,6 +1870,8 @@ public sealed class UiContext
     /// (the repair rule). Else it clears <see cref="PseudoStates.Focus"/> on the old owner and sets it on the new
     /// element. Each change marks one subtree for <see cref="DirtyFlags.Style"/>. The state goes on
     /// the element only (Decision 1 of keyboard-focus). The method does not check the accept rule. The caller checks it.
+    /// A change to a new owner that is a <see cref="TextField"/> restarts the blink of its caret, so the caret shows at
+    /// once (Decision 11 of text-field). The repair branch restarts nothing.
     /// </remarks>
     /// <param name="next">The new focus owner, or <see langword="null"/> for no owner.</param>
     private void SetFocusOwner(Element? next)
@@ -1878,6 +1897,10 @@ public sealed class UiContext
         if (next is not null)
         {
             next.States |= PseudoStates.Focus;
+            if (next is TextField field)
+            {
+                field.RestartCaretBlink();
+            }
         }
     }
 

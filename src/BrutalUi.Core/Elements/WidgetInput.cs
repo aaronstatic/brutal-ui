@@ -15,8 +15,8 @@ namespace BrutalUi.Core;
 /// </para>
 /// <para>
 /// <see cref="IsClick(Element, in PointerEvent)"/> is the click rule of each widget that clicks: <see cref="Button"/>
-/// and <see cref="Toggle"/> use it. A widget with another rule (a drag, an arrow key, or a char) writes its own
-/// check.
+/// and <see cref="Toggle"/> use it. A widget with another rule (a drag, an arrow key, or a char) uses the check of
+/// that rule.
 /// </para>
 /// <para>
 /// <see cref="IsDragStart(Element, in PointerEvent)"/> and <see cref="IsDragMove(Element, in PointerEvent)"/> serve
@@ -24,6 +24,10 @@ namespace BrutalUi.Core;
 /// </para>
 /// <para>
 /// <see cref="IsScroll(Element, in ScrollEvent)"/> serves each widget that takes the wheel. It reads no press target.
+/// </para>
+/// <para>
+/// <see cref="IsCharInput(Element, in CharEvent)"/> and <see cref="IsEditKey(Element, in KeyEvent)"/> serve each
+/// widget that takes text. They read no press target.
 /// </para>
 /// <para>
 /// The pointer checks read <see cref="UiContext.CurrentPressTarget"/>, the press target of the current walk
@@ -284,6 +288,86 @@ internal static class WidgetInput
                 return false;
         }
     }
+
+    /// <summary>
+    /// Tells if a <see cref="UiEventType.Char"/> is text input for the widget: the type is
+    /// <see cref="UiEventType.Char"/>, the widget is the target of the event, and the widget does not hold
+    /// <see cref="PseudoStates.Disabled"/>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The check reads the disabled bit, the type, and the target only. The key route gives each char with no target to
+    /// the focus owner, so the owner is the target. A char that bubbles from a focusable child has another target, so
+    /// it gives no input to the widget. A char with the widget as the target from the caller counts, also when the widget
+    /// does not hold the focus. The check does not read <see cref="PseudoStates.Focus"/>.
+    /// </para>
+    /// <para>
+    /// The check reads no press target and no modifier, because a char has neither. It does not read the code point.
+    /// The widget applies its own rule to the code point.
+    /// </para>
+    /// <para>
+    /// The check also reads the event type, so a copy of the handler in another slot does nothing.
+    /// </para>
+    /// </remarks>
+    /// <param name="widget">The widget that the handler runs on: the current target of the walk.</param>
+    /// <param name="e">The char event.</param>
+    /// <returns><see langword="true"/> when the char is text input for the widget.</returns>
+    internal static bool IsCharInput(Element widget, in CharEvent e)
+    {
+        return (widget.States & PseudoStates.Disabled) == 0
+            && e.Header.Type == UiEventType.Char
+            && ReferenceEquals(e.Header.Target, widget);
+    }
+
+    /// <summary>
+    /// Tells if a <see cref="UiEventType.KeyDown"/> is an edit key for the widget: the type is
+    /// <see cref="UiEventType.KeyDown"/>, the widget is the target of the event, no <see cref="UiModifiers.Control"/>,
+    /// <see cref="UiModifiers.Alt"/>, or <see cref="UiModifiers.Super"/> is down, and the widget does not hold
+    /// <see cref="PseudoStates.Disabled"/>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The target rule: the key route gives each key with no target to the focus owner, so the owner is the target. A
+    /// key that bubbles from a focusable child has another target, so it is not an edit key for the widget. A key with
+    /// the widget as the target from the caller counts, also when the widget does not hold the focus. The check does not
+    /// read <see cref="PseudoStates.Focus"/>.
+    /// </para>
+    /// <para>
+    /// The modifier rule: <see cref="UiModifiers.Control"/>, <see cref="UiModifiers.Alt"/>, and
+    /// <see cref="UiModifiers.Super"/> block the key, so a shortcut walks on to the ancestors.
+    /// <see cref="UiModifiers.Shift"/>, <see cref="UiModifiers.CapsLock"/>, and <see cref="UiModifiers.NumLock"/> do not
+    /// block the key.
+    /// </para>
+    /// <para>
+    /// A repeat passes, so a held key moves the caret or removes text again.
+    /// </para>
+    /// <para>
+    /// The check does not read the key. The widget applies its own rule to the key. The check also reads the event type,
+    /// so a copy of the handler in another slot does nothing.
+    /// </para>
+    /// </remarks>
+    /// <param name="widget">The widget that the handler runs on: the current target of the walk.</param>
+    /// <param name="e">The key event.</param>
+    /// <returns><see langword="true"/> when the key is an edit key for the widget.</returns>
+    internal static bool IsEditKey(Element widget, in KeyEvent e)
+    {
+        return (widget.States & PseudoStates.Disabled) == 0
+            && e.Header.Type == UiEventType.KeyDown
+            && ReferenceEquals(e.Header.Target, widget)
+            && (e.Modifiers & (UiModifiers.Control | UiModifiers.Alt | UiModifiers.Super)) == 0;
+    }
+
+    /// <summary>The GLFW key code of the Backspace key (<c>GLFW_KEY_BACKSPACE</c>).</summary>
+    internal const int BackspaceKey = 259;
+
+    /// <summary>The GLFW key code of the Delete key (<c>GLFW_KEY_DELETE</c>).</summary>
+    internal const int DeleteKey = 261;
+
+    /// <summary>The GLFW key code of the Home key (<c>GLFW_KEY_HOME</c>).</summary>
+    internal const int HomeKey = 268;
+
+    /// <summary>The GLFW key code of the End key (<c>GLFW_KEY_END</c>).</summary>
+    internal const int EndKey = 269;
 
     /// <summary>The GLFW key code of the right arrow key (<c>GLFW_KEY_RIGHT</c>).</summary>
     internal const int RightKey = 262;
