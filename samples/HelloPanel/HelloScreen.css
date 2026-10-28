@@ -4,6 +4,22 @@
  * HelloScreen.LoadSheet reads this file at the start of the run. Each size and
  * each color of the screen lives here. The format is in section 11 of
  * docs/technical-design.md ("Stylesheet format").
+ *
+ * The widget rules come after the 6 rules of the panel. The rules
+ * .hello-widgets, .hello-row, and .hello-row > Label give the layout of the
+ * widget section. The type rules (Button, Button:hover, and so on) give the
+ * look of each widget. Each widget rule sets a font size of 16px where the
+ * widget draws text, so the line height follows the sheet.
+ *
+ * The state rules of a widget follow the rules of the panel. A hover rule or an
+ * active rule sets the fill only. A focus rule sets the border color only. The
+ * members are different, so the hover and the focus show at the same time.
+ *
+ * The sheet holds 31 rules. Button, Toggle, Slider, ScrollView, and TextField
+ * have their own rules. The four widgets with no own size (Toggle, Slider,
+ * ScrollView, and TextField) get their size here. A widget with no size takes
+ * no space and catches no input. This part gives the size of the toggle, of
+ * the slider, of the scroll view, and of the text field.
  */
 
 :root {
@@ -12,6 +28,19 @@
     --panel-hover: #283044;
     --panel-focus: #f0c040;
     --text: #ffffff;
+    --widget-fill: #2c3446;
+    --widget-border: #4a5672;
+    --widget-hover: #3c4862;
+    --widget-active: #182030;
+    --widget-focus: #f0c040;
+    --disabled-fill: #1a1e26;
+    --disabled-text: #6a7284;
+    --toggle-checked: #3c8c5a;
+    --slider-track: #141a26;
+    --slider-thumb: #b4c0d8;
+    --slider-thumb-hover: #dce4f4;
+    --slider-thumb-active: #70a0f0;
+    --scroll-hover-border: #7a94c8;
 }
 
 /* The root draws nothing. flex-start stops the stretch, so the panel keeps the size of its content. */
@@ -36,7 +65,7 @@
     background-color: var(--panel-hover);
 }
 
-/* The focus owner changes the border color. Tab gives the focus to the panel, the only focusable element. */
+/* The focus owner changes the border color. Tab gives the focus to the panel first, then to each focusable widget. */
 .hello-panel:focus {
     border-color: var(--panel-focus);
 }
@@ -50,4 +79,192 @@
 /* The space between the label and the image. */
 .hello-panel > Image {
     margin: 12px 0 0;
+}
+
+/* The widget section is a column of rows below the image. */
+.hello-widgets {
+    flex-direction: column;
+    align-items: flex-start;
+    margin: 12px 0 0;
+}
+
+/* Each row holds a widget and its status label, in the middle of the row height. */
+.hello-row {
+    flex-direction: row;
+    align-items: center;
+    margin: 8px 0 0;
+}
+
+/* A status label. The rule .hello-panel > Label does not apply, because the parent is the row. */
+.hello-row > Label {
+    color: var(--text);
+    font-size: 16px;
+    margin: 0 0 0 12px;
+}
+
+/* The button takes the size of its text plus the padding and the border. */
+Button {
+    padding: 6px 12px;
+    border-width: 2px;
+    border-radius: 4px;
+    background-color: var(--widget-fill);
+    border-color: var(--widget-border);
+    color: var(--text);
+    font-size: 16px;
+}
+
+/* The pointer over the button changes the fill only. */
+Button:hover {
+    background-color: var(--widget-hover);
+}
+
+/* A press on the button changes the fill only. The rule comes after Button:hover, so it wins while both apply. */
+Button:active {
+    background-color: var(--widget-active);
+}
+
+/* The focus owner changes the border color only, so the focus shows with the hover and the active fill. */
+Button:focus {
+    border-color: var(--widget-focus);
+}
+
+/*
+ * The game sets the disabled state, not the widget. The rule comes after Button:hover and Button:active. Button:hover
+ * has a type and a state, so it wins over a bare :disabled rule. A rule with the same type and the same state count
+ * wins by its place. Thus the disabled fill and the disabled text show under the pointer and under a press.
+ */
+Button:disabled {
+    background-color: var(--disabled-fill);
+    color: var(--disabled-text);
+}
+
+/* The toggle has no own size. This rule gives it a square box with a border and round corners. */
+Toggle {
+    width: 20px;
+    height: 20px;
+    border-width: 2px;
+    border-radius: 4px;
+    background-color: var(--widget-fill);
+    border-color: var(--widget-border);
+}
+
+/* The pointer over the toggle changes the fill only. */
+Toggle:hover {
+    background-color: var(--widget-hover);
+}
+
+/* A press on the toggle changes the fill only. The rule comes after Toggle:hover. */
+Toggle:active {
+    background-color: var(--widget-active);
+}
+
+/* The focus owner changes the border color only. */
+Toggle:focus {
+    border-color: var(--widget-focus);
+}
+
+/* A checked toggle has its own fill. The rule comes after Toggle:hover and Toggle:active, so it wins over both. */
+Toggle:checked {
+    background-color: var(--toggle-checked);
+}
+
+/*
+ * The slider has no own size. This rule gives it a wide track. The box paints the track. The thumb is a square in
+ * the content box, and it uses the color of the style.
+ */
+Slider {
+    width: 200px;
+    height: 20px;
+    border-width: 2px;
+    border-radius: 4px;
+    background-color: var(--slider-track);
+    border-color: var(--widget-border);
+    color: var(--slider-thumb);
+}
+
+/* The pointer over the slider changes the thumb color only. */
+Slider:hover {
+    color: var(--slider-thumb-hover);
+}
+
+/* A press on the slider changes the thumb color only. The rule comes after Slider:hover. */
+Slider:active {
+    color: var(--slider-thumb-active);
+}
+
+/* The focus owner changes the border color only. */
+Slider:focus {
+    border-color: var(--widget-focus);
+}
+
+/*
+ * The scroll view has no own size. This rule gives it a fixed box of 240 by 80 pixels. A fixed height is a must: the
+ * view grows to its content without it, and then it has nothing to scroll. The items are taller than the view
+ * together. The view clips them to its padding box.
+ */
+ScrollView {
+    width: 240px;
+    height: 80px;
+    flex-direction: column;
+    padding: 4px;
+    border-width: 2px;
+    border-radius: 4px;
+    background-color: var(--widget-fill);
+    border-color: var(--widget-border);
+}
+
+/*
+ * The pointer over the view changes the border color only. The hover shows over the padding, over a gap, and over an
+ * item, because an item is not pickable.
+ */
+ScrollView:hover {
+    border-color: var(--scroll-hover-border);
+}
+
+/* A press on the view (a drag of the list) changes the fill only. The rule comes after ScrollView:hover. */
+ScrollView:active {
+    background-color: var(--widget-active);
+}
+
+/* An item label. The rule .hello-row > Label does not apply, because the parent is the view. */
+ScrollView > Label {
+    color: var(--text);
+    font-size: 16px;
+}
+
+/*
+ * The text field has no own size. This rule gives it a box of 240 by 32 pixels. The height minus the padding and the
+ * border gives a content box of 20 pixels, more than one line of text at 16px. The text and the caret use the color
+ * of the style.
+ */
+TextField {
+    width: 240px;
+    height: 32px;
+    padding: 4px 8px;
+    border-width: 2px;
+    border-radius: 4px;
+    background-color: var(--widget-fill);
+    border-color: var(--widget-border);
+    color: var(--text);
+    font-size: 16px;
+}
+
+/* The pointer over the field changes the fill only. */
+TextField:hover {
+    background-color: var(--widget-hover);
+}
+
+/* The focus owner changes the border color only. The field shows the caret while it holds the focus. */
+TextField:focus {
+    border-color: var(--widget-focus);
+}
+
+/*
+ * A status label of the text field. The rule .hello-row > Label does not apply, because the parent is the status
+ * column. The left margin keeps the labels away from the field.
+ */
+.hello-status > Label {
+    color: var(--text);
+    font-size: 16px;
+    margin: 0 0 0 12px;
 }

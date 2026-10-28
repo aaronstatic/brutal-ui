@@ -18,21 +18,27 @@ namespace HelloPanel;
 /// </summary>
 /// <remarks>
 /// <para>
-/// After a run, the sample writes four lines to standard output:
+/// After a run, the sample writes five lines to standard output:
 /// <c>HelloPanel: &lt;count&gt; frames rendered.</c>,
 /// <c>HelloPanel: last frame: draw commands &lt;C&gt;, vertices &lt;V&gt;.</c>,
-/// <c>HelloPanel: bytes after warm-up: Update and Draw &lt;B&gt;, frame &lt;F&gt;, in &lt;M&gt; frames.</c>, and
+/// <c>HelloPanel: bytes after warm-up: Update and Draw &lt;B&gt;, frame &lt;F&gt;, in &lt;M&gt; frames.</c>,
 /// <c>HelloPanel: gate: pointer over UI in &lt;P&gt; frames, keyboard focus in UI in &lt;K&gt; frames, of
-/// &lt;M&gt; measured frames.</c> The counts of line 2 come from the ImGui background draw list of the last frame.
-/// The exit code is 0 for success, 1 for a runtime failure, for an allocation of the UI region after warm-up, or for
-/// a smoke run in which the synthetic input did not reach the UI or the gate read the pointer over the UI in each
-/// measured frame, and 2 for a usage error. The command line contract
-/// is in <c>docs/features/dev-ops/solution-skeleton/context.md</c>.
+/// &lt;M&gt; measured frames.</c>, and
+/// <c>HelloPanel: widgets: clicks &lt;C&gt;, flips &lt;T&gt;, values &lt;V&gt;, scrolls &lt;S&gt;, edits &lt;E&gt;,
+/// submits &lt;U&gt;.</c> The counts of line 2 come from the ImGui background draw list of the last frame. The counts of line 5 come from
+/// <see cref="HelloWidgets"/> and cover the full run. The exit code is 0 for success, 1 for a runtime failure, for an
+/// allocation of the UI region after warm-up, or for a smoke run in which the synthetic input did not reach the UI,
+/// the gate read the pointer over the UI in each measured frame, or a widget got no change, and 2 for a usage error.
+/// The command line contract is in <c>docs/features/dev-ops/solution-skeleton/context.md</c>.
 /// </para>
 /// <para>
 /// The sample reads the real input of the window through <see cref="GlfwUiInput"/>. The screen reacts to the pointer
-/// and to Tab. A run with <c>--frames</c> (the smoke run) also pushes a synthetic pointer move and a synthetic Tab in
-/// each frame, so the run proves with no user that the input reaches the UI.
+/// and to Tab. A run with <c>--frames</c> (the smoke run) also pushes synthetic events in each frame: the widget
+/// events first (a left press and a left release on the <c>Click me</c> button, on the toggle, and on the slider, and
+/// a scroll at the center of the scroll view), then a Tab, then the text field events (a char or a Backspace, an
+/// Enter, and a left press and a left release on the field), then a pointer move. The first measured frame also fills
+/// the text field to its capacity and empties it again, so the two text labels get their longest text in a measured
+/// frame. Thus the run proves with no user that the input reaches the UI and each widget.
 /// </para>
 /// <para>
 /// The sample loads <c>HelloScreen.css</c> from the folder of its assembly before it opens the window. A sheet with
@@ -80,6 +86,27 @@ internal static class Program
     /// </summary>
     private const float SmokeOffPanelOffset = 8f;
 
+    /// <summary>The code point that the smoke run types into the text field in an even frame: <c>a</c>.</summary>
+    private const uint SmokeChar = 'a';
+
+    /// <summary>
+    /// The code point of the longest text burst: <c>W</c>. The longest text of each text label of
+    /// <see cref="HelloWidgets"/> uses the same char.
+    /// </summary>
+    private const uint SmokeLongestChar = 'W';
+
+    /// <summary>
+    /// The GLFW key code of the Backspace key: 259, the value of <c>WidgetInput.BackspaceKey</c> of
+    /// <c>BrutalUi.Core</c>. That constant is internal, so the sample writes the raw value.
+    /// </summary>
+    private const int SmokeBackspaceKey = 259;
+
+    /// <summary>
+    /// The GLFW key code of the main Enter key: 257, the value of <c>WidgetInput.EnterKey</c> of <c>BrutalUi.Core</c>.
+    /// That constant is internal, so the sample writes the raw value. The keypad Enter key has another code.
+    /// </summary>
+    private const int SmokeEnterKey = 257;
+
     /// <summary>The result of a run of the sample.</summary>
     /// <param name="FramesRendered">The number of frames that the sample rendered.</param>
     /// <param name="DrawCommandCount">
@@ -107,6 +134,34 @@ internal static class Program
     /// The number of measured frames with <see cref="UiRoutingGate.KeyboardFocusInUi"/> <see langword="true"/> after
     /// the draw.
     /// </param>
+    /// <param name="CaretFrames">
+    /// The number of measured frames in which the text field holds the focus after
+    /// <see cref="UiContext.Update(float)"/>. The caret pass of the field runs in these frames. The widget check reads
+    /// this count. Line 5 does not show it.
+    /// </param>
+    /// <param name="Clicks">
+    /// The number of clicks of the <c>Click me</c> button in the full run: <see cref="HelloWidgets.Clicks"/> after the
+    /// last frame.
+    /// </param>
+    /// <param name="Flips">
+    /// The number of flips of the toggle in the full run: <see cref="HelloWidgets.Flips"/> after the last frame.
+    /// </param>
+    /// <param name="Values">
+    /// The number of value changes of the slider in the full run: <see cref="HelloWidgets.Values"/> after the last
+    /// frame.
+    /// </param>
+    /// <param name="Scrolls">
+    /// The number of offset changes of the scroll view in the full run: <see cref="HelloWidgets.Scrolls"/> after the
+    /// last frame.
+    /// </param>
+    /// <param name="Edits">
+    /// The number of text changes of the text field in the full run: <see cref="HelloWidgets.Edits"/> after the last
+    /// frame.
+    /// </param>
+    /// <param name="Submits">
+    /// The number of submits of the text field in the full run: <see cref="HelloWidgets.Submits"/> after the last
+    /// frame.
+    /// </param>
     private readonly record struct RunResult(
         int FramesRendered,
         int DrawCommandCount,
@@ -115,7 +170,14 @@ internal static class Program
         long FrameAllocatedBytes,
         int MeasuredFrames,
         int PointerOverUiFrames,
-        int KeyboardFocusInUiFrames);
+        int KeyboardFocusInUiFrames,
+        int CaretFrames,
+        int Clicks,
+        int Flips,
+        int Values,
+        int Scrolls,
+        int Edits,
+        int Submits);
 
     private static int Main(string[] args)
     {
@@ -196,10 +258,12 @@ internal static class Program
     /// <summary>
     /// Loads the sheet, starts GLFW, runs the sample, and ends GLFW. After the run, writes the frame count (line 1),
     /// the draw command count and the vertex count of the last frame (line 2), the allocated bytes after warm-up
-    /// (line 3), and the gate counts of the measured frames (line 4) to standard output. When the UI region allocates
-    /// after warm-up, writes the allocation line to standard error and returns <see cref="ExitFailure"/>. When the
-    /// synthetic input of a smoke run did not reach the UI, or when the gate read the pointer over the UI in each
-    /// measured frame, writes the input line to standard error and returns <see cref="ExitFailure"/>.
+    /// (line 3), the gate counts of the measured frames (line 4), and the widget counts of the full run (line 5) to
+    /// standard output. When the UI region allocates after warm-up, writes the allocation line to standard error and
+    /// returns <see cref="ExitFailure"/>. When the synthetic input of a smoke run did not reach the UI, or when the
+    /// gate read the pointer over the UI in each measured frame, writes the input line to standard error and returns
+    /// <see cref="ExitFailure"/>. When a widget count of a smoke run is 0, or when the text field holds the focus after
+    /// the update in no measured frame, writes the widget line to standard error and returns <see cref="ExitFailure"/>.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -216,6 +280,24 @@ internal static class Program
     /// gate read the pointer over the UI in the off-panel frames too, so the off-panel frames did not reach the game.
     /// Both cases write a line to standard error and return <see cref="ExitFailure"/>. A run with no frame limit
     /// pushes no synthetic input, so the check does not run.
+    /// </para>
+    /// <para>
+    /// The widget check runs after the input check, with the same condition. In each frame, the smoke run pushes a
+    /// press and a release on the <c>Click me</c> button, on the toggle, and on the slider, a scroll on the scroll
+    /// view, the char <c>a</c> or a Backspace and a main Enter on the text field, and a press and a release on the
+    /// field. Thus a click count, a flip count, a value count, a scroll count, an edit count, or a submit count of 0
+    /// means that the synthetic input did not reach each widget.
+    /// </para>
+    /// <para>
+    /// The widget check also reads the caret count: the number of measured frames in which the text field holds the
+    /// focus after <see cref="UiContext.Update(float)"/>. The caret pass and the caret draw run for the focus owner
+    /// only. Thus a caret count of 0 means that the caret pass and the caret draw did not run under the allocation
+    /// check, for example after a change of the push order or of the focus rule. Line 5 does not show the caret count.
+    /// </para>
+    /// <para>
+    /// For each failure, the widget check writes the widget line to standard error and returns
+    /// <see cref="ExitFailure"/>. The allocation check comes first, so a run that allocates and gets no click still
+    /// writes the allocation line.
     /// </para>
     /// </remarks>
     /// <param name="frameLimit">The number of frames to render, or <see cref="NoFrameLimit"/>.</param>
@@ -250,6 +332,9 @@ internal static class Program
             $"HelloPanel: gate: pointer over UI in {result.PointerOverUiFrames} frames, " +
             $"keyboard focus in UI in {result.KeyboardFocusInUiFrames} frames, " +
             $"of {result.MeasuredFrames} measured frames.");
+        Console.WriteLine(
+            $"HelloPanel: widgets: clicks {result.Clicks}, flips {result.Flips}, values {result.Values}, " +
+            $"scrolls {result.Scrolls}, edits {result.Edits}, submits {result.Submits}.");
 
         // The gate reads the UI sum only. The frame sum also holds the managed bytes of the backends.
         if (result.UiAllocatedBytes > 0)
@@ -277,6 +362,16 @@ internal static class Program
                 Console.Error.WriteLine(
                     "HelloPanel: the pointer read over the UI in each measured frame. " +
                     "The off-panel frames did not reach the game.");
+                return ExitFailure;
+            }
+
+            // The widget check. Each frame pushes the events of each widget, so each count rises. The field press is
+            // the last focus change of each drain, so the field holds the focus at the caret pass and the caret count
+            // rises.
+            if (result.Clicks == 0 || result.Flips == 0 || result.Values == 0 || result.Scrolls == 0
+                || result.Edits == 0 || result.Submits == 0 || result.CaretFrames == 0)
+            {
+                Console.Error.WriteLine("HelloPanel: the synthetic input did not reach each widget.");
                 return ExitFailure;
             }
         }
@@ -411,10 +506,20 @@ internal static class Program
                 vulkanBackend, checker.Sampler, checker.View, VkImageLayout.ShaderReadOnlyOptimal, checker.Size);
             // The sheet gives each size and each color of the screen. The tree sets only the classes.
             ui.AddSheet(sheet);
-            ui.AddRoot(HelloScreen.Build(handle, out Element panel, out Label gateLabel));
+            ui.AddRoot(HelloScreen.Build(handle, out Element panel, out Label gateLabel, out HelloWidgets widgets));
 
             return RunFrames(
-                window, vulkan, glfwBackend, vulkanBackend, input, ui, uiRenderer, panel, gateLabel, frameLimit);
+                window,
+                vulkan,
+                glfwBackend,
+                vulkanBackend,
+                input,
+                ui,
+                uiRenderer,
+                panel,
+                gateLabel,
+                widgets,
+                frameLimit);
         }
         finally
         {
@@ -439,7 +544,8 @@ internal static class Program
     /// the events, wait while the window is minimized, and check the close flag. The poll gives each window event to
     /// ImGui first and then to the adapter, and the adapter pushes it into the ring of the context. (2) Start the frame
     /// of the GLFW backend, the Vulkan backend, and ImGui. (3) The UI region: push the smoke input (a run with a frame
-    /// limit only), set the viewport size from <c>io.DisplaySize</c>, update the tree, draw the tree, read
+    /// limit only), set the viewport size from <c>io.DisplaySize</c>, update the tree, read the focus owner, draw the
+    /// tree, read
     /// <see cref="UiContext.RoutingGate"/>, and set the text of the gate label. The input pass of
     /// <see cref="UiContext.Update(float)"/> drains the ring before the style pass, so the hover and the focus of this
     /// frame show in this frame. (4) <c>ImGui.Render</c>, then read the draw command count and the vertex count of the
@@ -451,16 +557,28 @@ internal static class Program
     /// A game with an ImGui window over the game uses <c>gate.PointerOverUi || io.WantCaptureMouse</c> (Decision 5).
     /// </para>
     /// <para>
-    /// The smoke input: a run with a frame limit pushes, at the start of the UI region of each frame, one pointer move,
-    /// one Tab key down, and one Tab key up, with no target. The move goes to the center of the panel in an even frame
-    /// and outside the panel in an odd frame. A run with no frame limit pushes no synthetic event and uses the real
-    /// input of the window only.
+    /// The smoke input: a run with a frame limit pushes, at the start of the UI region of each frame, the widget events
+    /// (a left press and a left release at the center of the <c>Click me</c> button, at the center of the toggle, and at
+    /// a point of the slider, and a scroll at the center of the scroll view), then one Tab key down and one Tab key up
+    /// with no target, then the text field events (a char or a Backspace key down and a main Enter key down with the
+    /// field as the target, and a left press and a left release at the center of the field), then one pointer move.
+    /// The move goes to the center of the panel in an even frame and outside the panel in an odd frame. The widget
+    /// events come before the move, because the gate reads the hit of the last pointer event of the drain. The first
+    /// measured frame also pushes the longest text burst before the char or the Backspace of the frame (see
+    /// <see cref="PushLongestTextBurst"/>). A run with no frame limit pushes no synthetic event and uses the real input
+    /// of the window only.
+    /// </para>
+    /// <para>
+    /// The delegates of the widgets run in the input pass of <see cref="UiContext.Update(float)"/>, so the allocation
+    /// gate measures each delegate and each write of a status label.
     /// </para>
     /// <para>
     /// The gate counts: after the draw, the loop reads the gate. A measured frame adds 1 to the pointer count when
     /// <see cref="UiRoutingGate.PointerOverUi"/> is <see langword="true"/>, and 1 to the focus count when
     /// <see cref="UiRoutingGate.KeyboardFocusInUi"/> is <see langword="true"/>. The gate read and the label update are
-    /// inside the UI region, so the allocation gate measures them.
+    /// inside the UI region, so the allocation gate measures them. A measured frame adds 1 to the caret count when
+    /// <see cref="UiContext.FocusedElement"/> is the text field after <see cref="UiContext.Update(float)"/>. The read
+    /// is a reference compare inside the UI region, so the allocation gate measures it, and it allocates nothing.
     /// </para>
     /// <para>
     /// The UI region runs between <c>ImGui.NewFrame</c> and <c>ImGui.Render</c>, because the renderer draws on the
@@ -486,7 +604,8 @@ internal static class Program
     /// </para>
     /// <para>
     /// <see cref="Run"/> writes the frame count as line 1, the two counts of the last frame as line 2, the two sums
-    /// and the measured frame count as line 3, and the two gate counts and the measured frame count as line 4.
+    /// and the measured frame count as line 3, the two gate counts and the measured frame count as line 4, and the
+    /// widget counts as line 5. The loop reads the widget counts after the last frame, so they cover the full run.
     /// </para>
     /// </remarks>
     /// <param name="window">The window.</param>
@@ -499,10 +618,14 @@ internal static class Program
     /// <param name="uiRenderer">The brutal-ui renderer. It is also the measurer of <paramref name="ui"/>.</param>
     /// <param name="panel">The panel of the screen. The smoke input aims its pointer move at the panel.</param>
     /// <param name="gateLabel">The gate label of the screen. The loop sets its text after each draw.</param>
+    /// <param name="widgets">
+    /// The widget section of the screen. The smoke input aims its widget events at the widgets, and the loop reads the
+    /// widget counts after the last frame.
+    /// </param>
     /// <param name="frameLimit">The number of frames to render, or <see cref="NoFrameLimit"/>.</param>
     /// <returns>
     /// The result of the run: the frame count, the draw list counts of the last frame, the allocation sums of the
-    /// measured frames, and the gate counts of the measured frames.
+    /// measured frames, the gate counts of the measured frames, and the widget counts of the full run.
     /// </returns>
     private static RunResult RunFrames(
         GlfwWindow window,
@@ -514,6 +637,7 @@ internal static class Program
         ImGuiRenderer uiRenderer,
         Element panel,
         Label gateLabel,
+        HelloWidgets widgets,
         int frameLimit)
     {
         ImGuiIOPtr io = ImGui.GetIO();
@@ -527,6 +651,7 @@ internal static class Program
         int measuredFrames = 0;
         int pointerOverUiFrames = 0;
         int keyboardFocusInUiFrames = 0;
+        int caretFrames = 0;
 
         // The counter value after the last release of the allocation context, or -1 before the first release.
         long releasedBytes = -1;
@@ -573,7 +698,7 @@ internal static class Program
             // The smoke input (Decision 8). The events are structs, so the pushes allocate nothing.
             if (frameLimit != NoFrameLimit)
             {
-                PushSmokeInput(ui, panel, framesRendered);
+                PushSmokeInput(ui, panel, widgets, framesRendered);
             }
 
             float2 displaySize = io.DisplaySize;
@@ -581,6 +706,9 @@ internal static class Program
 
             // The input pass of Update drains the events of the poll and of the smoke input first.
             ui.Update(io.DeltaTime);
+
+            // The caret pass of Update runs for the focus owner only (CR-3). The compare allocates nothing.
+            bool fieldFocused = ui.FocusedElement == widgets.TextField;
             ui.Draw(uiRenderer);
 
             // The game handles the world input here, after Update and with the gate of this frame. With an ImGui
@@ -620,6 +748,11 @@ internal static class Program
                 {
                     keyboardFocusInUiFrames++;
                 }
+
+                if (fieldFocused)
+                {
+                    caretFrames++;
+                }
             }
         }
 
@@ -631,54 +764,101 @@ internal static class Program
             frameAllocatedBytes,
             measuredFrames,
             pointerOverUiFrames,
-            keyboardFocusInUiFrames);
+            keyboardFocusInUiFrames,
+            caretFrames,
+            widgets.Clicks,
+            widgets.Flips,
+            widgets.Values,
+            widgets.Scrolls,
+            widgets.Edits,
+            widgets.Submits);
     }
 
     /// <summary>
-    /// Pushes the synthetic input of one frame of the smoke run: one pointer move, one Tab key down, and one Tab key
-    /// up, each with no target.
+    /// Pushes the synthetic input of one frame of the smoke run: the widget events, one Tab key down and one Tab key up,
+    /// the longest text burst in the first measured frame only, the text field events, and then one pointer move.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The move goes to the center of the panel in an even frame, and to a point 8 pixels above and to the left of the
-    /// panel in an odd frame. That point is inside the root padding. The root is not pickable, so the move hits no
-    /// element. The position comes from the layout of the last <see cref="UiContext.Update(float)"/>, as the hit test
-    /// of the input pass. Before the first layout, the panel rectangle is 0, and the move hits no element.
+    /// The widget script: a left press and a left release at the center of the <c>Click me</c> button. The button
+    /// clicks one time, and its delegate adds 1 to <see cref="HelloWidgets.Clicks"/>. The press also gives the focus to
+    /// the button. A pointer event with a caller target ends no press, so each event has no target. The same pair
+    /// flips the toggle at its center, so <see cref="HelloWidgets.Flips"/> rises. A third pair presses the slider at 25 %
+    /// of its width in an even frame, or at 75 % in an odd frame. The press sets the value and the release ends it, so
+    /// no drag follows and <see cref="HelloWidgets.Values"/> rises. A scroll event with no target follows at the center of
+    /// the scroll view. Its delta is (0, -1) in an even frame and (0, 1) in an odd frame, so the offset moves down 40
+    /// pixels and then back up. Each frame after the first even frame changes the offset, and
+    /// <see cref="HelloWidgets.Scrolls"/> rises. The view is not inside another scroll view, so
+    /// <see cref="ViewportCenter(Element)"/> needs no offset for it.
     /// </para>
     /// <para>
-    /// The Tab down moves the focus to the next focusable element. The panel is the only focusable element, so the
-    /// focus stays on the panel. The Tab up does not move the focus. The method uses the public
-    /// <see cref="UiContext.PushEvent(in PointerEvent)"/> and <see cref="UiContext.PushEvent(in KeyEvent)"/>,
-    /// because the push methods of <see cref="GlfwUiInput"/> are internal. The events are structs, so the method
-    /// allocates nothing.
+    /// The text field script: the char <c>a</c> in an even frame, or a Backspace key down in an odd frame, with the
+    /// field as the caller target (Finding 13). The char adds <c>a</c> at the caret, and the Backspace removes it, so
+    /// each frame changes the text and <see cref="HelloWidgets.Edits"/> rises. A main Enter key down with the field as
+    /// the caller target follows, so <see cref="HelloWidgets.Submits"/> rises. A left press and a left release with no
+    /// target at the center of the field come last. The press stores the pointer x, and the caret pass of
+    /// <see cref="UiContext.Update(float)"/> maps it to a caret index with the measure of <see cref="ImGuiRenderer"/>.
+    /// </para>
+    /// <para>
+    /// The longest text burst: in the first measured frame, <see cref="PushLongestTextBurst"/> pushes its events after
+    /// the Tab and before the char or the Backspace of the frame. Thus the two text labels of
+    /// <see cref="HelloWidgets"/> get their longest text in a measured frame, and the field ends the frame with the
+    /// same text as with no burst.
+    /// </para>
+    /// <para>
+    /// The focus rule: the caret pass runs for the focus owner only, and the field draws its caret only while it holds
+    /// the focus. The field press is the last focus change of the drain, so the field holds the focus at the caret
+    /// pass. A Tab after the field press moves the focus to the panel, and the caret pass and the caret draw then do
+    /// not run. The caret count of <see cref="RunFrames"/> then stays at 0, and the widget check of
+    /// <see cref="Run"/> fails. The press comes after the edit keys, because a change of the text after the press drops
+    /// the stored pointer x, and the caret pass then maps nothing.
+    /// </para>
+    /// <para>
+    /// The order rule: the widget events come before the move. The gate reads the hit of the last pointer event of the
+    /// drain, so the move decides <see cref="UiRoutingGate.PointerOverUi"/>. A widget event after the move puts the
+    /// pointer over the UI in the off-panel frames too, and the input check of <see cref="Run"/> fails.
+    /// </para>
+    /// <para>
+    /// The move goes to the center of the panel in an even frame, and to a point 8 pixels above and to the left of the
+    /// panel in an odd frame. That point is inside the root padding. The root is not pickable, so the move hits no
+    /// element. Each position comes from the layout of the last <see cref="UiContext.Update(float)"/>, as the hit test
+    /// of the input pass. Before the first layout, each rectangle is 0, and no event hits an element.
+    /// </para>
+    /// <para>
+    /// The Tab down moves the focus to the next focusable element in tree order: from the slider to the text field. The
+    /// focus stays in the UI. The Tab up does not move the focus. The presses on the widgets also give the focus to the
+    /// UI, so the keyboard count of line 4 does not prove the Tab. <c>FocusAllocationTests</c> and the queue case of
+    /// <c>ThousandElementAllocationTests</c> guard the Tab. The method uses the public push methods of
+    /// <see cref="UiContext"/>, because the push methods of <see cref="GlfwUiInput"/> are internal. The events are
+    /// structs, so the method allocates nothing.
     /// </para>
     /// </remarks>
     /// <param name="ui">The UI context that gets the events.</param>
     /// <param name="panel">The panel of the screen.</param>
+    /// <param name="widgets">The widget section of the screen. The widget events aim at its widgets.</param>
     /// <param name="frameIndex">The index of the frame: the number of frames that the loop rendered before it.</param>
-    private static void PushSmokeInput(UiContext ui, Element panel, int frameIndex)
+    private static void PushSmokeInput(UiContext ui, Element panel, HelloWidgets widgets, int frameIndex)
     {
-        // The viewport rectangle of the panel: the position of the panel plus the position of the root.
-        float4 panelRect = panel.Layout.Rect;
-        float2 origin = new(panelRect.X, panelRect.Y);
-        for (Element? ancestor = panel.Parent; ancestor is not null; ancestor = ancestor.Parent)
-        {
-            float4 ancestorRect = ancestor.Layout.Rect;
-            origin = new float2(origin.X + ancestorRect.X, origin.Y + ancestorRect.Y);
-        }
-
-        float2 position = frameIndex % 2 == 0
-            ? new float2(origin.X + (panelRect.Z * 0.5f), origin.Y + (panelRect.W * 0.5f))
-            : new float2(origin.X - SmokeOffPanelOffset, origin.Y - SmokeOffPanelOffset);
-
         double time = Glfw.Time;
-        ui.PushEvent(new PointerEvent
+
+        // The widget script. The widget events come before the move (the order rule).
+        PushClick(ui, ViewportCenter(widgets.ClickButton), time);
+        PushClick(ui, ViewportCenter(widgets.Toggle), time);
+        PushClick(ui, SliderPoint(widgets.Slider, frameIndex), time);
+
+        // The scroll at the center of the view. The delta is (0, -1) in an even frame and (0, 1) in an odd frame, so
+        // the offset moves down in one frame and back up in the next frame.
+        ui.PushEvent(new ScrollEvent
         {
-            Header = new UiEventHeader(UiEventType.PointerMove, time, null),
-            Position = position,
-            Button = PointerButton.Left,
+            Header = new UiEventHeader(UiEventType.Scroll, time, null),
+            Position = ViewportCenter(widgets.ScrollView),
+            Delta = new float2(0f, frameIndex % 2 == 0 ? -1f : 1f),
             Modifiers = UiModifiers.None,
         });
+
+        // The Tab moves the focus from the slider to the text field. The field press below gives the field the focus
+        // too. The Tab comes before that press, because the field press is the last focus change of the drain (the
+        // focus rule).
         ui.PushEvent(new KeyEvent
         {
             Header = new UiEventHeader(UiEventType.KeyDown, time, null),
@@ -695,5 +875,194 @@ internal static class Program
             Modifiers = UiModifiers.None,
             IsRepeat = false,
         });
+
+        // The longest text burst runs in the first measured frame only, before the char or the Backspace of the frame.
+        TextField field = widgets.TextField;
+        if (frameIndex == WarmUpFrames)
+        {
+            PushLongestTextBurst(ui, field, time);
+        }
+
+        // The text field script. The char and the keys have the field as the caller target (Finding 13).
+        if (frameIndex % 2 == 0)
+        {
+            ui.PushEvent(new CharEvent
+            {
+                Header = new UiEventHeader(UiEventType.Char, time, field),
+                CodePoint = SmokeChar,
+            });
+        }
+        else
+        {
+            PushKeyDown(ui, field, SmokeBackspaceKey, time);
+        }
+
+        PushKeyDown(ui, field, SmokeEnterKey, time);
+
+        // The press comes after the edit keys, so no text change drops the stored pointer x.
+        PushClick(ui, ViewportCenter(field), time);
+
+        // The move. The off-panel point is 8 pixels above and to the left of the top-left corner of the panel.
+        float4 panelRect = panel.Layout.Rect;
+        float2 panelCenter = ViewportCenter(panel);
+        float2 position = frameIndex % 2 == 0
+            ? panelCenter
+            : new float2(
+                panelCenter.X - (panelRect.Z * 0.5f) - SmokeOffPanelOffset,
+                panelCenter.Y - (panelRect.W * 0.5f) - SmokeOffPanelOffset);
+
+        ui.PushEvent(new PointerEvent
+        {
+            Header = new UiEventHeader(UiEventType.PointerMove, time, null),
+            Position = position,
+            Button = PointerButton.Left,
+            Modifiers = UiModifiers.None,
+        });
+    }
+
+    /// <summary>
+    /// Pushes the longest text burst into the text field: <see cref="HelloWidgets.TextCapacity"/> chars of <c>W</c>,
+    /// then one main Enter key down, then <see cref="HelloWidgets.TextCapacity"/> Backspace key downs. Each event has
+    /// the field as the caller target.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The burst runs in the first measured frame (<see cref="WarmUpFrames"/>), an odd frame. The field starts that
+    /// frame with the text <c>a</c> and the caret at the end, because the press of the frame before is past the end of
+    /// the text. The field drops a char that does not fit, so 31 chars of <c>W</c> go in and the last one does not.
+    /// The text then has <see cref="HelloWidgets.TextCapacity"/> bytes, and the text label shows its longest text (38
+    /// bytes). The Enter then shows the longest text of the submit label (43 bytes). Both texts are longer than the
+    /// start buffer of a label (32 bytes). Thus a label that does not get its longest text at the build grows its
+    /// buffer in a measured frame, and the allocation check of <see cref="Run"/> fails.
+    /// </para>
+    /// <para>
+    /// The Backspace keys remove the bytes before the caret, so the field is empty after the burst. The Backspace of
+    /// the frame then changes nothing, and the field ends the frame empty, as in each odd frame. In an even frame, the
+    /// burst also ends with an empty field, and the char of the frame then gives <c>a</c>.
+    /// </para>
+    /// <para>
+    /// The frame then pushes about 80 events and the poll events of the window. The ring of the context holds
+    /// <see cref="UiContext.DefaultEventQueueCapacity"/> (256) entries, so the frame drops no event. The events are
+    /// structs, so the method allocates nothing.
+    /// </para>
+    /// </remarks>
+    /// <param name="ui">The UI context that gets the events.</param>
+    /// <param name="field">The text field. It is the caller target of each event.</param>
+    /// <param name="time">The time stamp of the events, in seconds.</param>
+    private static void PushLongestTextBurst(UiContext ui, TextField field, double time)
+    {
+        for (int i = 0; i < HelloWidgets.TextCapacity; i++)
+        {
+            ui.PushEvent(new CharEvent
+            {
+                Header = new UiEventHeader(UiEventType.Char, time, field),
+                CodePoint = SmokeLongestChar,
+            });
+        }
+
+        PushKeyDown(ui, field, SmokeEnterKey, time);
+        for (int i = 0; i < HelloWidgets.TextCapacity; i++)
+        {
+            PushKeyDown(ui, field, SmokeBackspaceKey, time);
+        }
+    }
+
+    /// <summary>
+    /// Pushes one key down with a caller target, no modifier, the scan code 0, and no repeat. The method pushes no key
+    /// up.
+    /// </summary>
+    /// <remarks>
+    /// A key with a caller target keeps its target and changes no focus, so a Tab of the same frame does not move it.
+    /// The event is a struct, so the method allocates nothing.
+    /// </remarks>
+    /// <param name="ui">The UI context that gets the event.</param>
+    /// <param name="target">The caller target of the key.</param>
+    /// <param name="key">The GLFW key code.</param>
+    /// <param name="time">The time stamp of the event, in seconds.</param>
+    private static void PushKeyDown(UiContext ui, Element target, int key, double time)
+    {
+        ui.PushEvent(new KeyEvent
+        {
+            Header = new UiEventHeader(UiEventType.KeyDown, time, target),
+            Key = key,
+            ScanCode = 0,
+            Modifiers = UiModifiers.None,
+            IsRepeat = false,
+        });
+    }
+
+    /// <summary>
+    /// Pushes a left press and a left release at one point, each with no target. On a widget that clicks, the pair
+    /// gives one click.
+    /// </summary>
+    /// <remarks>
+    /// The press and the release have no caller target, so the drain sets the press target from the hit test, and the
+    /// release can end the press. The events are structs, so the method allocates nothing.
+    /// </remarks>
+    /// <param name="ui">The UI context that gets the events.</param>
+    /// <param name="position">The point of the press and the release, in viewport pixels.</param>
+    /// <param name="time">The time stamp of the events, in seconds.</param>
+    private static void PushClick(UiContext ui, float2 position, double time)
+    {
+        ui.PushEvent(new PointerEvent
+        {
+            Header = new UiEventHeader(UiEventType.PointerDown, time, null),
+            Position = position,
+            Button = PointerButton.Left,
+            Modifiers = UiModifiers.None,
+        });
+        ui.PushEvent(new PointerEvent
+        {
+            Header = new UiEventHeader(UiEventType.PointerUp, time, null),
+            Position = position,
+            Button = PointerButton.Left,
+            Modifiers = UiModifiers.None,
+        });
+    }
+
+    /// <summary>
+    /// Gives the press point of the slider in a frame: 25 % of the width of the slider in an even frame, 75 % in an odd
+    /// frame, at the middle of the height.
+    /// </summary>
+    /// <remarks>
+    /// The two points map to two different whole values, and both differ from the start value of 50. Thus each frame
+    /// changes the value and calls <see cref="Slider.ValueChanged"/>. The point is inside the content box, because the
+    /// border of the slider is 2 pixels wide. Before the first layout, the result is (0, 0). The method allocates
+    /// nothing.
+    /// </remarks>
+    /// <param name="slider">The slider. It must be in the tree of the context.</param>
+    /// <param name="frameIndex">The index of the frame.</param>
+    /// <returns>The press point in viewport pixels.</returns>
+    private static float2 SliderPoint(Slider slider, int frameIndex)
+    {
+        float2 center = ViewportCenter(slider);
+        float4 rect = slider.Layout.Rect;
+        float fraction = frameIndex % 2 == 0 ? 0.25f : 0.75f;
+        return new float2(center.X - (rect.Z * 0.5f) + (rect.Z * fraction), center.Y);
+    }
+
+    /// <summary>
+    /// Gives the center of an element in viewport pixels, from the layout of the last
+    /// <see cref="UiContext.Update(float)"/>.
+    /// </summary>
+    /// <remarks>
+    /// The layout rectangle of an element is relative to its parent. The method adds the position of each ancestor up
+    /// to the root, then adds half of the size of the element. Before the first layout, each rectangle is 0, so the
+    /// result is (0, 0). The method subtracts no scroll offset. Thus a point of a widget inside a
+    /// <see cref="ScrollView"/> needs the offset of the view too. The method allocates nothing.
+    /// </remarks>
+    /// <param name="element">The element. It must be in the tree of the context.</param>
+    /// <returns>The center of the border box of <paramref name="element"/> in viewport pixels.</returns>
+    private static float2 ViewportCenter(Element element)
+    {
+        float4 rect = element.Layout.Rect;
+        float2 origin = new(rect.X, rect.Y);
+        for (Element? ancestor = element.Parent; ancestor is not null; ancestor = ancestor.Parent)
+        {
+            float4 ancestorRect = ancestor.Layout.Rect;
+            origin = new float2(origin.X + ancestorRect.X, origin.Y + ancestorRect.Y);
+        }
+
+        return new float2(origin.X + (rect.Z * 0.5f), origin.Y + (rect.W * 0.5f));
     }
 }

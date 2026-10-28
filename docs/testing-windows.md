@@ -55,16 +55,29 @@ The first run downloads the packages and can take longer than five minutes. The 
 
 ## 4. The look checklist
 
-Do each item in this order. This list covers the open items "Phase 2 Windows" and "CR-1 Windows" of `docs/features/dev-ops/human-testing.md`.
+Do each item in this order. Each item states one action and one result. This list covers the open items "Phase 2 Windows" and "CR-1 Windows" of `docs/features/dev-ops/human-testing.md`.
 
 1. The window title is `HelloPanel`.
 2. The window shows the text `Hello, brutal-ui` on a dark background.
-3. Minimize the window.
-4. Restore the window. See that the window draws again.
-5. Minimize the window again.
-6. Close the window from the taskbar. Right-click the taskbar button, then click Close window.
-7. Run `$LASTEXITCODE`. It prints `0`.
-8. Run `Get-Process HelloPanel -ErrorAction SilentlyContinue`. It prints nothing.
+3. Click `Click me` two times. The label next to it reads `Button clicks: 2`.
+4. Move the pointer over `Click me`. The fill gets lighter. The panel loses its hover fill while the pointer is over a widget. This is correct.
+5. Press Tab until `Click me` has the focus. Its border turns yellow.
+6. Click the gray `Disabled` button. No hover fill shows, and no label changes.
+7. Click the small square of the toggle. The square turns green, and its label reads `Toggle: on`.
+8. Drag the thumb of the slider to the right. The label reads `Slider value: ` with a number that follows the thumb.
+9. Press Tab until the slider has the focus, then press Right. The value goes up by 1.
+10. Turn the mouse wheel down over the list. The items move up, and the label reads `Scroll offset: 40 px`.
+11. Drag the list with the left button. The items follow the pointer.
+12. Click the text field and type `Hello`. The label reads `Text: Hello`, and the caret sits right after the `o`, with a gap of 1 pixel or less.
+13. Press Enter in the field. The second label reads `Submitted: Hello`.
+14. Type letters until the text is wider than the field. The text moves left, and the caret stays inside the field.
+15. Click an empty part of the root, then press Tab five times. The focus visits the panel, `Click me`, the toggle, the slider, and the text field, each with a yellow border. The disabled button and the list take no focus.
+16. Minimize the window.
+17. Restore the window. See that the window draws again.
+18. Minimize the window again.
+19. Close the window from the taskbar. Right-click the taskbar button, then click Close window.
+20. Run `$LASTEXITCODE`. It prints `0`.
+21. Run `Get-Process HelloPanel -ErrorAction SilentlyContinue`. It prints nothing.
 
 ## 5. The report block
 
@@ -77,10 +90,23 @@ dotnet: <output of dotnet --version>
 test script: <the PASS line, or the FAIL lines>
 1 title is HelloPanel: <yes or no>
 2 text Hello, brutal-ui on a dark background: <yes or no>
-3-4 minimize and restore, the window draws again: <yes or no>
-5-6 minimize again and close from the taskbar: <yes or no>
-7 LASTEXITCODE after the close is 0: <yes or no, and the value>
-8 no HelloPanel process: <yes or no>
+3 Click me gives Button clicks: 2: <yes or no>
+4 hover fill on Click me: <yes or no>
+5 yellow focus border on Click me after Tab: <yes or no>
+6 the Disabled button gives no change: <yes or no>
+7 toggle turns green and reads Toggle: on: <yes or no>
+8 slider drag, the label follows the thumb: <yes or no>
+9 slider Right key adds 1: <yes or no>
+10 wheel gives Scroll offset: 40 px: <yes or no>
+11 the drag moves the list: <yes or no>
+12 text field shows Text: Hello, caret gap of 1 pixel or less: <yes or no, and the gap>
+13 Enter gives Submitted: Hello: <yes or no>
+14 long text scrolls under the caret: <yes or no>
+15 Tab visits panel, button, toggle, slider, field, and skips the disabled button and the list: <yes or no>
+16-17 minimize and restore, the window draws again: <yes or no>
+18-19 minimize again and close from the taskbar: <yes or no>
+20 LASTEXITCODE after the close is 0: <yes or no, and the value>
+21 no HelloPanel process: <yes or no>
 time from the pull to this block (second run): <minutes>
 ctrl+c exit code (optional): <the value of $LASTEXITCODE after Ctrl+C>
 ctrl+c full output (optional): <copy the full output after Ctrl+C, with the line test-windows: FAIL at <step>: interrupted>
@@ -148,6 +174,8 @@ Read the header line first. It names the step. Then read the tail of the log, an
 | `FAIL at smoke (exit 2)` | The `Usage:` line in the log | Set `BRUTAL_UI_FRAMES` to a whole number above 0. |
 | `FAIL at smoke (exit 1)` with `GLFW finds no Vulkan loader` | The line that holds `GLFW finds no Vulkan loader` in `artifacts\test-windows\smoke.log` | Install or update the GPU driver. |
 | `FAIL at smoke (exit 1)` with `Unable to load DLL 'vulkan-1'` | The inner exception of the `TypeInitializationException` in `artifacts\test-windows\smoke.log` | The driver must install `vulkan-1.dll` in `System32`. Run the `Test-Path` check of the setup table in section 2. |
+| `FAIL at smoke (exit 1)` with `allocated <B> bytes after warm-up` | The line `HelloPanel: Update and Draw allocated <B> bytes after warm-up. The limit is 0 bytes.` in `artifacts\test-windows\smoke.log` | A handler or a draw path of a widget allocates. Tell the agent, and paste the line. |
+| `FAIL at smoke (exit 1)` with `did not reach each widget` | Line 5 of `artifacts\test-windows\smoke.log`: the count that is 0 | The synthetic input missed the widget of that count. Tell the agent, and paste line 5. |
 | `FAIL at smoke (exit 1)` with another error | The exception in `artifacts\test-windows\smoke.log` | Update the GPU driver. Then read the exception. |
 | `FAIL at <step>: interrupted` | Nothing. You pressed `Ctrl+C` in the build, test, or smoke step. | Run `Get-Process HelloPanel -ErrorAction SilentlyContinue`. It must print nothing. Run the script again. |
 

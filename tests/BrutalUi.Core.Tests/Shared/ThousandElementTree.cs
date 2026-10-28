@@ -9,9 +9,15 @@ namespace BrutalUi.Core.Tests;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <see cref="Build"/> creates the tree, adds the root to a new <see cref="UiContext"/>, and sets the viewport. It
+/// <see cref="Build()"/> creates the tree, adds the root to a new <see cref="UiContext"/>, and sets the viewport. It
 /// runs no <see cref="UiContext.Update(float)"/>, so a caller can measure the build alone. Each name is a string
 /// literal, so the build creates no name string.
+/// </para>
+/// <para>
+/// <see cref="Build()"/> gives a context with no measurer. The tree holds no widget and no label, so it needs no
+/// measurer. A caller that adds a widget to the tree needs a measurer: a <see cref="Button"/> measures its text, and
+/// the caret pass of a <see cref="TextField"/> maps a press and scrolls its text only with a measurer. Such a caller
+/// uses <see cref="Build(IUiRenderer)"/>.
 /// </para>
 /// <para>
 /// The sections, in build order: the root (1), the header (14), the body (1), the sidebar (151), the grid (361), the
@@ -261,11 +267,29 @@ internal sealed class ThousandElementTree
     public required ClassId MutedClass { get; init; }
 
     /// <summary>
-    /// Builds the tree, adds the root to a new context, and sets the viewport. It runs no update.
+    /// Builds the tree, adds the root to a new context with no measurer, and sets the viewport. It runs no update.
     /// </summary>
+    /// <remarks>The method calls <see cref="Build(IUiRenderer)"/> with <see langword="null"/>.</remarks>
     /// <returns>The tree and the handles of the parts that a test changes.</returns>
     /// <exception cref="InvalidOperationException">The tree does not hold <see cref="ElementCount"/> elements.</exception>
     public static ThousandElementTree Build()
+    {
+        return Build(null);
+    }
+
+    /// <summary>
+    /// Builds the tree, adds the root to a new context, and sets the viewport. It runs no update.
+    /// </summary>
+    /// <remarks>
+    /// With a measurer, the context is <c>new UiContext(new UiContext.CreateInfo { Measurer = measurer })</c>. Give a
+    /// measurer when you add a widget to the tree: a <see cref="Button"/> measures its text, and the caret pass of a
+    /// <see cref="TextField"/> maps a press and scrolls its text only with a measurer. With <see langword="null"/>, the
+    /// context is <c>new UiContext()</c>, as in <see cref="Build()"/>.
+    /// </remarks>
+    /// <param name="measurer">The measurer of the new context, or <see langword="null"/> for a context with no measurer.</param>
+    /// <returns>The tree and the handles of the parts that a test changes.</returns>
+    /// <exception cref="InvalidOperationException">The tree does not hold <see cref="ElementCount"/> elements.</exception>
+    public static ThousandElementTree Build(IUiRenderer? measurer)
     {
         Collector c = new(new Element[ElementCount]);
         TextMeasure labelText = new(LabelContentWidth, LineHeight);
@@ -304,7 +328,9 @@ internal sealed class ThousandElementTree
         ClassId muted = ClassName.Intern("muted");
         StyleSheet sheet = BuildSheet(selected, muted);
 
-        UiContext context = new();
+        UiContext context = measurer is null
+            ? new UiContext()
+            : new UiContext(new UiContext.CreateInfo { Measurer = measurer });
         context.ViewportSize = new float2(ViewportWideWidth, ViewportHeight);
         context.AddRoot(root);
         context.AddSheet(sheet);

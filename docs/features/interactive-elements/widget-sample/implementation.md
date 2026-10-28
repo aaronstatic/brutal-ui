@@ -1,10 +1,10 @@
 # Widget Sample - Implementation Plan
 
 **Epic:** interactive-elements (feature 5 of 5)
-**Status:** Planning
-**Started:** 2026-10-27
-**Target Completion:** TBD
-**Last Updated:** 2026-10-27 10:00
+**Status:** Ready for Review
+**Started:** 2026-10-28
+**Target Completion:** 2026-10-28
+**Last Updated:** 2026-10-28 19:30
 
 ---
 
@@ -232,7 +232,7 @@ Program: UI region bytes == 0 after warm-up? ──► line 3. Each count > 0? �
 
 ## Implementation Phases
 
-Each phase is a slice: one narrow path that works end to end, with a demo line that a person can check. Section 11 of `.beast-mode/phase-handoff.md` holds the rules. Notes Q1 names the demo of phase 1. No person answered it, so phase 1 uses the recommended line. Notes Q2, Q3, and Q4 also use the recommended option.
+Each phase is a slice: one narrow path that works end to end, with a demo line that a person can check. Section 11 of `.beast-mode/phase-handoff.md` holds the rules. Notes Q1 names the demo of phase 1. The user chose the recommended line. The user also chose the recommended option of Notes Q2, Q3, and Q4.
 
 Each phase ends with `dotnet build brutal-ui.sln 2>&1 | tail -n 30`, `dotnet test --solution brutal-ui.sln 2>&1 | tail -n 30`, and `scripts/test-linux.sh; echo "exit=$?"` (tool rule 5). Expect `0 Warning(s)`, `0 Error(s)`, 0 failed, the PASS line, and `exit=0`. After the script, read `artifacts/test-linux/smoke.log` and record its `HelloPanel:` lines in `context.md`. The projects have no implicit usings, so each new file holds its own `using` lines. Each public member needs an XML doc comment (CS1591 is an error). The sample uses `namespace HelloPanel;`. The Markup tests and the Core tests use the namespace of their existing files (read `ParsedSheetAllocationTests.cs` and `ScrollViewAllocationTests.cs` first). Prose in comments follows ASD-STE100. Write each sample text as a `u8` literal (the analyzer `BRUTALCORE0011` rejects `SetText("x")`). Run one Markup class with `dotnet run --project tests/BrutalUi.Markup.Tests/BrutalUi.Markup.Tests.csproj -- --filter-class '*<Class>' 2>&1 | tail -n 5`.
 
@@ -415,7 +415,7 @@ The regression set of each phase (no edit): `ParsedSheetAllocationTests`, `Widge
 
 ### Confirmed Assumptions
 
-None (a draft with no interview). `/autorun-epic` drafts this plan, and the person answers its open scope questions before the build.
+The user accepted the plan on 2026-10-28 and chose option A for each open scope question: Q1 the click on screen plus the headless check, Q2 the smoke run drives each widget and exits with code 1 on a zero count, Q3 a second disabled `Button`, and Q4 the `Build(IUiRenderer?)` overload with 9 widgets in the last 3 footer slots.
 
 ### Decision 1: One new sample file for the widgets
 **Choice:** `samples/HelloPanel/HelloWidgets.cs` builds the widget section and holds the status labels, the counts, and the delegates. `HelloScreen.Build` adds the section to the panel and returns the object.
@@ -588,7 +588,7 @@ Run each step from `/home/aaronstatic/dev/brutal-ui` on Linux. `<scratch>` is an
 
 ### Open Scope Questions
 
-No person answered these questions. Each one uses the recommended option.
+The user accepted the plan on 2026-10-28 and chose the recommended option (A) for each question.
 
 **Q1. What is the demo of phase 1?**
 - **A (recommended):** a person runs `dotnet run --project samples/HelloPanel/HelloPanel.csproj` on a desktop, clicks the `Click me` button two times, and reads `Button clicks: 2` next to it. A headless verifier reads the PASS line of `scripts/test-linux.sh` and `clicks <C>` above 0 in line 5 of `smoke.log`. Reason: it shows the widget, the delegate, the label, and the smoke contract in one path, and the headless part runs on this machine.
@@ -626,4 +626,3 @@ No person answered these questions. Each one uses the recommended option.
 12. **A scroll or a char to a widget that does not take it.** The requirement asks for each event kind to each widget. The gate pushes them, and they walk on. The gate thus measures the walk, not a widget step.
 13. **Known debt of the epic.** A press that a capture handler on an ancestor stops keeps the press target. `:disabled` on an ancestor does not block a widget. `RoutingGate.PointerOverUi` follows the hit during a captured drag. `TransitionCurveTests.TheCurvesAllocateNothing` fails one time in some full runs. This plan changes none of these. A flaky full run is not a failure of this feature. Run it again and record it.
 14. **Draw commands and vertices change.** Line 2 of the smoke run gets new numbers with the widgets and the clips. No script reads them. Section 14 records the new values from `context.md`.
-15. **No edit tool for this plan.** The planner had no edit tool, so it wrote the plan file two times in full. The second write fixed the rule counts and the task total.

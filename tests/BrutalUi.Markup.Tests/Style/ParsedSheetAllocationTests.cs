@@ -77,7 +77,7 @@ public sealed class ParsedSheetAllocationTests
         Assert.Empty(result.Errors);
         Assert.True(result.Succeeded);
         StyleSheet sheet = result.GetSheetOrThrow();
-        Assert.Equal(6, sheet.Rules.Length);
+        // HelloPanelSheetTests.TheSheetHoldsEachRule pins the rule count. The widget rules of widget-sample come after the 6 old rules.
 
         StyleProperties root = FindRule(sheet, ".hello-root").Properties;
         AssertSetMembers(in root, StyleProperty.AlignItems, StyleProperty.Padding);

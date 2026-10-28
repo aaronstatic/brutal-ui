@@ -7,8 +7,9 @@ using BrutalUi.Markup;
 namespace HelloPanel;
 
 /// <summary>
-/// Builds the screen of the sample: a root, a panel, two labels, and one image. Also fills the pixels of the checker
-/// texture of the image, and gives the text of the gate label.
+/// Builds the screen of the sample: a root, a panel, two labels, one image, and the widget section of
+/// <see cref="HelloWidgets"/>. Also fills the pixels of the checker texture of the image, and gives the text of the
+/// gate label.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -16,14 +17,27 @@ namespace HelloPanel;
 /// column with a fill, a border, and round corners. The panel takes the size of its content.
 /// </para>
 /// <para>
-/// The screen reacts to the pointer and to Tab. The panel is the only focusable element, so Tab gives the focus to
-/// the panel. The two labels and the image are not pickable, so each point inside the panel hits the panel. The root
-/// is not pickable (the layout-root rule): a point outside the panel hits no element, and the game gets the pointer.
+/// The screen reacts to the pointer and to Tab. The panel is not the only focusable element: four widgets of the
+/// widget section take the focus too. These are the <c>Click me</c> button, the toggle, the slider, and the text
+/// field. The disabled button and the scroll view take no focus. Tab walks the focusable elements in tree order: the
+/// panel, <c>Click me</c>, the toggle, the slider, and the text field. A press on one of these widgets gives the
+/// focus to the widget. A press on the disabled button clears the focus: the button is focusable but disabled, and the
+/// press does not go on to the panel. A press on the scroll view gives the focus to the panel, the nearest focusable
+/// ancestor, because the scroll view is not focusable. The two labels and the image are not
+/// pickable, so a point on them hits the panel. The widget section and its rows are pickable, so a press in a gap
+/// between the widgets gives the focus to the panel, the nearest focusable ancestor. The root is not pickable (the
+/// layout-root rule): a point outside the panel hits no element, and the game gets the pointer.
 /// </para>
 /// <para>
-/// Two state rules of the sheet show the states. The <c>.hello-panel:hover</c> rule changes the fill of the panel,
-/// and the <c>.hello-panel:focus</c> rule changes its border color. The two rules set different members, so the
-/// hover and the focus show at the same time.
+/// Two state rules of the sheet show the states of the panel. The <c>.hello-panel:hover</c> rule changes the fill of
+/// the panel, and the <c>.hello-panel:focus</c> rule changes its border color. The two rules set different members,
+/// so the hover and the focus show at the same time. The hover state goes to the hit element only, so the panel
+/// loses its hover fill while the pointer is over the widget section. The widget rules use the same pattern: a hover
+/// or an active rule sets the fill, and a focus rule sets the border color.
+/// </para>
+/// <para>
+/// The widget section is the last child of the panel, after the image. <see cref="HelloWidgets"/> builds it, holds
+/// the status labels and the change counts, and gives the delegates of the widgets.
 /// </para>
 /// <para>
 /// The second label is the gate label. It shows the two values of <see cref="UiContext.RoutingGate"/>. The frame
@@ -31,19 +45,24 @@ namespace HelloPanel;
 /// buffer never grows after the first frame.
 /// </para>
 /// <para>
-/// The two labels use font 0, the default font of the renderer. The sample loads no font, so font 0 is the ImGui
-/// default font. The panel and the two labels use the font atlas texture, so they share one ImGui draw command. The
-/// gate label comes before the image. The image binds the checker texture, so it opens a second draw command.
+/// The labels and the widgets use font 0, the default font of the renderer. The sample loads no font, so font 0 is
+/// the ImGui default font. The panel and the two labels use the font atlas texture, so they share one ImGui draw
+/// command. The gate label comes before the image. The image binds the checker texture, so it opens a second draw
+/// command. The widget section comes after the image and uses the font atlas texture again, so it opens a third draw
+/// command.
 /// </para>
 /// <para>
 /// The sizes and the colors of the screen live in <c>HelloScreen.css</c>. <see cref="LoadSheet"/> parses the file,
-/// and <see cref="Build"/> sets the classes of the sheet. The tree holds no inline value. The rules
-/// <c>.hello-panel &gt; Label</c> and <c>.hello-panel &gt; Image</c> are child rules, so the labels and the image
-/// must stay direct children of the panel.
+/// and <see cref="Build"/> sets the classes of the sheet. The class names of the sheet are <c>hello-root</c>,
+/// <c>hello-panel</c>, <c>hello-widgets</c>, <c>hello-row</c>, and <c>hello-status</c>. The widget rules use the
+/// type names of the widgets, for example <c>Button</c>. The tree holds no inline value. The rules
+/// <c>.hello-panel &gt; Label</c> and <c>.hello-panel &gt; Image</c> are child rules, so the two labels and the image
+/// must stay direct children of the panel. Each status label is a child of a row, so the rule
+/// <c>.hello-row &gt; Label</c> gives its values, and the rule <c>.hello-panel &gt; Label</c> does not apply to it.
 /// </para>
 /// <para>
-/// Copy this file and <c>HelloScreen.css</c> to start a screen of your game. Change a size or a color in the sheet,
-/// not in the code.
+/// Copy this file, <c>HelloWidgets.cs</c>, and <c>HelloScreen.css</c> to start a screen of your game. Change a size
+/// or a color in the sheet, not in the code.
 /// </para>
 /// </remarks>
 internal static class HelloScreen
@@ -149,12 +168,21 @@ internal static class HelloScreen
     /// The root has an auto size, so it takes the viewport size of its <see cref="UiContext"/>. Add the result to a
     /// context with <see cref="UiContext.AddRoot(Element)"/>, and add the sheet of <see cref="LoadSheet"/> to the same
     /// context. The tree sets the classes of the sheet and no inline value. The context must have a measurer, because
-    /// the tree holds two <see cref="Label"/> elements. The image takes the size of <paramref name="checker"/>, one
-    /// pixel for each texel.
+    /// the tree holds <see cref="Label"/> elements and a <see cref="Button"/>. The image takes the size of
+    /// <paramref name="checker"/>, one pixel for each texel.
     /// </para>
     /// <para>
-    /// The root is not pickable, and the panel is focusable. The two labels and the image are not pickable, so a
-    /// point inside the panel hits the panel. The gate label starts with the longest text of <see cref="GateText"/>.
+    /// The root is not pickable. The panel is focusable. Four widgets of the widget section are focusable too: the
+    /// <c>Click me</c> button, the toggle, the slider, and the text field. The disabled button and the scroll view
+    /// take no focus. Tab walks the panel, <c>Click me</c>, the toggle, the slider, and the text field. The two
+    /// labels and the image are not pickable, so a point on them hits the panel. The gate label starts with the
+    /// longest text of <see cref="GateText"/>.
+    /// </para>
+    /// <para>
+    /// The two labels and the image are direct children of the panel, because the rules
+    /// <c>.hello-panel &gt; Label</c> and <c>.hello-panel &gt; Image</c> are child rules. The widget section of
+    /// <paramref name="widgets"/> is the last child of the panel, after the image. Its status labels are children of a
+    /// row, so the rule <c>.hello-row &gt; Label</c> styles them.
     /// </para>
     /// </remarks>
     /// <param name="checker">
@@ -164,8 +192,13 @@ internal static class HelloScreen
     /// The panel. The frame loop of the sample reads its rectangle to aim the synthetic pointer move of the smoke run.
     /// </param>
     /// <param name="gateLabel">The gate label. Set its text with <see cref="GateText"/>.</param>
+    /// <param name="widgets">
+    /// The widget section, its widgets, its status labels, and its change counts. The smoke run aims its widget events
+    /// at the widgets and reads the counts.
+    /// </param>
     /// <returns>The root element of the screen.</returns>
-    public static Element Build(TextureHandle checker, out Element panel, out Label gateLabel)
+    public static Element Build(
+        TextureHandle checker, out Element panel, out Label gateLabel, out HelloWidgets widgets)
     {
         // The rule .hello-panel > Label gives the color and the size. The label keeps font 0, the default font.
         // A label is not pickable, so the pointer hits the panel behind it.
@@ -186,14 +219,19 @@ internal static class HelloScreen
             IsPickable = false,
         };
 
+        // The widget section: a column of rows. Each row holds a widget and its status label.
+        widgets = new HelloWidgets();
+
         // The child rules read the parent, so the labels and the image are direct children of the panel.
         // The gate label comes before the image, so the panel and the two labels share one draw command.
-        // The panel is the only focusable element, so Tab gives the focus to the panel.
+        // The panel is focusable. So are Click me, the toggle, the slider, and the text field. The disabled button
+        // and the scroll view take no focus. Tab walks the panel and then these four widgets in tree order.
         panel = new Element { IsFocusable = true };
         panel.Classes.Add(PanelClass);
         panel.Children.Add(greeting);
         panel.Children.Add(gateLabel);
         panel.Children.Add(checkerImage);
+        panel.Children.Add(widgets.Section);
 
         // The root draws nothing. The rule .hello-root stops the stretch, so the panel keeps the size of its content.
         // The root covers the viewport. It is not pickable (the layout-root rule), so a point outside the panel hits
