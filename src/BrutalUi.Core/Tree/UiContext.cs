@@ -185,6 +185,9 @@ public sealed class UiContext
     private bool _drawing;
     private bool _draining;
 
+    /// <summary>Tells if the binding pass runs. <see cref="Update(float)"/> throws when a binding handler calls it.</summary>
+    private bool _binding;
+
     /// <summary>
     /// The ring of queued events. Both constructors create it, so a push never allocates (Decision 8).
     /// </summary>
@@ -474,6 +477,30 @@ public sealed class UiContext
     }
 
     /// <summary>
+    /// Runs the binding pass alone on each root. <see cref="Update(float)"/> calls it after the input pass and before
+    /// the style pass.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The pass calls the handler of each binding whose source holds a new version. It skips each branch with no
+    /// binding, so a tree with no binding costs one flag check for each root. Only <c>Update</c> calls this method.
+    /// </para>
+    /// <para>The pass allocates nothing.</para>
+    /// </remarks>
+    internal void UpdateBindings()
+    {
+        _binding = true;
+        try
+        {
+            BindingPass.Run(_roots.AsSpan());
+        }
+        finally
+        {
+            _binding = false;
+        }
+    }
+
+    /// <summary>
     /// Runs the style pass alone on each root. <see cref="Update(float)"/> calls it before the layout pass.
     /// </summary>
     /// <remarks>
@@ -591,9 +618,15 @@ public sealed class UiContext
     /// rules, the inline set, and the parent text. An element with no rule and no inline value gets the defaults.
     /// </para>
     /// <para>
-    /// The frame order is: the input pass, the style pass, the transition pass, the layout pass, the caret pass, and
-    /// the clear pass.
-    /// The input pass changes the states, so the style pass of the same call reads the new states. The style pass
+    /// The frame order is: the input pass, the binding pass, the style pass, the transition pass, the layout pass, the
+    /// caret pass, and the clear pass.
+    /// The input pass changes the states, so the style pass of the same call reads the new states. The binding pass
+    /// calls the handler of each binding of <see cref="Element.AddBinding(IBindingSource, BindingHandler, object?)"/>
+    /// whose source holds a new version. A value that an input handler writes reaches the binding pass of the same
+    /// call. A tree with no binding costs one flag check for each root. An exception from a binding handler stops the
+    /// call before the style pass. That binding keeps the new version, so it does not apply again until the next new
+    /// version. The bindings after it apply at the next <see cref="Update(float)"/>. A binding handler that calls
+    /// <see cref="Update(float)"/> gets <see cref="InvalidOperationException"/>. The style pass
     /// writes the target of each member and starts, keeps, turns, or ends the tweens of the transitions of the rules.
     /// The first style of an element starts no tween. The transition pass then advances each running tween by
     /// <paramref name="deltaTime"/>, also the tween that the style pass started in this call. It writes the value of
@@ -631,11 +664,23 @@ public sealed class UiContext
     /// <exception cref="InvalidOperationException">
     /// An event handler of the input pass calls this method. The input pass of this context runs already.
     /// </exception>
+    /// <exception cref="InvalidOperationException">
+    /// A binding handler calls this method. The binding pass of this context runs already.
+    /// </exception>
     public void Update(float deltaTime)
     {
+        // A binding handler runs inside the binding pass. A nested call would run the passes again.
+        if (_binding)
+        {
+            throw new InvalidOperationException("A binding handler must not call Update.");
+        }
+
         // The input pass (A5): the drain walks the queued events and changes the states before the style pass
         // reads them.
         DrainEvents();
+
+        // The binding pass. It applies each new store version before the style pass reads the elements.
+        UpdateBindings();
 
         ReadOnlySpan<Element> roots = _roots.AsSpan();
 

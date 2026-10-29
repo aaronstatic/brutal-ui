@@ -17,6 +17,12 @@ namespace BrutalUi.Core;
 /// The inline style set lives in the element, next to the computed style (A1). Thus an inline write needs no lookup
 /// and no allocation. Each element holds the full set, also when it has no inline value.
 /// </para>
+/// <para>
+/// The element holds a binding list. <see cref="AddBinding(IBindingSource, BindingHandler, object?)"/> adds a source,
+/// a static handler, and a target at build time. The binding pass of <see cref="UiContext.Update(float)"/> runs after
+/// the input pass and before the style pass. It calls the handler of each binding with a new source version. A subtree
+/// flag lets the pass skip each branch with no binding, so a tree with no binding costs one flag check for each root.
+/// </para>
 /// </remarks>
 public class Element
 {
@@ -36,6 +42,15 @@ public class Element
     /// registration creates the object.
     /// </summary>
     private ElementHandlers? _handlers;
+
+    /// <summary>
+    /// The binding slots of the element, or <see langword="null"/> when the element has no binding. The first add
+    /// creates 2 slots, and each later grow doubles the length. The array never shrinks.
+    /// </summary>
+    private ElementBinding[]? _bindings;
+
+    /// <summary>The count of the used slots of <see cref="_bindings"/>.</summary>
+    private int _bindingCount;
 
     private static readonly ElementTypeId s_typeId = ElementType.Intern("Element");
 
@@ -594,6 +609,133 @@ public class Element
     /// <remarks>The member returns a <c>ref</c>, so a change goes to the field and not to a copy.</remarks>
     internal ref ElementStorage ChildStorage => ref _children;
 
+    /// <summary>Gets the count of the bindings of the element.</summary>
+    /// <remarks>The count rises by one at each <see cref="AddBinding(IBindingSource, BindingHandler, object?)"/>.</remarks>
+    public int BindingCount => _bindingCount;
+
+    /// <summary>Gets the used binding slots of the element, in the order of add. The span allocates nothing.</summary>
+    /// <remarks>The span is a view of the current array. A later add can replace the array, so read the span again.</remarks>
+    internal ReadOnlySpan<ElementBinding> Bindings => new(_bindings, 0, _bindingCount);
+
+    /// <summary>
+    /// Gets or sets a value that tells if the element or a descendant can hold a binding.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <see cref="AddBinding(IBindingSource, BindingHandler, object?)"/> and an attach set the value up the parent
+    /// chain, to the first ancestor that holds it. The binding pass skips each element with the value
+    /// <see langword="false"/>. After it visits an element, the pass writes the value again from the own binding count
+    /// and the values of the children.
+    /// </para>
+    /// <para>
+    /// The value is a hint. A remove leaves a stale <see langword="true"/> on the old ancestors, and the next pass
+    /// clears it. The value is never a stale <see langword="false"/>: when an element in a tree holds
+    /// <see langword="true"/>, each ancestor also holds it.
+    /// </para>
+    /// </remarks>
+    internal bool HasBoundSubtree { get; set; }
+
+    /// <summary>
+    /// Adds a binding to the element: a source, a handler, and a target.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Add a binding at build time. The list grows by doubling and never shrinks, so the add can allocate.
+    /// </para>
+    /// <para>
+    /// The first <see cref="UiContext.Update(float)"/> applies the binding, and each later update applies it one time
+    /// for each new version of <paramref name="source"/>. The bindings of one element apply in the order of add.
+    /// </para>
+    /// <para>
+    /// The element holds the source, and the source holds no reference to the element. Pass a static handler in a
+    /// <c>static readonly</c> field, so the add allocates no delegate.
+    /// </para>
+    /// </remarks>
+    /// <param name="source">The source of the bound value. The binding pass reads its version.</param>
+    /// <param name="handler">The handler that writes the value into the element.</param>
+    /// <param name="target">The object that the binding pass gives to <paramref name="handler"/>.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="source"/> or <paramref name="handler"/> is <see langword="null"/>.</exception>
+    public void AddBinding(IBindingSource source, BindingHandler handler, object? target)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(handler);
+
+        // Step 1: grow the array when it is full. The first add creates 2 slots.
+        if (_bindings is null)
+        {
+            _bindings = new ElementBinding[2];
+        }
+        else if (_bindingCount == _bindings.Length)
+        {
+            Array.Resize(ref _bindings, _bindings.Length * 2);
+        }
+
+        // Step 2: write the slot. The applied version 0 makes the first pass apply the binding.
+        _bindings[_bindingCount] = new ElementBinding
+        {
+            Source = source,
+            AppliedVersion = 0,
+            Handler = handler,
+            Target = target,
+        };
+        _bindingCount++;
+
+        // Step 3: mark the element and the parent chain, so the pass enters the branch.
+        MarkBoundChain(this);
+    }
+
+    /// <summary>
+    /// Drops each binding of the element.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The method writes <see langword="default"/> into each used slot, so the element drops its references to each
+    /// source and each target. It sets <see cref="BindingCount"/> to 0 and keeps the array. It does not change the
+    /// bound-subtree flag: the next binding pass clears a stale flag.
+    /// </para>
+    /// <para>
+    /// The leave rule: an element outside the roots of a context applies nothing, because the binding pass walks from
+    /// the roots only. The element keeps its bindings, and the first <see cref="UiContext.Update(float)"/> after a join
+    /// applies a new version. Call this method to drop the bindings for good. A store holds no reference to an
+    /// element, so a dropped element needs no unsubscribe.
+    /// </para>
+    /// </remarks>
+    public void ClearBindings()
+    {
+        if (_bindings is not null)
+        {
+            Array.Clear(_bindings, 0, _bindingCount);
+        }
+
+        _bindingCount = 0;
+    }
+
+    /// <summary>Gets a reference to the binding slot at an index. The binding pass writes the applied version through it.</summary>
+    /// <remarks>
+    /// The reference points into the current array. A later add can replace the array, so get the reference again
+    /// after each handler call.
+    /// </remarks>
+    /// <param name="index">The index of the slot, from 0 to <see cref="BindingCount"/> minus 1.</param>
+    /// <returns>A reference to the slot.</returns>
+    internal ref ElementBinding BindingAt(int index)
+    {
+        Debug.Assert((uint)index < (uint)_bindingCount, "The index must name a used binding slot.");
+        return ref _bindings![index];
+    }
+
+    /// <summary>
+    /// Sets <see cref="HasBoundSubtree"/> on an element and on each ancestor, up to the first element that holds it.
+    /// </summary>
+    /// <remarks>The stop is safe, because each ancestor of an element with the value also holds it.</remarks>
+    /// <param name="start">The first element to mark, or <see langword="null"/> for no mark.</param>
+    private static void MarkBoundChain(Element? start)
+    {
+        for (Element? e = start; e is not null && !e.HasBoundSubtree; e = e._parent)
+        {
+            e.HasBoundSubtree = true;
+        }
+    }
+
     /// <summary>
     /// Marks the element dirty for the given kinds, and gives each ancestor the descendant bits.
     /// </summary>
@@ -750,6 +892,10 @@ public class Element
     /// The caller adds the element to the child storage of the parent first, and marks the parent for layout.
     /// The subtree mark costs one walk of the subtree and allocates nothing.
     /// </para>
+    /// <para>
+    /// When the element holds <see cref="HasBoundSubtree"/>, the method also sets it on each new ancestor, up to the
+    /// first ancestor that holds it. Thus the binding pass enters the new branch.
+    /// </para>
     /// </remarks>
     /// <param name="parent">The new parent.</param>
     internal void AttachToParent(Element parent)
@@ -761,6 +907,12 @@ public class Element
 
         DirtyFlags flags = _dirty;
         PropagateToAncestors(DirtyBits.ToDescendant(flags & DirtyBits.SelfMask) | (flags & DirtyBits.DescendantMask));
+
+        // A bound subtree marks the new parent chain, so the binding pass enters the new branch.
+        if (HasBoundSubtree)
+        {
+            MarkBoundChain(parent);
+        }
     }
 
     /// <summary>

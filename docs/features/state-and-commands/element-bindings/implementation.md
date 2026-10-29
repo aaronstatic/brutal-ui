@@ -1,10 +1,10 @@
 # Element Bindings - Implementation Plan
 
 **Epic:** state-and-commands (feature 2 of 4)
-**Status:** Planning
+**Status:** Ready for Review
 **Started:** 2026-10-29
 **Target Completion:** TBD
-**Last Updated:** 2026-10-29
+**Last Updated:** 2026-10-29 08:58
 
 ---
 
@@ -473,6 +473,8 @@ Run each step from `/home/aaronstatic/dev/brutal-ui` on Linux. `<scratch>` is an
 ### Open Scope Questions
 
 This plan is a draft with no interview. Each question below has a recommended option, and the plan uses it.
+
+**Answered 2026-10-29:** the user chose (A) for each of the four questions. The plan stays as written.
 
 1. **The seam for the binding list.** `Element` lives in Core and cannot name `Store<T>`.
    - **(A) Recommended:** A Core struct `ElementBinding` (an `IBindingSource`, the applied version, a static `BindingHandler`, and a target) in a pooled array on `Element`, a public `Element.AddBinding`, and the typed bind methods as Framework extension methods (options (a) and (c) of store-and-subscription). Decisions 1, 2, and 8.
