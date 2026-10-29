@@ -1,7 +1,7 @@
 # brutal-ui - Overview
 
-**Last Updated:** 2026-10-22 16:30
-**Version:** v1.5
+**Last Updated:** 2026-10-29 09:00
+**Version:** v1.6
 
 ## Project Summary
 
@@ -16,6 +16,7 @@ brutal-ui gives BRUTAL developers a retained-mode game UI framework with zero al
 | imgui-renderer (epic) | Complete | 141/141 (100%) | `IUiRenderer`, `UiContext.Draw`, `ImGuiRenderer`, `Label`, `Image`, and the HelloPanel static screen on Vulkan. Draw allocates 0 bytes. 1013 tests pass. Closes Phase 1. |
 | style-system (epic) | Complete | 234/234 (100%) | Stylesheets, selectors with pseudo-states and a depth-2 chain, a zero-allocation cascade into `ComputedStyle`, a CSS-subset parser, and paint transitions. HelloPanel loads a stylesheet. 2121 tests pass. |
 | input-routing (epic) | Complete | 152/152 (100%) | A zero-allocation event ring, a capture and bubble walk, a hit test, a focus owner with Tab, the `BrutalUi.Glfw` adapter, and `UiRoutingGate`. HelloPanel shows hover, focus, and the gate. 2281 tests pass. |
+| interactive-elements (epic) | Complete | 183/183 (100%) | `Button`, `Toggle`, `Slider`, `ScrollView`, and `TextField` on the event slots and the focus owner, with a delegate slot for each change. HelloPanel shows each widget, and the smoke run drives each one. 2558 tests pass. Closes Phase 2. |
 
 > An epic is one row. Its child features live in `docs/features/<epic>/epic-overview.md`.
 
@@ -30,9 +31,12 @@ brutal-ui gives BRUTAL developers a retained-mode game UI framework with zero al
 - **GPU smoke contract (Phase 1):** The HelloPanel smoke run prints 3 lines and exits with code 1 when `Update` and `Draw` allocate after warm-up.
 - **style-system → later epics:** Code sets an inline value through `Element.Inline`, and `Element.Style` is `ref readonly`. The input-routing epic sets `Element.States`, and the pseudo-state rules restyle the subtree. The markup epic loads a sheet through `StyleSheetParser` in `BrutalUi.Markup`. `UiContext.Update` runs the style pass, then the transition pass, then layout.
 - **input-routing → later epics:** A handler registers on the capture and bubble slots of `Element` at build time. `UiContext.Update` drains the event ring, then runs the style pass, the transition pass, and layout. The interactive-elements epic builds `Button`, `Toggle`, `ScrollView`, and `TextField` on these events and on the focus owner. The game reads `UiContext.RoutingGate` after `Update`.
+- **interactive-elements → later epics:** A widget reports each change through an `Action<T>` delegate slot that the game sets at build time. The framework epic binds a widget to a command or a store through these slots. The markup epic registers each widget type by name. `UiContext.Update` now runs a caret pass for a focused `TextField` after layout. `ThousandWidgetAllocationTests` puts each widget into the 0-byte gate.
+- **GPU smoke contract (Phase 2):** The HelloPanel smoke run drives each widget in each frame, prints a fifth line with six counts, and exits with code 1 when a count is 0.
 
 ## Changelog
 
+- v1.6 (2026-10-29): **interactive-elements epic complete** - 5/5 features, 183/183 tasks. button-and-toggle sets the widget pattern with `Button`, `Toggle`, and the delegate slot. slider adds `Slider` with a drag through `IDragCapture` and the arrow keys. scroll-view adds `ScrollView` with the scroll offset in `HitWalk` and the draw walk. text-field adds `TextField` with a UTF-8 buffer, a caret, a selection, a press and drag map, and the caret pass. widget-sample shows each widget in HelloPanel and adds the widget gate. 2558 tests pass, and each allocation gate measures 0 bytes. Phase 2 is closed.
 - v1.5 (2026-10-22): **input-routing epic complete** - 4/4 features, 152/152 tasks. event-model adds the event structs, the fixed ring on `UiContext`, the capture and bubble slots on `Element`, and `EventWalk.Dispatch` with stop propagation. pointer-routing adds `HitWalk`, `Hover` and `Active`, scroll routing, and the `BrutalUi.Glfw` package with `GlfwUiInput`. keyboard-focus adds the focus owner, click focus, Tab and Shift+Tab, and the key and char route. routing-gate drains the ring first in `UiContext.Update`, adds `UiRoutingGate`, and shows hover, focus, and the gate in HelloPanel. 2281 tests pass, and each allocation gate measures 0 bytes.
 - v1.4 (2026-10-22): **style-system epic complete** - 4/4 features, 234/234 tasks. stylesheet-model adds `StyleProperties`, `StyleRule`, `StyleSheet`, the style pass, `Element.Inline`, the type id, and the inherited text members. selector-matching adds the name and pseudo-state parts, the depth-2 chain, and the byte-tier specificity. style-parser adds the CSS-subset parser with theme variables and the error report, and HelloPanel loads `HelloScreen.css`. transitions adds the tween pool with the CSS easings. 2121 tests pass, and each allocation gate measures 0 bytes.
 - v1.3 (2026-10-21): **imgui-renderer epic complete** - 4/4 features, 141/141 tasks. renderer-interface adds `IUiRenderer`, the paint members, and `UiContext.Draw`. imgui-draw-list adds `ImGuiRenderer` with the font and texture services and the headless ImGui tests. label-and-image adds `Label`, `Image`, the measurer slot, word wrap, and `LayoutNode.ContentInsets`. hello-panel-sample shows the static screen on Vulkan and adds `TreeDrawBenchmark`. 1013 tests pass. Phase 1 is closed.
