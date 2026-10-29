@@ -294,7 +294,7 @@ Each phase ends with `dotnet build brutal-ui.sln 2>&1 | tail -n 30`, `dotnet tes
 - ✅ The cross-phase review: CR-1 to CR-8, CR-10, and CR-11 fixed. CR-9 not fixed by criterion I2.
 
 ### Discovered New Tasks
-- [ ] The user decides CR-9 (the ambiguous cref in `tests/BrutalUi.Benchmarks/FactsReport.cs`). Not a task of this plan.
+- [x] The user decides CR-9 (the ambiguous cref in `tests/BrutalUi.Benchmarks/FactsReport.cs`). The user chose the fix, and the cref now reads `Build()`.
 
 ---
 

@@ -12,7 +12,7 @@ namespace BrutalUi.Benchmarks;
 /// <remarks>
 /// <para>
 /// BenchmarkDotNet has no column for a memory total, a call count, or a stack limit. This report prints one line
-/// for each. The first line gives the bytes that <see cref="ThousandElementTree.Build"/> allocates. The bytes hold
+/// for each. The first line gives the bytes that <see cref="ThousandElementTree.Build()"/> allocates. The bytes hold
 /// the 1000 <c>Element</c> objects with their inline style and layout state, the child lists and the pool arrays,
 /// the <c>All</c> array, the <c>UiContext</c>, and the two <c>TextMeasure</c> objects with their delegates, so the
 /// number is not the size of the elements alone. The report builds and drops one tree first, then measures a second
