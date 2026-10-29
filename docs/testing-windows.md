@@ -41,7 +41,9 @@ The first run downloads the packages and can take longer than five minutes. The 
    .\scripts\test-windows.ps1
    ```
 
-   The `HelloPanel` window opens for about two seconds. Do not touch the window, because `smoke.log` holds the real frame count. The script prints one line that starts with `test-windows: PASS`. Run `$LASTEXITCODE` to see `0`.
+   The `HelloPanel` window opens and stays open. Test the window with the mouse and the keyboard. Close the window to end the run. The script prints one line that starts with `test-windows: PASS`. Run `$LASTEXITCODE` to see `0`.
+
+   For a fixed smoke run, set `BRUTAL_UI_FRAMES` to `120` before the call. The window then closes after about two seconds. Do not touch the window, because `smoke.log` holds the real frame count.
 
 3. Look at the sample:
 
@@ -118,7 +120,7 @@ After the report, the author checks the items "Phase 2 Windows" and "CR-1 Window
 
 | Case | Standard output | Standard error | Exit code |
 |------|-----------------|----------------|-----------|
-| Success | One line: `test-windows: PASS build, test, smoke (<FRAMES> frames) in <S> s` | Nothing | 0 |
+| Success | One line: `test-windows: PASS build, test, smoke (<FRAMES> frames) in <S> s`, or `(indefinite)` when `BRUTAL_UI_FRAMES` is 0 | Nothing | 0 |
 | A step fails | Nothing | `test-windows: FAIL at <step> (exit <rc>)`, then the last 30 lines of `artifacts\test-windows\<step>.log`, then `test-windows: full log: artifacts\test-windows\<step>.log` | `<rc>` of the step |
 | A smoke time-out | Nothing | The header adds `, timed out after <SMOKE_TIMEOUT> s` | 124 |
 | A check fails (`preflight`, `loader`) | Nothing | `test-windows: FAIL at <step>: <problem>`, then `test-windows: fix: <command>` | 1 |
@@ -142,8 +144,8 @@ Set these environment variables before the call.
 
 | Variable | Meaning | Default |
 |----------|---------|---------|
-| `BRUTAL_UI_FRAMES` | The number of frames of the smoke run | 120 |
-| `BRUTAL_UI_SMOKE_TIMEOUT` | The time limit of the smoke step in seconds. Use a whole number above 0. | 60 |
+| `BRUTAL_UI_FRAMES` | The number of frames of the smoke run. 0 runs until you close the window, with no time limit. | 0 |
+| `BRUTAL_UI_SMOKE_TIMEOUT` | The time limit of the smoke step in seconds. Use a whole number above 0. The script ignores it when `BRUTAL_UI_FRAMES` is 0. | 60 |
 
 An empty variable counts as unset. Example:
 
@@ -164,14 +166,14 @@ Read the header line first. It names the step. Then read the tail of the log, an
 | `FAIL at preflight: dotnet does not exist` | The `fix:` line | `winget install Microsoft.DotNet.SDK.10`. Open a new PowerShell window. |
 | `FAIL at preflight: dotnet version ... is not version 10` | The version in the header | `winget install Microsoft.DotNet.SDK.10`. Remove any other SDK from your path. |
 | `FAIL at preflight: BRUTAL_UI_SMOKE_TIMEOUT ... is not a whole number above 0` | The value in the header | Set `BRUTAL_UI_SMOKE_TIMEOUT` to a number of seconds, for example 60. |
-| `FAIL at preflight: BRUTAL_UI_FRAMES ... holds a character that is not a letter, a digit, a plus sign, or a minus sign` | The value in the header | Set `BRUTAL_UI_FRAMES` to a whole number above 0, for example 120. |
+| `FAIL at preflight: BRUTAL_UI_FRAMES ... holds a character that is not a letter, a digit, a plus sign, or a minus sign` | The value in the header | Set `BRUTAL_UI_FRAMES` to 0, or to a whole number above 0, for example 120. |
 | `FAIL at preflight: this script runs on Windows only` | The `fix:` line | Run `scripts/test-linux.sh` on Linux. |
 | `FAIL at preflight: artifacts\test-windows is in use` | The `fix:` line | Close each `HelloPanel` window. Run `dotnet build-server shutdown`. Run the script again. |
 | `FAIL at build (exit <rc>)` | The `error` lines with a `CS` code in the tail | Fix the C# error. Run the script again. |
 | `FAIL at test (exit <rc>)` | The failed test names in the tail | Fix the test or the code. Read `artifacts\test-windows\test.log` for the full list. |
 | `FAIL at loader: the Vulkan loader vulkan-1.dll does not exist in ...` | The `fix:` line | Install or update the GPU driver. The driver installs `vulkan-1.dll`. |
 | `FAIL at smoke (exit 124), timed out after <N> s` | The end of `artifacts\test-windows\smoke.log` | Find the frame where the run stops. Raise `BRUTAL_UI_SMOKE_TIMEOUT` only when the run is slow and not stuck. |
-| `FAIL at smoke (exit 2)` | The `Usage:` line in the log | Set `BRUTAL_UI_FRAMES` to a whole number above 0. |
+| `FAIL at smoke (exit 2)` | The `Usage:` line in the log | Set `BRUTAL_UI_FRAMES` to 0, or to a whole number above 0. |
 | `FAIL at smoke (exit 1)` with `GLFW finds no Vulkan loader` | The line that holds `GLFW finds no Vulkan loader` in `artifacts\test-windows\smoke.log` | Install or update the GPU driver. |
 | `FAIL at smoke (exit 1)` with `Unable to load DLL 'vulkan-1'` | The inner exception of the `TypeInitializationException` in `artifacts\test-windows\smoke.log` | The driver must install `vulkan-1.dll` in `System32`. Run the `Test-Path` check of the setup table in section 2. |
 | `FAIL at smoke (exit 1)` with `allocated <B> bytes after warm-up` | The line `HelloPanel: Update and Draw allocated <B> bytes after warm-up. The limit is 0 bytes.` in `artifacts\test-windows\smoke.log` | A handler or a draw path of a widget allocates. Tell the agent, and paste the line. |

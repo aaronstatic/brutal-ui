@@ -6,7 +6,7 @@
     Purpose:
       Prove the full path on a Windows machine. The script runs the build and
       the unit tests. Then it runs the HelloPanel sample on the GPU in a
-      visible window for a number of frames.
+      visible window until you close it, or for a number of frames.
 
     Steps (the first failure stops the run):
       1. preflight - check the tools, the two variables, and the operating
@@ -14,7 +14,8 @@
       2. build     - dotnet build brutal-ui.sln
       3. test      - dotnet test --solution brutal-ui.sln
       4. loader    - check that vulkan-1.dll exists in the system folder
-      5. smoke     - run HelloPanel for a number of frames, with a time limit
+      5. smoke     - run HelloPanel until you close the window, or for a
+                     number of frames with a time limit
 
     Preflight checks (in this order):
       1. dotnet exists on the path
@@ -47,7 +48,8 @@
       other  the exit code of dotnet build or dotnet test
 
     Environment variables:
-      BRUTAL_UI_FRAMES          number of frames for the smoke run (default 120)
+      BRUTAL_UI_FRAMES          number of frames for the smoke run (default 0).
+                                0 runs until you close the window.
       BRUTAL_UI_SMOKE_TIMEOUT   time limit of the smoke step in seconds
                                 (default 60)
     An empty variable counts as unset.
@@ -207,7 +209,7 @@ try {
 
     $frames = $env:BRUTAL_UI_FRAMES
     if ([string]::IsNullOrEmpty($frames)) {
-        $frames = '120'
+        $frames = '0'
     }
     $smokeTimeoutText = $env:BRUTAL_UI_SMOKE_TIMEOUT
     if ([string]::IsNullOrEmpty($smokeTimeoutText)) {
@@ -251,7 +253,7 @@ try {
     # match is case-sensitive, so the Kelvin sign is not a letter. The \z anchor
     # rejects a line feed at the end of the value.
     if ($frames -cnotmatch '^[0-9A-Za-z+-]+\z') {
-        Write-CheckFail preflight "BRUTAL_UI_FRAMES $frames holds a character that is not a letter, a digit, a plus sign, or a minus sign" 'Set BRUTAL_UI_FRAMES to a whole number above 0, for example 120.'
+        Write-CheckFail preflight "BRUTAL_UI_FRAMES $frames holds a character that is not a letter, a digit, a plus sign, or a minus sign" 'Set BRUTAL_UI_FRAMES to 0 for indefinite run, or a whole number above 0, for example 120.'
     }
 
     # Check 5: the script runs on Windows only.
@@ -288,9 +290,16 @@ try {
 
     # The smoke run reads the exit code of HelloPanel, not its output. The
     # quotes keep a special character of cmd.exe in the value literal.
-    Invoke-Step smoke "dotnet run --project samples/HelloPanel/HelloPanel.csproj --no-build -- --frames `"$frames`"" $smokeTimeout
+    # When frames is 0, omit the --frames argument to run indefinitely.
+    if ($frames -eq '0') {
+        Invoke-Step smoke "dotnet run --project samples/HelloPanel/HelloPanel.csproj --no-build" 0
+    }
+    else {
+        Invoke-Step smoke "dotnet run --project samples/HelloPanel/HelloPanel.csproj --no-build -- --frames `"$frames`"" $smokeTimeout
+    }
 
-    [Console]::Out.WriteLine("test-windows: PASS build, test, smoke ($frames frames) in $([math]::Floor($sw.Elapsed.TotalSeconds)) s")
+    $framesText = if ($frames -eq '0') { 'indefinite' } else { "$frames frames" }
+    [Console]::Out.WriteLine("test-windows: PASS build, test, smoke ($framesText) in $([math]::Floor($sw.Elapsed.TotalSeconds)) s")
     $scriptDone = $true
 }
 finally {
