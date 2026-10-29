@@ -1,8 +1,8 @@
 # State and Commands - Epic Overview
 
 **Epic:** state-and-commands
-**Status:** Planned
-**Last Updated:** 2026-10-29 10:00
+**Status:** Complete
+**Last Updated:** 2026-10-29 20:30
 
 > **This file is the epic marker.** Its presence in `docs/features/state-and-commands/` tells every Beast Mode command that this folder is an **epic**, not a plain feature. Keep it present and keep the required sections below filled in. The master `docs/overview.md` tracks this epic as a **single row**. The per-feature detail lives **here**.
 
@@ -20,10 +20,10 @@ These features belong together because each one follows the same rule: a struct 
 
 | # | Feature | Status | Tasks | Description |
 |---|---------|--------|-------|-------------|
-| 1 | store-and-subscription | Planned | — | `IBindingSource` in Core, `Store<T>` and `StoreSubscription` in Framework, with a version counter and the first Framework tests. |
-| 2 | element-bindings | Planned | — | The pooled binding list on `Element`, the binding pass in `UiContext.Update`, `Label.BindText`, a value binding for each widget, and the 0-byte gate. |
-| 3 | commands-and-events | Planned | — | `EventBus`, `ServiceRegistry`, and `CommandRegistry` with a static handler plus target, and a command bind on `Button`. |
-| 4 | action-map | Planned | — | `UiActionMap` with key, mouse, and gamepad bindings, the focus actions, the gamepad feed in `BrutalUi.Glfw`, and the HelloPanel sample. |
+| 1 | store-and-subscription | Complete | 14/14 (100%) | `IBindingSource` in Core, `Store<T>` and `StoreSubscription` in Framework, with a version counter and the first Framework tests. |
+| 2 | element-bindings | Complete | 30/30 (100%) | The pooled binding list on `Element`, the binding pass in `UiContext.Update`, `Label.BindText`, a value binding for each widget, and the 0-byte gate. |
+| 3 | commands-and-events | Complete | 27/27 (100%) | `EventBus`, `ServiceRegistry`, and `CommandRegistry` with a static handler plus target, and a command bind on `Button`. |
+| 4 | action-map | Complete | 45/45 (100%) | `UiActionMap` with key, mouse, and gamepad bindings, the focus actions, the gamepad feed in `BrutalUi.Glfw`, and the HelloPanel sample. |
 
 > Reference any feature with the slash form `state-and-commands/<feature-name>`. `/update-epic` refreshes the task counts from each `tasks.md`.
 
@@ -55,6 +55,7 @@ These features belong together because each one follows the same rule: a struct 
 
 - **Within the epic:** `Store<T>` keeps a version counter. A binding is a struct in a pooled list on `Element`, with the store, a selector, and the last version it applied. The binding pass in `UiContext.Update` runs before the style pass, reads each store version, applies a changed value, and marks the element dirty. `CommandRegistry` maps a UTF-8 command name to a static handler plus a target. `UiActionMap` resolves a key, a mouse button, or a gamepad button to a command name and calls the same registry as a button click.
 - **With other epics / features:** `Button.Clicked` and the other delegate slots from interactive-elements are the hook for a command bind. `UiContext.FocusNext` and `UiContext.FocusPrevious` from input-routing are the targets of the navigation actions. The panels-and-modes epic lists active maps on a mode and binds a panel root to a store. The xml-markup epic reads the `command="..."` attribute and calls the same bind.
+- **As built:** `Element` holds a pooled array of the Core struct `ElementBinding` (an `IBindingSource`, the applied version, a static handler, and a target). The Framework adds each typed bind as an extension method. An element outside the tree keeps its bindings, and the pass skips it. `UiContext.OnUnhandledInput` gets a key that no handler stopped and a press over no element. `GlfwUiInput.PollGamepad` returns the Core enum `UiGamepadButtons`, and the game pushes it into the map.
 - **Key architectural decisions for the epic as a whole:** Q1 `IBindingSource` lives in Core, and `Store<T>` lives in Framework. Q2 A binding pass in `UiContext.Update` pulls the store version before the style pass. Q3 A command handler is a static method plus a target, like the event slots. A4 A text binding formats a number into the label buffer through a span formatter, with no `ToString` in the frame loop. A5 A command bind on a `Button` runs at build time and may allocate once. Only the invoke path is zero-alloc. A6 The action map reads a key that no element handled through one slot on `UiContext`. The Glfw adapter polls the gamepad once per frame and pushes the state into the map. A8 This epic sets one active map on the context. A mode list of maps waits for panels-and-modes.
 
 ---
@@ -69,8 +70,8 @@ Cross-feature tech debt and review findings. `/review-epic` writes this section.
 
 ## Master Overview Rollup
 
-- **Rollup status:** Planned (0/4 features)
-- **One-line summary for master:** Stores, bindings, the event bus, the service and command registries, and the action map in `BrutalUi.Framework`. Opens Phase 3.
+- **Rollup status:** Complete (4/4 features, 116/116 tasks)
+- **One-line summary for master:** `Store<T>`, element bindings with a binding pass before the style pass, `CommandRegistry`, `EventBus`, `ServiceRegistry`, and `UiActionMap` with key, mouse, and gamepad input. HelloPanel shows a bound label, a command button, and a key action. 2723 tests pass. Opens Phase 3.
 
 ---
 
