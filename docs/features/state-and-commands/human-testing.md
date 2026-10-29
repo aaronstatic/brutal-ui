@@ -17,3 +17,12 @@
 - [ ] Phase 3 demo: a developer runs `dotnet run --project tests/BrutalUi.Core.Tests/BrutalUi.Core.Tests.csproj -- --filter-class '*BindingLifecycleTests'` and reads a total of 8 with `failed: 0`. The same command on the Framework test project with `'*LabelBindingTests'` reads a total of 12 with `failed: 0`.
 - [ ] Phase 4 demo: a developer runs `dotnet run --project tests/BrutalUi.Framework.Tests/BrutalUi.Framework.Tests.csproj -- --filter-class '*BoundTreeAllocationTests'` and reads a total of 4 with `failed: 0`. Then the developer runs `scripts/test-linux.sh` and reads its PASS line.
 - [ ] Windows run: run `scripts/test-windows.ps1` on a Windows machine and read its PASS line. No verifier had a Windows machine.
+
+## commands-and-events
+
+- [ ] Phase 1 demo: a developer runs `dotnet run --project tests/BrutalUi.Framework.Tests/BrutalUi.Framework.Tests.csproj -- --filter-class '*CommandBindingTests'` and reads a total of 5 with `failed: 0`. The first test clicks a button bound to `save` and reads one call of the save handler with its target.
+- [ ] Phase 2 demo: a developer runs `dotnet run --project tests/BrutalUi.Framework.Tests/BrutalUi.Framework.Tests.csproj -- --filter-class '*CommandBindingTests'` and reads a total of 10 with `failed: 0`. The test `AClickOnAnUnknownNameCallsTheUnknownCommandSlot` reads the name `load` in the slot and no handler call.
+- [ ] Phase 3 demo: a developer runs `dotnet run --project tests/BrutalUi.Framework.Tests/BrutalUi.Framework.Tests.csproj -- --filter-class '*EventBusTests'` and reads a total of 10 with `failed: 0`. The first test publishes a `ScoreChanged` event to three subscribers and reads the score in each target, in the order of the subscribe.
+- [ ] Phase 4 demo: a developer runs `dotnet run --project tests/BrutalUi.Framework.Tests/BrutalUi.Framework.Tests.csproj -- --filter-class '*ServiceRegistryTests'` and reads a total of 7 with `failed: 0`. The test `AMissingServiceGivesNullAndThrowsNothing` reads `null` for a type that no one registered.
+- [ ] Phase 5 demo: a developer runs `dotnet run --project tests/BrutalUi.Framework.Tests/BrutalUi.Framework.Tests.csproj -- --filter-class '*CommandAndEventAllocationTests'` and reads a total of 5 with `failed: 0`. Then the developer runs `scripts/test-linux.sh` and reads its PASS line.
+- [ ] Windows run: run `scripts/test-windows.ps1` on a Windows machine and read its PASS line. It checks the sixteenth gate on the Windows JIT. No verifier had a Windows machine.

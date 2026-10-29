@@ -1,10 +1,10 @@
 # Commands and Events - Implementation Plan
 
 **Epic:** state-and-commands (feature 3 of 4)
-**Status:** Planning
+**Status:** Ready for Review
 **Started:** 2026-10-29
 **Target Completion:** TBD
-**Last Updated:** 2026-10-29
+**Last Updated:** 2026-10-29 11:55
 
 ---
 
@@ -494,6 +494,8 @@ Run each step from `/home/aaronstatic/dev/brutal-ui` on Linux. `<scratch>` is an
 ### Open Scope Questions
 
 This plan is a draft with no interview. Each question below has a recommended option, and the plan uses it.
+
+**Answered 2026-10-29:** the user chose (A) for each of the four questions. The plan stays as written.
 
 1. **The handler shape of the event bus.**
    - **(A) Recommended:** A static handler plus a target, `EventBusHandler<T>(in T e, object? target)`, with `Unsubscribe` by the handler and target pair (Decision 5). One handler shape for the epic (Q3), and no allocation for each subscribe other than the array.
