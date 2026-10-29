@@ -79,6 +79,66 @@ public enum PointerButton
 }
 
 /// <summary>
+/// The buttons of a gamepad. Each member is one bit.
+/// </summary>
+/// <remarks>
+/// Bit <c>i</c> is the GLFW gamepad button <c>i</c>, so the input adapter converts the GLFW button values with no
+/// table. The names follow the Xbox layout of GLFW. Core reads no gamepad. The enum is the shared type of the GLFW
+/// adapter and the action map.
+/// </remarks>
+[Flags]
+public enum UiGamepadButtons
+{
+    /// <summary>No button is down.</summary>
+    None = 0,
+
+    /// <summary>The A button. GLFW constant <c>GLFW_GAMEPAD_BUTTON_A</c>, value 0.</summary>
+    A = 1 << 0,
+
+    /// <summary>The B button. GLFW constant <c>GLFW_GAMEPAD_BUTTON_B</c>, value 1.</summary>
+    B = 1 << 1,
+
+    /// <summary>The X button. GLFW constant <c>GLFW_GAMEPAD_BUTTON_X</c>, value 2.</summary>
+    X = 1 << 2,
+
+    /// <summary>The Y button. GLFW constant <c>GLFW_GAMEPAD_BUTTON_Y</c>, value 3.</summary>
+    Y = 1 << 3,
+
+    /// <summary>The left bumper. GLFW constant <c>GLFW_GAMEPAD_BUTTON_LEFT_BUMPER</c>, value 4.</summary>
+    LeftBumper = 1 << 4,
+
+    /// <summary>The right bumper. GLFW constant <c>GLFW_GAMEPAD_BUTTON_RIGHT_BUMPER</c>, value 5.</summary>
+    RightBumper = 1 << 5,
+
+    /// <summary>The back button. GLFW constant <c>GLFW_GAMEPAD_BUTTON_BACK</c>, value 6.</summary>
+    Back = 1 << 6,
+
+    /// <summary>The start button. GLFW constant <c>GLFW_GAMEPAD_BUTTON_START</c>, value 7.</summary>
+    Start = 1 << 7,
+
+    /// <summary>The guide button. GLFW constant <c>GLFW_GAMEPAD_BUTTON_GUIDE</c>, value 8.</summary>
+    Guide = 1 << 8,
+
+    /// <summary>The left thumb stick button. GLFW constant <c>GLFW_GAMEPAD_BUTTON_LEFT_THUMB</c>, value 9.</summary>
+    LeftThumb = 1 << 9,
+
+    /// <summary>The right thumb stick button. GLFW constant <c>GLFW_GAMEPAD_BUTTON_RIGHT_THUMB</c>, value 10.</summary>
+    RightThumb = 1 << 10,
+
+    /// <summary>The d-pad up button. GLFW constant <c>GLFW_GAMEPAD_BUTTON_DPAD_UP</c>, value 11.</summary>
+    DpadUp = 1 << 11,
+
+    /// <summary>The d-pad right button. GLFW constant <c>GLFW_GAMEPAD_BUTTON_DPAD_RIGHT</c>, value 12.</summary>
+    DpadRight = 1 << 12,
+
+    /// <summary>The d-pad down button. GLFW constant <c>GLFW_GAMEPAD_BUTTON_DPAD_DOWN</c>, value 13.</summary>
+    DpadDown = 1 << 13,
+
+    /// <summary>The d-pad left button. GLFW constant <c>GLFW_GAMEPAD_BUTTON_DPAD_LEFT</c>, value 14.</summary>
+    DpadLeft = 1 << 14,
+}
+
+/// <summary>
 /// The modifier keys that are down at the time of an event.
 /// </summary>
 /// <remarks>

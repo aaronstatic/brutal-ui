@@ -20,7 +20,7 @@ namespace HelloPanel;
 /// The screen reacts to the pointer and to Tab. The panel is not the only focusable element: four widgets of the
 /// widget section take the focus too. These are the <c>Click me</c> button, the toggle, the slider, and the text
 /// field. The disabled button and the scroll view take no focus. Tab walks the focusable elements in tree order: the
-/// panel, <c>Click me</c>, the toggle, the slider, and the text field. A press on one of these widgets gives the
+/// panel, <c>Click me</c>, the toggle, the slider, the text field, and the <c>Add</c> button of the state row. A press on one of these widgets gives the
 /// focus to the widget. A press on the disabled button clears the focus: the button is focusable but disabled, and the
 /// press does not go on to the panel. A press on the scroll view gives the focus to the panel, the nearest focusable
 /// ancestor, because the scroll view is not focusable. The two labels and the image are not
@@ -36,8 +36,11 @@ namespace HelloPanel;
 /// or an active rule sets the fill, and a focus rule sets the border color.
 /// </para>
 /// <para>
-/// The widget section is the last child of the panel, after the image. <see cref="HelloWidgets"/> builds it, holds
-/// the status labels and the change counts, and gives the delegates of the widgets.
+/// The widget section is the child of the panel after the image. <see cref="HelloWidgets"/> builds it, holds
+/// the status labels and the change counts, and gives the delegates of the widgets. The panel holds the state row
+/// last, after the widget section. <see cref="HelloState"/> builds the row: an <c>Add</c> button and a score label.
+/// The <c>Add</c> button takes the focus, so the Tab order ends with it. The row uses the <c>hello-row</c> class, so
+/// the sheet needs no new rule.
 /// </para>
 /// <para>
 /// The second label is the gate label. It shows the two values of <see cref="UiContext.RoutingGate"/>. The frame
@@ -174,19 +177,24 @@ internal static class HelloScreen
     /// <para>
     /// The root is not pickable. The panel is focusable. Four widgets of the widget section are focusable too: the
     /// <c>Click me</c> button, the toggle, the slider, and the text field. The disabled button and the scroll view
-    /// take no focus. Tab walks the panel, <c>Click me</c>, the toggle, the slider, and the text field. The two
+    /// take no focus. The <c>Add</c> button of the state row takes the focus too. Tab walks the panel,
+    /// <c>Click me</c>, the toggle, the slider, the text field, and <c>Add</c>. The two
     /// labels and the image are not pickable, so a point on them hits the panel. The gate label starts with the
     /// longest text of <see cref="GateText"/>.
     /// </para>
     /// <para>
     /// The two labels and the image are direct children of the panel, because the rules
     /// <c>.hello-panel &gt; Label</c> and <c>.hello-panel &gt; Image</c> are child rules. The widget section of
-    /// <paramref name="widgets"/> is the last child of the panel, after the image. Its status labels are children of a
-    /// row, so the rule <c>.hello-row &gt; Label</c> styles them.
+    /// <paramref name="widgets"/> follows the image. Its status labels are children of a row, so the rule
+    /// <c>.hello-row &gt; Label</c> styles them. The row of <paramref name="state"/> is the last child of the panel. Its
+    /// score label is a child of the row too, so the same rule styles it.
     /// </para>
     /// </remarks>
     /// <param name="checker">
     /// The texture of the image. The none handle is valid: the image then takes no space and draws nothing.
+    /// </param>
+    /// <param name="state">
+    /// The state of the sample. Its row is the last child of the panel, after the widget section.
     /// </param>
     /// <param name="panel">
     /// The panel. The frame loop of the sample reads its rectangle to aim the synthetic pointer move of the smoke run.
@@ -198,8 +206,14 @@ internal static class HelloScreen
     /// </param>
     /// <returns>The root element of the screen.</returns>
     public static Element Build(
-        TextureHandle checker, out Element panel, out Label gateLabel, out HelloWidgets widgets)
+        TextureHandle checker,
+        HelloState state,
+        out Element panel,
+        out Label gateLabel,
+        out HelloWidgets widgets)
     {
+        ArgumentNullException.ThrowIfNull(state);
+
         // The rule .hello-panel > Label gives the color and the size. The label keeps font 0, the default font.
         // A label is not pickable, so the pointer hits the panel behind it.
         Label greeting = new(new Label.CreateInfo { Text = GreetingText }) { IsPickable = false };
@@ -224,14 +238,15 @@ internal static class HelloScreen
 
         // The child rules read the parent, so the labels and the image are direct children of the panel.
         // The gate label comes before the image, so the panel and the two labels share one draw command.
-        // The panel is focusable. So are Click me, the toggle, the slider, and the text field. The disabled button
-        // and the scroll view take no focus. Tab walks the panel and then these four widgets in tree order.
+        // The panel is focusable. So are Click me, the toggle, the slider, the text field, and Add. The disabled
+        // button and the scroll view take no focus. Tab walks the panel and then these five widgets in tree order.
         panel = new Element { IsFocusable = true };
         panel.Classes.Add(PanelClass);
         panel.Children.Add(greeting);
         panel.Children.Add(gateLabel);
         panel.Children.Add(checkerImage);
         panel.Children.Add(widgets.Section);
+        panel.Children.Add(state.Row);
 
         // The root draws nothing. The rule .hello-root stops the stretch, so the panel keeps the size of its content.
         // The root covers the viewport. It is not pickable (the layout-root rule), so a point outside the panel hits

@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/BrutalUi.Core/BrutalUi.Core.csproj" />
+    <ProjectReference Include="../../src/BrutalUi.Framework/BrutalUi.Framework.csproj" />
     <ProjectReference Include="../../src/BrutalUi.Glfw/BrutalUi.Glfw.csproj" />
     <ProjectReference Include="../../src/BrutalUi.ImGui/BrutalUi.ImGui.csproj" />
     <ProjectReference Include="../../src/BrutalUi.Markup/BrutalUi.Markup.csproj" />

@@ -1104,7 +1104,8 @@ public sealed class UiContext
     /// <para>
     /// A <see cref="UiEventType.PointerDown"/> with no target also moves the keyboard focus at the drain, before its
     /// walk: to the hit element, or to its nearest ancestor with <see cref="Element.IsFocusable"/>. A press on no such
-    /// element, or over no element, clears the focus (Decision 4 of keyboard-focus). Each button runs this rule.
+    /// element, or over no element, clears the focus (Decision 4 of keyboard-focus). Each button runs this rule. A
+    /// press over no element then goes to <see cref="OnUnhandledInput"/>, after the focus clears.
     /// </para>
     /// <para>
     /// A target from the caller skips the hit test, the states, the click focus, and the store of the hit
@@ -1166,7 +1167,8 @@ public sealed class UiContext
     /// <see cref="FocusPrevious"/>. A handler that stops the walk keeps the focus. A handler that calls
     /// <see cref="SetFocus(Element)"/> during the walk must also stop the walk to keep its choice. A Tab with no owner
     /// still moves the focus. A repeat moves the focus, and a key up does not. A Tab with Control, Alt, or Super down,
-    /// or with a target from the caller, does not move the focus.
+    /// or with a target from the caller, does not move the focus. A key down with no target that no handler stopped
+    /// and that is not a Tab move goes to <see cref="OnUnhandledInput"/> after its walk.
     /// </para>
     /// </remarks>
     /// <param name="e">The event. The call copies it.</param>
@@ -1228,6 +1230,28 @@ public sealed class UiContext
     /// </para>
     /// </remarks>
     public UiContentScaleHandler? OnContentScale { get; set; }
+
+    /// <summary>
+    /// Gets or sets the handler for an input that no element took. The drain of the input pass calls it.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A6 of state-and-commands: the slot is the seam of the action map. The map lives in a higher layer, and Core
+    /// names no type of that layer. <c>UiActionMap.Activate</c> writes the slot. The context holds one slot, so one
+    /// handler is active at a time. A null slot does nothing.
+    /// </para>
+    /// <para>
+    /// The drain calls the slot for a <see cref="UiEventType.KeyDown"/> with no target from the caller, when no
+    /// handler stopped its walk and the key is not a Tab move (the unhandled input rule of <see cref="DrainEvents"/>).
+    /// It also calls the slot for a <see cref="UiEventType.PointerDown"/> with no target from the caller that hit no
+    /// element.
+    /// </para>
+    /// <para>
+    /// Set the slot at build time, not in the frame loop. A write replaces the delegate in the slot. Do not use
+    /// <c>+=</c>: the action map reads the slot to know if it is active.
+    /// </para>
+    /// </remarks>
+    public UiUnhandledInputHandler? OnUnhandledInput { get; set; }
 
     /// <summary>
     /// Calls <see cref="OnFileDrop"/> at once with the paths of a file drop. A null slot makes the call do nothing.
@@ -1355,6 +1379,21 @@ public sealed class UiContext
     /// focus. A <see cref="UiEventType.KeyUp"/> does not. A Tab with <see cref="UiModifiers.Control"/>,
     /// <see cref="UiModifiers.Alt"/>, or <see cref="UiModifiers.Super"/> down does not move the focus. A Tab with a
     /// target from the caller walks to that target and never moves the focus.
+    /// </para>
+    /// <para>
+    /// The unhandled input rule (A6 of state-and-commands): after the Tab move, the method reads
+    /// <see cref="OnUnhandledInput"/> one time for the entry. It calls the slot for a
+    /// <see cref="UiEventType.KeyDown"/> entry with no target from the caller, when no handler stopped the walk and the
+    /// entry is not a Tab move. The call gets the key code, the modifiers, and the repeat flag. A key down with no
+    /// focus owner gets no walk, and it reaches the slot. The call runs at the position of the entry in the ring, after
+    /// the walk, after the end of a release, and after the Tab move. Thus the slot reads the focus of that point. A
+    /// Control+Tab is not a Tab move, so it reaches the slot. The method also calls the slot for a
+    /// <see cref="UiEventType.PointerDown"/> entry with no target from the caller when the press hit no element. The
+    /// call gets the button as its GLFW value, the modifiers, and <see langword="false"/> for the repeat flag. A press
+    /// on an element never reaches the slot, also when no handler stops it: a hit takes a press, as a stopped walk
+    /// takes a key. The click focus rule runs in the target step, so the press clears the focus before the call. A key
+    /// up, a char, a pointer move, a release, a scroll, and an entry with a target from the caller never reach the
+    /// slot. An exception of the slot stops the drain, as an exception of a handler does. A null slot skips the step.
     /// </para>
     /// <para>
     /// The method skips the walk of an entry with no target after the target step (A4). It skips an entry when the top of the
@@ -1524,11 +1563,12 @@ public sealed class UiContext
 
                 // The Tab move (Decision 5 of keyboard-focus). It runs after the walk, so a handler that stops the
                 // Tab keeps the focus. A Tab with no owner got no walk, but it still moves the focus.
-                if (routed
+                bool tabMove = routed
                     && !stopped
                     && entry.Header.Type == UiEventType.KeyDown
                     && entry.Payload.Key.Key == TabKey
-                    && (entry.Payload.Key.Modifiers & (UiModifiers.Control | UiModifiers.Alt | UiModifiers.Super)) == 0)
+                    && (entry.Payload.Key.Modifiers & (UiModifiers.Control | UiModifiers.Alt | UiModifiers.Super)) == 0;
+                if (tabMove)
                 {
                     if ((entry.Payload.Key.Modifiers & UiModifiers.Shift) != 0)
                     {
@@ -1537,6 +1577,33 @@ public sealed class UiContext
                     else
                     {
                         FocusNext();
+                    }
+                }
+
+                // The unhandled input step (A6 of state-and-commands). It runs after the walk, the end of a release,
+                // and the Tab move, so the slot reads the focus of this point in the ring. The drain reads the slot
+                // one time for each entry. Only an entry that the drain routes and that no handler stopped can reach it.
+                UiUnhandledInputHandler? handler = OnUnhandledInput;
+                if (handler is not null && routed && !stopped)
+                {
+                    // A key down that is not a Tab move. A Tab move is a built-in action, so it is a handled key.
+                    if (entry.Header.Type == UiEventType.KeyDown && !tabMove)
+                    {
+                        handler(
+                            UiEventType.KeyDown,
+                            entry.Payload.Key.Key,
+                            entry.Payload.Key.Modifiers,
+                            entry.Payload.Key.IsRepeat);
+                    }
+                    else if (entry.Header.Type == UiEventType.PointerDown && target is null)
+                    {
+                        // A press that hit no element (case 2). A hit takes a press, also when no handler stops it, so
+                        // a click on a button never reaches the slot. The click focus rule ran in the target step.
+                        handler(
+                            UiEventType.PointerDown,
+                            (int)entry.Payload.Pointer.Button,
+                            entry.Payload.Pointer.Modifiers,
+                            false);
                     }
                 }
             }

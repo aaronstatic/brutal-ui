@@ -1,10 +1,10 @@
 # Action Map - Implementation Plan
 
 **Epic:** state-and-commands (feature 4 of 4)
-**Status:** Planning
+**Status:** Ready for Review
 **Started:** 2026-10-29
-**Target Completion:** TBD
-**Last Updated:** 2026-10-29 12:10
+**Target Completion:** 2026-10-29
+**Last Updated:** 2026-10-29 15:20
 
 ---
 
@@ -610,6 +610,8 @@ Run each step from `/home/aaronstatic/dev/brutal-ui` on Linux. `<scratch>` is an
 ### Open Scope Questions
 
 This plan is a draft with no interview. Each question below has a recommended option, and the plan uses it.
+
+**Answered 2026-10-29:** the user chose (A) for each of the four questions. The plan stays as written.
 
 1. **The shape of the Core slot and the route of a mouse button.**
    - **(A) Recommended:** One slot `OnUnhandledInput(UiEventType type, int code, UiModifiers modifiers, bool isRepeat)` for a key down that no handler stopped and for a press over no element (Decision 1). One slot, as A6 asks, and the map gets the mouse buttons with no help from the game.

@@ -63,6 +63,13 @@ namespace BrutalUi.Glfw;
 /// the handlers of the same event that come after it. An exception from a handler of
 /// <see cref="UiContext.OnFileDrop"/> or <see cref="UiContext.OnContentScale"/> goes this way.
 /// </para>
+/// <para>
+/// The gamepad: the adapter reads one gamepad when the game calls <see cref="PollGamepad(int)"/>, and it adds no
+/// handler for it. Call the method one time in each frame, after <c>Glfw.PollEvents</c>. Give the result to
+/// <c>UiActionMap.PushGamepad</c> of <c>BrutalUi.Framework</c>. The adapter reads no axis and applies no deadzone. The
+/// system can hold the Guide button, so the button can stay up. GLFW joystick state is global, so the poll needs no
+/// window.
+/// </para>
 /// </remarks>
 public sealed class GlfwUiInput : IDisposable
 {
@@ -80,6 +87,12 @@ public sealed class GlfwUiInput : IDisposable
 
     /// <summary>The GLFW modifier bits that a button event and a key event keep: Shift, Control, Alt, Super, Caps Lock, and Num Lock.</summary>
     private const int ButtonModifierMask = 0x3F;
+
+    /// <summary>The last GLFW joystick id (<c>GLFW_JOYSTICK_LAST</c>).</summary>
+    private const int GamepadIdLast = 15;
+
+    /// <summary>The number of GLFW gamepad buttons (<c>GLFW_GAMEPAD_BUTTON_LAST</c> plus 1).</summary>
+    private const int GamepadButtonCount = 15;
 
     /// <summary>The position of a cursor leave. A move to this position hits no element and clears the hover.</summary>
     private static readonly float2 LeavePosition = new(float.NaN, float.NaN);
@@ -215,6 +228,72 @@ public sealed class GlfwUiInput : IDisposable
         window.OnContentScale -= _onContentScale;
         window.OnKey -= _onKey;
         window.OnChar -= _onChar;
+    }
+
+    /// <summary>
+    /// Reads the buttons of one gamepad and returns them as <see cref="UiGamepadButtons"/>. The game gives the result
+    /// to <c>UiActionMap.PushGamepad</c>.
+    /// </summary>
+    /// <param name="gamepadId">The GLFW joystick id, from 0 (<c>GLFW_JOYSTICK_1</c>) to 15 (<c>GLFW_JOYSTICK_LAST</c>).</param>
+    /// <returns>
+    /// The buttons that are down. The result is <see cref="UiGamepadButtons.None"/> after <see cref="Dispose"/>, and
+    /// when the joystick is absent or has no gamepad mapping.
+    /// </returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="gamepadId"/> is below 0 or above 15.</exception>
+    /// <remarks>
+    /// The method checks the id first, then <see cref="Dispose"/>. An id outside the range throws also after
+    /// <see cref="Dispose"/>. The method reads no axis and applies no deadzone. Call it on the main thread, after
+    /// <c>Glfw.PollEvents</c>.
+    /// </remarks>
+    public UiGamepadButtons PollGamepad(int gamepadId = 0)
+    {
+        if (gamepadId < 0 || gamepadId > GamepadIdLast)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(gamepadId),
+                gamepadId,
+                "The gamepad id must be from 0 to 15.");
+        }
+
+        if (_disposed)
+        {
+            return UiGamepadButtons.None;
+        }
+
+        if (!GlfwApi.GetGamepadState(gamepadId, out GlfwGamepadState state))
+        {
+            return UiGamepadButtons.None;
+        }
+
+        // The binding declares Buttons as a fixed buffer of 15 bytes. The local state is a fixed variable, so no pin is needed.
+        unsafe
+        {
+            return GamepadButtons(new ReadOnlySpan<byte>(state.Buttons, GamepadButtonCount));
+        }
+    }
+
+    /// <summary>
+    /// Converts the button values of a GLFW gamepad state. A button with the value
+    /// <see cref="GlfwButtonAction.Press"/> sets the bit <c>1 &lt;&lt; i</c> for its index <c>i</c>.
+    /// </summary>
+    /// <param name="buttons">
+    /// The button values, one for each GLFW gamepad button, in the order of the GLFW button indices. The method reads
+    /// the first 15 values and ignores the others.
+    /// </param>
+    /// <returns>The buttons that are down.</returns>
+    internal static UiGamepadButtons GamepadButtons(ReadOnlySpan<byte> buttons)
+    {
+        int count = Math.Min(buttons.Length, GamepadButtonCount);
+        int bits = 0;
+        for (int i = 0; i < count; i++)
+        {
+            if (buttons[i] == (byte)GlfwButtonAction.Press)
+            {
+                bits |= 1 << i;
+            }
+        }
+
+        return (UiGamepadButtons)bits;
     }
 
     /// <summary>
