@@ -31,6 +31,7 @@ This file lists each notable change of brutal-ui. The format follows [Keep a Cha
 - `CommandRegistry`, `CommandHandler`, `UnknownCommandHandler`, `CommandBindings.BindCommand`, `EventBus`, `EventBusHandler<T>`, `ServiceRegistry`, and the command and event allocation gate `CommandAndEventAllocationTests`, the sixteenth gate. A command maps a UTF-8 name to a static handler and a target. A click on a bound button invokes the command, and an unknown name calls the `UnknownCommand` slot (state-and-commands/commands-and-events).
 - `UiContext.OnUnhandledInput`, `UiUnhandledInputHandler`, `UiGamepadButtons`, `UiActionMap`, `UiActions`, `FocusCommands`, `GlfwUiInput.PollGamepad`, the HelloPanel state row, and the action map allocation gate (state-and-commands/action-map).
 - `PanelDefinition`, `LayoutDefinition`, `ModeDefinition`, `ModePanel`, `PanelContext`, `PanelInstance`, and `PanelController` (panels-and-modes/panel-definition).
+- `SlotContainer` with `Mount`, `Unmount`, and `SlotContainer.Find` (panels-and-modes/slot-container).
 
 ### Changed
 
