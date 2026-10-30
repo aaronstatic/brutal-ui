@@ -30,6 +30,7 @@ This file lists each notable change of brutal-ui. The format follows [Keep a Cha
 - The binding pass in `UiContext.Update` (after the input pass and before the style pass), `Element.AddBinding`, `Element.ClearBindings`, `BindingHandler`, `LabelBindings.BindText` (a number slice with the span formatter, and a string slice), `WidgetBindings` (`BindChecked`, `BindValue`, and `BindText` for a `TextField`), and the bound-tree allocation gate `BoundTreeAllocationTests`, the fifteenth gate. A store change now reaches the bound elements in the same `Update` (state-and-commands/element-bindings).
 - `CommandRegistry`, `CommandHandler`, `UnknownCommandHandler`, `CommandBindings.BindCommand`, `EventBus`, `EventBusHandler<T>`, `ServiceRegistry`, and the command and event allocation gate `CommandAndEventAllocationTests`, the sixteenth gate. A command maps a UTF-8 name to a static handler and a target. A click on a bound button invokes the command, and an unknown name calls the `UnknownCommand` slot (state-and-commands/commands-and-events).
 - `UiContext.OnUnhandledInput`, `UiUnhandledInputHandler`, `UiGamepadButtons`, `UiActionMap`, `UiActions`, `FocusCommands`, `GlfwUiInput.PollGamepad`, the HelloPanel state row, and the action map allocation gate (state-and-commands/action-map).
+- `PanelDefinition`, `LayoutDefinition`, `ModeDefinition`, `ModePanel`, `PanelContext`, `PanelInstance`, and `PanelController` (panels-and-modes/panel-definition).
 
 ### Changed
 
