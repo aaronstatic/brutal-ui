@@ -1,0 +1,279 @@
+{
+  "schema": 1,
+  "beastModeVersion": "6.1.1",
+  "harness": "dsh",
+  "harnessRoot": ".agents",
+  "generated": "2026-11-07T18:24:37.142Z",
+  "files": [
+    {
+      "destination": ".agents/skills/audit-feature/SKILL.md",
+      "source": "templates/skills/audit-feature/SKILL.md",
+      "sha256": "cf2c56015a24ed1202d19060686cf2343943f170e5901b4b1925939105c51db2",
+      "owned": true
+    },
+    {
+      "destination": ".agents/skills/autorun-epic/SKILL.md",
+      "source": "templates/skills/autorun-epic/SKILL.md",
+      "sha256": "de5d45458e7c82f2f5e26a654c822319d534d677c6f167506711072a6f2e912d",
+      "owned": true
+    },
+    {
+      "destination": ".agents/skills/autorun-feature/SKILL.md",
+      "source": "templates/skills/autorun-feature/SKILL.md",
+      "sha256": "c5064926678c1d759382b16ce9afb590097a2d48c96e11528445bc6e56b1316d",
+      "owned": true
+    },
+    {
+      "destination": ".agents/skills/continue-feature/SKILL.md",
+      "source": "templates/skills/continue-feature/SKILL.md",
+      "sha256": "7c3e0f7f78abd69f4d89e448dee9eff41daf261622d3739ac6ce8b9d35f90c02",
+      "owned": true
+    },
+    {
+      "destination": ".agents/skills/create-epic/SKILL.md",
+      "source": "templates/skills/create-epic/SKILL.md",
+      "sha256": "09d7f59af6eb251a2d24d7e56bf720d97a02a220b7e8d1b0285a2e7556f2d419",
+      "owned": true
+    },
+    {
+      "destination": ".agents/skills/discover-feature/SKILL.md",
+      "source": "templates/skills/discover-feature/SKILL.md",
+      "sha256": "ae61147ae0c215c39ef2d0746f28208c05f8e426a2acf4d7ea4229adf3989b1d",
+      "owned": true
+    },
+    {
+      "destination": ".agents/skills/document-feature/SKILL.md",
+      "source": "templates/skills/document-feature/SKILL.md",
+      "sha256": "3fd8891d4f0aef75e27815cf786770f00e736ba923fdd9c54086361d80e75c46",
+      "owned": true
+    },
+    {
+      "destination": ".agents/skills/evaluate-feature/SKILL.md",
+      "source": "templates/skills/evaluate-feature/SKILL.md",
+      "sha256": "b4cb50beacbba7a9483102ece5ebdce04883f6da316edddf5e2cfef4490fa849",
+      "owned": true
+    },
+    {
+      "destination": ".agents/skills/fix-bug/SKILL.md",
+      "source": "templates/skills/fix-bug/SKILL.md",
+      "sha256": "d25d338643b86030e422798a4484e16123c3a4148fcc068289d795addec1248f",
+      "owned": true
+    },
+    {
+      "destination": ".agents/skills/fix-feature/SKILL.md",
+      "source": "templates/skills/fix-feature/SKILL.md",
+      "sha256": "10a07483928ec6a9ec4be7a695c34ba6d128b0bdf2bf93bb7d084555559bb54a",
+      "owned": true
+    },
+    {
+      "destination": ".agents/skills/plan-epic/SKILL.md",
+      "source": "templates/skills/plan-epic/SKILL.md",
+      "sha256": "90a676500158f2174ecdff51987bfae9b6827ddd2bb6549a735565fd2711676c",
+      "owned": true
+    },
+    {
+      "destination": ".agents/skills/plan-feature/SKILL.md",
+      "source": "templates/skills/plan-feature/SKILL.md",
+      "sha256": "c02987cb72d584bf47a98bc28730e3d569b6404368add67b007157c63c371b6a",
+      "owned": true
+    },
+    {
+      "destination": ".agents/skills/proceed/SKILL.md",
+      "source": "templates/skills/proceed/SKILL.md",
+      "sha256": "d16d73cfdac6059f2ff669a6045f8f3d2c2636bf8059f05b632a5e39803147f0",
+      "owned": true
+    },
+    {
+      "destination": ".agents/skills/proceed-advanced/SKILL.md",
+      "source": "templates/skills/proceed-advanced/SKILL.md",
+      "sha256": "4e1528cc3dde77825d0bc57247b6c91e5a2f5e75842189631fc31ad235f72ca4",
+      "owned": true
+    },
+    {
+      "destination": ".agents/skills/review-epic/SKILL.md",
+      "source": "templates/skills/review-epic/SKILL.md",
+      "sha256": "fc34da84155ee67dfafb832ed4075921577522281b58687ea5c74d4d0249d670",
+      "owned": true
+    },
+    {
+      "destination": ".agents/skills/review-feature/SKILL.md",
+      "source": "templates/skills/review-feature/SKILL.md",
+      "sha256": "4e49f536efb2e00bb3a97c47e32b7c5012cf30e8f3288f402faea6cfef534d8e",
+      "owned": true
+    },
+    {
+      "destination": ".agents/skills/review-mobile/SKILL.md",
+      "source": "templates/skills/review-mobile/SKILL.md",
+      "sha256": "686a1eb9c5aeff00cc06f1628c53c2fdb58c43310e3f1420aac6d0c9e59d4e40",
+      "owned": true
+    },
+    {
+      "destination": ".agents/skills/review-pr/SKILL.md",
+      "source": "templates/skills/review-pr/SKILL.md",
+      "sha256": "af6ca3e92a6dfa8f6433cf2f91723708fa15760700988d969ac538b21ff7c006",
+      "owned": true
+    },
+    {
+      "destination": ".agents/skills/review-session/SKILL.md",
+      "source": "templates/skills/review-session/SKILL.md",
+      "sha256": "a11edc6d77af74f1321ccaa47ec6532b97393195609664eabd903edc77f33b93",
+      "owned": true
+    },
+    {
+      "destination": ".agents/skills/review-ui/SKILL.md",
+      "source": "templates/skills/review-ui/SKILL.md",
+      "sha256": "d8f4f3d3baef1f0e0da7230607fc5f4e481bde60e5f96a040e292f7fedbb14e5",
+      "owned": true
+    },
+    {
+      "destination": ".agents/skills/review-ux/SKILL.md",
+      "source": "templates/skills/review-ux/SKILL.md",
+      "sha256": "cb2c59b5f7132314d43b5689492dfafdc8bc824972998c311dbe6c4e3feb3ff9",
+      "owned": true
+    },
+    {
+      "destination": ".agents/skills/start-feature/SKILL.md",
+      "source": "templates/skills/start-feature/SKILL.md",
+      "sha256": "64d006976559137dd1ff905c65a827a20c2ab893b83e66af953ac7e0e6527775",
+      "owned": true
+    },
+    {
+      "destination": ".agents/skills/suggest-epic/SKILL.md",
+      "source": "templates/skills/suggest-epic/SKILL.md",
+      "sha256": "55498afc9fc6ba788bda6011747b6d4c07cade43f0b55aa9a596df4c485becd9",
+      "owned": true
+    },
+    {
+      "destination": ".agents/skills/suggest-feature/SKILL.md",
+      "source": "templates/skills/suggest-feature/SKILL.md",
+      "sha256": "116e1883d8a256373710de7d8864fbb6b77d491e2563a9a38574b971a6c6e298",
+      "owned": true
+    },
+    {
+      "destination": ".agents/skills/token-report/SKILL.md",
+      "source": "templates/skills/token-report/SKILL.md",
+      "sha256": "3dfac3bee5dab0cc8233d3d938a1a76d92c60ebe6a554abac439f3c0268889c0",
+      "owned": true
+    },
+    {
+      "destination": ".agents/skills/update-epic/SKILL.md",
+      "source": "templates/skills/update-epic/SKILL.md",
+      "sha256": "86aae2086bacb3481dfc92ac6b0090ae26bd783f85524cc71e7b6b17dc6c0f60",
+      "owned": true
+    },
+    {
+      "destination": ".agents/skills/update-feature/SKILL.md",
+      "source": "templates/skills/update-feature/SKILL.md",
+      "sha256": "f0fd7583bdf9c6a4f68e35a20f3d8c9104c1e288d38af0d554cdd5b825d90adb",
+      "owned": true
+    },
+    {
+      "destination": ".agents/skills/update-master/SKILL.md",
+      "source": "templates/skills/update-master/SKILL.md",
+      "sha256": "a9b2e54ada3704fc7bcb1be46c6ed80b0e9c7d1ca4ff123bddf5bdded111adba",
+      "owned": true
+    },
+    {
+      "destination": ".agents/skills/feature-orchestrator.md",
+      "source": "templates/agents/feature-orchestrator.md",
+      "sha256": "cc37cd80f1250603f66b51abc58e8672f410392012d890703537d7a692614f6e",
+      "owned": true
+    },
+    {
+      "destination": ".agents/skills/solution-architect.md",
+      "source": "templates/agents/solution-architect.md",
+      "sha256": "a6e261e6e04fced9373d560a8e6cfefb0ecbb962252f61a14340360c84ff4fa5",
+      "owned": true
+    },
+    {
+      "destination": ".beast-mode/templates/context.md",
+      "source": "templates/dev-docs/context.md",
+      "owned": false,
+      "reason": "the file already existed at install time"
+    },
+    {
+      "destination": ".beast-mode/templates/epic-overview.md",
+      "source": "templates/dev-docs/epic-overview.md",
+      "owned": false,
+      "reason": "the file already existed at install time"
+    },
+    {
+      "destination": ".beast-mode/templates/epic-requirements.md",
+      "source": "templates/dev-docs/epic-requirements.md",
+      "owned": false,
+      "reason": "the file already existed at install time"
+    },
+    {
+      "destination": ".beast-mode/templates/human-testing.md",
+      "source": "templates/dev-docs/human-testing.md",
+      "owned": false,
+      "reason": "the file already existed at install time"
+    },
+    {
+      "destination": ".beast-mode/templates/implementation.md",
+      "source": "templates/dev-docs/implementation.md",
+      "owned": false,
+      "reason": "the file already existed at install time"
+    },
+    {
+      "destination": ".beast-mode/templates/inbox.md",
+      "source": "templates/dev-docs/inbox.md",
+      "owned": false,
+      "reason": "the file already existed at install time"
+    },
+    {
+      "destination": ".beast-mode/templates/tasks.md",
+      "source": "templates/dev-docs/tasks.md",
+      "owned": false,
+      "reason": "the file already existed at install time"
+    },
+    {
+      "destination": ".beast-mode/agent-structure-example.md",
+      "source": "templates/formats/agent-structure-example.md",
+      "owned": false,
+      "reason": "the file already existed at install time"
+    },
+    {
+      "destination": ".beast-mode/epic-resolution.md",
+      "source": "templates/formats/epic-resolution.md",
+      "owned": false,
+      "reason": "the file already existed at install time"
+    },
+    {
+      "destination": ".beast-mode/interview.md",
+      "source": "templates/formats/interview.md",
+      "owned": false,
+      "reason": "the file already existed at install time"
+    },
+    {
+      "destination": ".beast-mode/mission-statement-template.md",
+      "source": "templates/formats/mission-statement-template.md",
+      "owned": false,
+      "reason": "the file already existed at install time"
+    },
+    {
+      "destination": ".beast-mode/phase-handoff.md",
+      "source": "templates/formats/phase-handoff.md",
+      "owned": false,
+      "reason": "the file already existed at install time"
+    },
+    {
+      "destination": ".beast-mode/skill-structure-example.md",
+      "source": "templates/formats/skill-structure-example.md",
+      "owned": false,
+      "reason": "the file already existed at install time"
+    },
+    {
+      "destination": ".beast-mode/technical-design-template.md",
+      "source": "templates/formats/technical-design-template.md",
+      "owned": false,
+      "reason": "the file already existed at install time"
+    },
+    {
+      "destination": ".beast-mode/tool-rules.md",
+      "source": "templates/formats/tool-rules.md",
+      "owned": false,
+      "reason": "the file already existed at install time"
+    }
+  ]
+}

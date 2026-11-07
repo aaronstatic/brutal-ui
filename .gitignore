@@ -2,6 +2,7 @@
 # Beast Mode - Backups
 .claude/.beast-mode-backup-*/
 .beast-mode/briefs/
+.agents/.beast-mode-backup-*/
 
 # .NET
 bin/
