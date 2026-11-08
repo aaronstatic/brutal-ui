@@ -32,9 +32,12 @@ This file lists each notable change of brutal-ui. The format follows [Keep a Cha
 - `UiContext.OnUnhandledInput`, `UiUnhandledInputHandler`, `UiGamepadButtons`, `UiActionMap`, `UiActions`, `FocusCommands`, `GlfwUiInput.PollGamepad`, the HelloPanel state row, and the action map allocation gate (state-and-commands/action-map).
 - `PanelDefinition`, `LayoutDefinition`, `ModeDefinition`, `ModePanel`, `PanelContext`, `PanelInstance`, and `PanelController` (panels-and-modes/panel-definition).
 - `SlotContainer` with `Mount`, `Unmount`, and `SlotContainer.Find` (panels-and-modes/slot-container).
+- `UiContext.OnBeforeUpdate` and `UiBeforeUpdateHandler`, the slot that `Update` calls first (panels-and-modes/mode-set).
+- `UiManager` with `Register`, `SetMode`, the deferred mode diff, the layout swap, and the action map switch, and `ModeHistory` with `Back` (panels-and-modes/mode-set).
 
 ### Changed
 
+- The remark of `PanelDefinition.DefaultSlot` states that the manager does not read it (panels-and-modes/mode-set).
 - The HelloPanel smoke run now drives each widget in each frame and prints a fifth line, `HelloPanel: widgets: clicks <C>, flips <T>, values <V>, scrolls <S>, edits <E>, submits <U>.` It exits with code 1 and writes `HelloPanel: the synthetic input did not reach each widget.` when a widget gets no change. The last frame now has 7 draw commands and 1100 vertices (interactive-elements/widget-sample).
 - A chord now gives no click: a click needs the left press that set `Active`, with no other button down during the gesture, and a release of the left button that ends the press. A `PointerUp` with a target from the caller gives no click (CR-1 and CR-6 of button-and-toggle). `UiContext.CurrentPressTarget` holds the press target for one walk (interactive-elements/slider).
 - A pointer move with no target now walks to a dragged `Slider` while it holds the left press, also outside its rect. A hidden slider captures no move. `Hover`, `PointerHit`, and the routing gate still follow the hit (interactive-elements/slider).

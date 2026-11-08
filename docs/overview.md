@@ -1,7 +1,7 @@
 # brutal-ui - Overview
 
-**Last Updated:** 2026-10-29 20:30
-**Version:** v1.7
+**Last Updated:** 2026-11-08 03:18
+**Version:** v1.8
 
 ## Project Summary
 
@@ -18,6 +18,7 @@ brutal-ui gives BRUTAL developers a retained-mode game UI framework with zero al
 | input-routing (epic) | Complete | 152/152 (100%) | A zero-allocation event ring, a capture and bubble walk, a hit test, a focus owner with Tab, the `BrutalUi.Glfw` adapter, and `UiRoutingGate`. HelloPanel shows hover, focus, and the gate. 2281 tests pass. |
 | interactive-elements (epic) | Complete | 183/183 (100%) | `Button`, `Toggle`, `Slider`, `ScrollView`, and `TextField` on the event slots and the focus owner, with a delegate slot for each change. HelloPanel shows each widget, and the smoke run drives each one. 2558 tests pass. Closes Phase 2. |
 | state-and-commands (epic) | Complete | 116/116 (100%) | `Store<T>`, element bindings with a binding pass before the style pass, `CommandRegistry`, `EventBus`, `ServiceRegistry`, and `UiActionMap` with key, mouse, and gamepad input. HelloPanel shows a bound label, a command button, and a key action. 2723 tests pass. Opens Phase 3. |
+| panels-and-modes (epic) | In Progress | 48/51 (94%) | panel-definition, slot-container, and mode-set are done (the `OnBeforeUpdate` Core slot, `SlotContainer`, `UiManager` with the deferred mode diff, `ModeHistory`, and `SetMode`). panel-sample (HelloPanel modes and the `ModeDiffAllocationTests` gate) remains. 48 new tests; solution 2821. |
 
 > An epic is one row. Its child features live in `docs/features/<epic>/epic-overview.md`.
 
@@ -36,9 +37,11 @@ brutal-ui gives BRUTAL developers a retained-mode game UI framework with zero al
 - **GPU smoke contract (Phase 2):** The HelloPanel smoke run drives each widget in each frame, prints a fifth line with six counts, and exits with code 1 when a count is 0.
 - **state-and-commands → later epics:** A binding is a Core `ElementBinding` struct on `Element`. `UiContext.Update` runs the binding pass before the style pass. A button and a key reach the same `CommandRegistry` by a UTF-8 name. The panels-and-modes epic binds a panel root to a store and lists the active action maps of a mode. The xml-markup epic calls `BindCommand` for the `command="..."` attribute. `UiContext.OnUnhandledInput` holds one active map.
 - **GPU smoke contract (Phase 3):** The HelloPanel smoke run prints a sixth line with the store counts, and exits with code 1 when a count is 0.
+- **panels-and-modes → xml-markup and later:** `UiManager.Register` takes the panel, layout, and mode records that the xml-markup loader reads from XML. `UiContext.OnBeforeUpdate` is the one Core slot of the framework mode diff. The diff runs first in `Update`, before the input pass, so a key in the frame of a change reaches the action map of the new mode. panel-sample adds the two HelloPanel modes, the seventh smoke line, and the `ModeDiffAllocationTests` gate.
 
 ## Changelog
 
+- v1.8 (2026-11-08): **panels-and-modes epic: 3 of 4 features complete** - panel-definition (13/13), slot-container (10/10), and mode-set (25/25) are done and ready for review on `feat/panels-and-modes/mode-set`. mode-set adds `UiContext.OnBeforeUpdate` (the one Core change of the epic), and `UiManager` with `Register`, the deferred mode diff in `SetMode`, the layout swap, the action map switch, and `ModeHistory` with `Back`. The cross-phase review fixed 2 LOW findings; 14 phase plants and 1 review plant fail their rules. The solution reads 2821 tests, 0 failed, 3 skipped (48 new tests over the base 2773). `SetMode`, the diff, and a frame with no target measure 0 bytes after warm-up. panel-sample remains. The HelloPanel smoke step waits on a host Xvfb/NVIDIA repair, not on repo code.
 - v1.7 (2026-10-29): **state-and-commands epic complete** - 4/4 features, 116/116 tasks. store-and-subscription adds `IBindingSource` in Core, and `Store<T>` and `StoreSubscription<T, TValue>` in Framework. element-bindings adds the `ElementBinding` list on `Element`, the binding pass, `Label.BindText`, and a value binding for each widget. commands-and-events adds `CommandRegistry`, `BindCommand`, `EventBus`, and `ServiceRegistry`. action-map adds `UiActionMap`, `UiContext.OnUnhandledInput`, `GlfwUiInput.PollGamepad`, and the HelloPanel state sample. 2723 tests pass, and each of the 17 allocation gates measures 0 bytes. Phase 3 is open.
 - v1.6 (2026-10-29): **interactive-elements epic complete** - 5/5 features, 183/183 tasks. button-and-toggle sets the widget pattern with `Button`, `Toggle`, and the delegate slot. slider adds `Slider` with a drag through `IDragCapture` and the arrow keys. scroll-view adds `ScrollView` with the scroll offset in `HitWalk` and the draw walk. text-field adds `TextField` with a UTF-8 buffer, a caret, a selection, a press and drag map, and the caret pass. widget-sample shows each widget in HelloPanel and adds the widget gate. 2558 tests pass, and each allocation gate measures 0 bytes. Phase 2 is closed.
 - v1.5 (2026-10-22): **input-routing epic complete** - 4/4 features, 152/152 tasks. event-model adds the event structs, the fixed ring on `UiContext`, the capture and bubble slots on `Element`, and `EventWalk.Dispatch` with stop propagation. pointer-routing adds `HitWalk`, `Hover` and `Active`, scroll routing, and the `BrutalUi.Glfw` package with `GlfwUiInput`. keyboard-focus adds the focus owner, click focus, Tab and Shift+Tab, and the key and char route. routing-gate drains the ring first in `UiContext.Update`, adds `UiRoutingGate`, and shows hover, focus, and the gate in HelloPanel. 2281 tests pass, and each allocation gate measures 0 bytes.

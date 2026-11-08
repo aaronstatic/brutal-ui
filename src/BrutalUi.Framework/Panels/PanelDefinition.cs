@@ -14,8 +14,9 @@ namespace BrutalUi.Framework;
 /// </para>
 /// <para>
 /// The factory runs one time for each controller, at the first mount, so a closure costs one build-time allocation
-/// only. The factory can bind the root to a store (A7). <see cref="DefaultSlot"/> names the slot of the panel when a
-/// mode does not name one. The mode-set feature uses it.
+/// only. The factory can bind the root to a store (A7). <see cref="DefaultSlot"/> names the slot that the panel
+/// suggests. A loader can use it to fill an entry of a mode that names no slot. <see cref="UiManager"/> does not
+/// read it, because each <see cref="ModePanel"/> names its slot.
 /// </para>
 /// <para>
 /// The record keeps the equality that the compiler generates. It compares the name copies by reference, so two
@@ -43,7 +44,7 @@ public sealed record PanelDefinition
     /// Creates a definition. The constructor copies both names.
     /// </summary>
     /// <param name="name">The UTF-8 name of the panel.</param>
-    /// <param name="defaultSlot">The UTF-8 name of the slot that holds the panel when a mode names no slot.</param>
+    /// <param name="defaultSlot">The UTF-8 name of the slot that the panel suggests. A loader can use it to fill an entry of a mode that names no slot.</param>
     /// <param name="createRoot">The factory. It returns a new, detached element.</param>
     /// <exception cref="ArgumentException"><paramref name="name"/> or <paramref name="defaultSlot"/> is empty.</exception>
     /// <exception cref="ArgumentNullException"><paramref name="createRoot"/> is <see langword="null"/>.</exception>
@@ -69,7 +70,13 @@ public sealed record PanelDefinition
     /// <summary>Gets the UTF-8 name of the panel.</summary>
     public ReadOnlySpan<byte> Name => _name;
 
-    /// <summary>Gets the UTF-8 name of the slot that holds the panel when a mode names no slot.</summary>
+    /// <summary>
+    /// Gets the UTF-8 name of the slot that the panel suggests.
+    /// </summary>
+    /// <remarks>
+    /// A loader can use it to fill an entry of a mode that names no slot. <see cref="UiManager"/> does not read it,
+    /// because each <see cref="ModePanel"/> names its slot.
+    /// </remarks>
     public ReadOnlySpan<byte> DefaultSlot => _defaultSlot;
 
     /// <summary>

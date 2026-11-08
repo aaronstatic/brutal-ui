@@ -189,6 +189,11 @@ public sealed class UiContext
     private bool _binding;
 
     /// <summary>
+    /// Tells if the before-update handler runs. <see cref="Update(float)"/> throws when the handler calls it.
+    /// </summary>
+    private bool _beforeUpdate;
+
+    /// <summary>
     /// The ring of queued events. Both constructors create it, so a push never allocates (Decision 8).
     /// </summary>
     /// <remarks>The ring is a mutable struct. Change it only through this field.</remarks>
@@ -591,6 +596,11 @@ public sealed class UiContext
     /// Set <see cref="ViewportSize"/> before the first call.
     /// </para>
     /// <para>
+    /// The before-update slot of <see cref="OnBeforeUpdate"/> runs first. The handler can change the tree, and the
+    /// passes of the same call see the change. The hit test of the input pass reads the layout of the last
+    /// <see cref="Update(float)"/>, so a root that the slot adds gets no hit until its first layout.
+    /// </para>
+    /// <para>
     /// The input pass runs first (A5). It drains each entry that the event ring holds at the start of the call, and
     /// it runs the stale rules also when the ring is empty. The hit test reads the layout of the last
     /// <see cref="Update(float)"/>. An event that a handler pushes waits for the next <see cref="Update(float)"/>. A
@@ -667,12 +677,37 @@ public sealed class UiContext
     /// <exception cref="InvalidOperationException">
     /// A binding handler calls this method. The binding pass of this context runs already.
     /// </exception>
+    /// <exception cref="InvalidOperationException">
+    /// The before-update slot calls this method. The before-update of this context runs already.
+    /// </exception>
     public void Update(float deltaTime)
     {
         // A binding handler runs inside the binding pass. A nested call would run the passes again.
         if (_binding)
         {
             throw new InvalidOperationException("A binding handler must not call Update.");
+        }
+
+        // A before-update handler runs at the start of this call. A nested call would run the passes again.
+        if (_beforeUpdate)
+        {
+            throw new InvalidOperationException("A before-update handler must not call Update.");
+        }
+
+        // The before-update slot runs first (Q1 of panels-and-modes). The passes of this call read the roots after
+        // the slot, so they see a tree that the handler changed.
+        UiBeforeUpdateHandler? beforeUpdate = OnBeforeUpdate;
+        if (beforeUpdate is not null)
+        {
+            _beforeUpdate = true;
+            try
+            {
+                beforeUpdate(deltaTime);
+            }
+            finally
+            {
+                _beforeUpdate = false;
+            }
         }
 
         // The input pass (A5): the drain walks the queued events and changes the states before the style pass
@@ -1252,6 +1287,22 @@ public sealed class UiContext
     /// </para>
     /// </remarks>
     public UiUnhandledInputHandler? OnUnhandledInput { get; set; }
+
+    /// <summary>
+    /// Gets or sets the handler that <see cref="Update(float)"/> calls first, before the input pass.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Q1 and A2 of panels-and-modes: the slot is the seam of the mode diff of the framework layer. The manager
+    /// lives in that layer, and Core names no type of it. <c>UiManager</c> writes the slot in its constructor. A
+    /// write with <c>=</c> replaces the delegate. Do not use <c>+=</c>. A null slot does nothing.
+    /// </para>
+    /// <para>
+    /// Set the slot at build time, not in the frame loop. Create the delegate one time.
+    /// <see cref="UiBeforeUpdateHandler"/> states the call rules.
+    /// </para>
+    /// </remarks>
+    public UiBeforeUpdateHandler? OnBeforeUpdate { get; set; }
 
     /// <summary>
     /// Calls <see cref="OnFileDrop"/> at once with the paths of a file drop. A null slot makes the call do nothing.

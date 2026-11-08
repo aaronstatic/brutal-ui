@@ -1,8 +1,8 @@
 # Panels and Modes - Epic Overview
 
 **Epic:** panels-and-modes
-**Status:** Planned
-**Last Updated:** 2026-10-30 10:00
+**Status:** In Progress
+**Last Updated:** 2026-11-08 03:15
 
 > **This file is the epic marker.** Its presence in `docs/features/panels-and-modes/` tells every Beast Mode command that this folder is an **epic**, not a plain feature. Keep it present and keep the required sections below filled in. The master `docs/overview.md` tracks this epic as a **single row**. The per-feature detail lives **here**.
 
@@ -20,9 +20,9 @@ These features belong together because the definitions, the slot container, and 
 
 | # | Feature | Status | Tasks | Description |
 |---|---------|--------|-------|-------------|
-| 1 | panel-definition | Planned | — | `PanelDefinition`, `LayoutDefinition`, `ModeDefinition`, `PanelController`, and `PanelInstance` in `BrutalUi.Framework`. |
-| 2 | slot-container | Planned | — | `SlotContainer` as an `Element`, the mount and unmount of a panel root, and the slot lookup by name in a layout root. |
-| 3 | mode-set | Planned | — | `UiManager`, `SetMode`, the deferred diff through `UiContext.OnBeforeUpdate`, `ModeHistory`, and the action map of a mode. |
+| 1 | panel-definition | Complete | 13/13 (100%) | `PanelDefinition`, `LayoutDefinition`, `ModeDefinition`, `PanelController`, and `PanelInstance` in `BrutalUi.Framework`. |
+| 2 | slot-container | Complete | 10/10 (100%) | `SlotContainer` as an `Element`, the mount and unmount of a panel root, and the slot lookup by name in a layout root. |
+| 3 | mode-set | Complete | 25/25 (100%) | `UiManager`, `SetMode`, the deferred diff through `UiContext.OnBeforeUpdate`, `ModeHistory`, and the action map of a mode. |
 | 4 | panel-sample | Planned | — | Two modes in HelloPanel, the mode line of the smoke run, and the `ModeDiffAllocationTests` gate. |
 
 > Reference any feature with the slash form `panels-and-modes/<feature-name>`. `/update-epic` refreshes the task counts from each `tasks.md`.
@@ -76,8 +76,8 @@ These features belong together because the definitions, the slot container, and 
 
 ## Master Overview Rollup
 
-- **Rollup status:** Planned (0/4 features)
-- **One-line summary for master:** Panel, slot, and mode definitions, `SlotContainer`, `UiManager` with a deferred mode diff through `UiContext.OnBeforeUpdate`, `ModeHistory`, and two modes in HelloPanel.
+- **Rollup status:** In Progress (3/4 features complete, 48/51 tasks on the built features)
+- **One-line summary for master:** panel-definition, slot-container, and mode-set are done (the `OnBeforeUpdate` Core slot, `SlotContainer`, `UiManager` with the deferred mode diff, `ModeHistory`, and `SetMode`); panel-sample (HelloPanel modes and the `ModeDiffAllocationTests` gate) remains. 48 new tests; solution 2821.
 
 ---
 
