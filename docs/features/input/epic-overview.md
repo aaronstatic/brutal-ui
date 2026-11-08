@@ -1,8 +1,8 @@
 # Input - Epic Overview
 
 **Epic:** input
-**Status:** Planned
-**Last Updated:** 2026-11-07 18:20
+**Status:** In Progress
+**Last Updated:** 2026-11-08 16:55
 
 > **This file is the epic marker.** Its presence in `docs/features/input/` tells every Beast Mode command that this folder is an **epic**, not a plain feature. Keep it present and keep the required sections below filled in. The master `docs/overview.md` tracks this epic as a **single row**. The per-feature detail lives **here**.
 
@@ -22,7 +22,7 @@ The constituent features of this epic, in build order. Each feature is a subfold
 
 | # | Feature | Status | Tasks | Description |
 |---|---------|--------|-------|-------------|
-| 1 | input-state | Planned | - | The per-frame `UiInputState` on `UiContext`: the pointer position and delta, each button down, pressed, and released, the scroll delta, and the held keys. A view that the routing gate filters. |
+| 1 | input-state | Complete | 32/32 (100%) | The per-frame `UiInputState` on `UiContext`: the pointer position and delta, each button down, pressed, and released, the scroll delta, and the held keys. A view that the routing gate filters. |
 | 2 | gamepad-axes | Planned | - | The full gamepad state in `BrutalUi.Glfw`: the buttons, six axes with a radial deadzone, a connected flag, for each of the 16 GLFW slots, written into the input state. |
 | 3 | input-actions | Planned | - | Typed actions in `UiActionMap`: Button, Axis, and Vector2, with key composites, sticks, triggers, and the mouse delta, and the queries `WasPressed`, `IsHeld`, `WasReleased`, `ReadAxis`, and `ReadVector`. |
 | 4 | control-schemes | Planned | - | Named control schemes on the map, the active device from the last input, and a change slot for the prompt glyphs of a game. |
@@ -60,7 +60,7 @@ The constituent features of this epic, in build order. Each feature is a subfold
 
 ## Integration & Architecture
 
-- **Within the epic:** The input pass of `UiContext.Update` writes `UiInputState` after it drains the ring. `ui.Input` is the raw state, and `ui.Input.Game` is the view that the routing gate filters. `GlfwUiInput.PollGamepad` writes the gamepad state into the same struct. `UiActionMap` reads the state at `Update` and holds the value of each action for the frame. A scheme is a tag on each binding. The remap edits the binding list of the map and writes it as text.
+- **Within the epic:** The input pass of `UiContext.Update` writes `UiInputState` after it drains the ring. `ui.Input` is the raw state, and `ui.GameInput` is the view that the routing gate filters. `GlfwUiInput.PollGamepad` writes the gamepad state into the same struct. `UiActionMap` reads the state at `Update` and holds the value of each action for the frame. A scheme is a tag on each binding. The remap edits the binding list of the map and writes it as text.
 - **With other epics / features:** input-routing gives the ring, the walk, the focus owner, and `UiRoutingGate`. state-and-commands gives `UiActionMap`, `CommandRegistry`, and the gamepad button poll. panels-and-modes/mode-set switches the map of a mode and keeps the one active map rule. The spacegame map-view epic reads the actions in map-controls.
 - **Key architectural decisions for the epic as a whole:**
   - Q2 A per-frame input state on `UiContext`, with a view that the routing gate filters.
@@ -84,8 +84,8 @@ The constituent features of this epic, in build order. Each feature is a subfold
 
 ## Master Overview Rollup
 
-- **Rollup status:** Planned (0/5 features)
-- **One-line summary for master:** A gated per-frame input state, gamepad axes, typed actions with composites, control schemes, and a runtime remap with a text format. It unblocks the spacegame map controls.
+- **Rollup status:** In Progress (1/5 features complete, 32/32 tasks of feature 1)
+- **One-line summary for master:** input-state is complete: the per-frame `UiInputState` on `UiContext`, the gated `ui.GameInput` view, the clear rules, and the 16 gamepad slots with their write seam (32 tasks, 40 new tests, the nineteenth allocation gate). gamepad-axes, input-actions, control-schemes, and binding-remap stay planned. It unblocks the spacegame map controls.
 
 ---
 

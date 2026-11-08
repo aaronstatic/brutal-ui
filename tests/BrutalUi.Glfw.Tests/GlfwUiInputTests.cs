@@ -22,7 +22,7 @@ public sealed class GlfwUiInputTests
     private static readonly float2 OverRight = new(175f, 75f);
     private static readonly float2 OverLeft = new(50f, 50f);
 
-    /// <summary>The names of the eight window events that the adapter subscribes to.</summary>
+    /// <summary>The names of the nine window events that the adapter subscribes to.</summary>
     private static readonly string[] EventNames =
     [
         nameof(GlfwWindow.OnCursorPos),
@@ -33,6 +33,7 @@ public sealed class GlfwUiInputTests
         nameof(GlfwWindow.OnContentScale),
         nameof(GlfwWindow.OnKey),
         nameof(GlfwWindow.OnChar),
+        nameof(GlfwWindow.OnFocus),
     ];
 
     /// <summary>
@@ -306,7 +307,7 @@ public sealed class GlfwUiInputTests
     }
 
     /// <summary>
-    /// A real hidden window: the constructor adds one handler to each of the eight events, seeds the last cursor
+    /// A real hidden window: the constructor adds one handler to each of the nine events, seeds the last cursor
     /// position from the window, and converts a cursor event, a Tab key press, and a char. The Tab press focuses the
     /// only focusable element, and the char reaches it. A key repeat, a key release, and a key press with all the
     /// modifier bits reach it with the type, the repeat flag, and the modifiers of decision 9.

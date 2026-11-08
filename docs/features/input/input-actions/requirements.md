@@ -13,7 +13,7 @@ This feature turns `UiActionMap` into a typed action map. An action is a Button,
 - The bindings: `BindKey`, `BindMouseButton`, and `BindGamepadButton` stay. New binds are a stick to a Vector2, a trigger or a stick axis to an Axis, the mouse delta to a Vector2, the scroll to an Axis, and a key composite of two or four keys to an Axis or a Vector2.
 - A Button binding on an Axis or Vector2 action, and an axis binding on a Button action, throw `ArgumentException` at build time.
 - The queries by action name: `WasPressed`, `IsHeld`, `WasReleased`, `ReadAxis`, and `ReadVector`. A Button query on an Axis action throws. A name the map does not hold returns `false` or zero. (Q4)
-- The map reads `UiContext.Input.Game` in `Update`, so a gated input gives no value. A Vector2 from two bindings sums and clamps to length 1. A Button is held when one binding holds it.
+- The map reads `UiContext.GameInput` in `Update`, so a gated input gives no value. A Vector2 from two bindings sums and clamps to length 1. A Button is held when one binding holds it.
 - A press through the slot still invokes the command one time, with the repeat rule and the text guard of action-map. The queries and the commands agree on one press.
 - `UiActionMap` changes in place. `HelloPanel`, the action-map tests, and the mode-set switch keep working. (Q6)
 - `Activate` and `Deactivate` stay the one switch API of a map. When the typed map needs a per-frame read hook on `UiContext`, `Activate` writes it and `Deactivate` clears it. panels-and-modes/mode-set calls these two methods only and does not change.
@@ -24,7 +24,7 @@ This feature turns `UiActionMap` into a typed action map. An action is a Button,
 
 ## Dependencies
 
-- input-state is complete: `UiContext.Input.Game`.
+- input-state is complete: `UiContext.GameInput`.
 - gamepad-axes is complete: the axis values.
 - state-and-commands/action-map is complete: `UiActionMap` and `CommandRegistry`.
 

@@ -96,6 +96,11 @@ internal sealed class HelloModes
     /// <summary>The gate label that the widget factory writes. The constructor copies it into <see cref="GateLabel"/>.</summary>
     private Label? _gateLabel;
 
+    /// <summary>
+    /// The input label that the widget factory writes. The constructor copies it into <see cref="InputLabel"/>.
+    /// </summary>
+    private Label? _inputLabel;
+
     /// <summary>The widget section that the widget factory writes. The constructor copies it into <see cref="Widgets"/>.</summary>
     private HelloWidgets? _widgets;
 
@@ -114,8 +119,9 @@ internal sealed class HelloModes
     /// <exception cref="ArgumentNullException"><paramref name="context"/> or <paramref name="state"/> is
     /// <see langword="null"/>.</exception>
     /// <exception cref="InvalidOperationException">
-    /// The widget factory left <see cref="GateLabel"/> or <see cref="Widgets"/> null. The build rule cannot fail in
-    /// this sample; the check documents the contract of <see cref="HelloScreen.BuildWidgetPanel"/>.
+    /// The widget factory left <see cref="GateLabel"/>, <see cref="InputLabel"/>, or <see cref="Widgets"/> null. The
+    /// build rule cannot fail in this sample; the check documents the contract of
+    /// <see cref="HelloScreen.BuildWidgetPanel"/>.
     /// </exception>
     public HelloModes(UiContext context, HelloState state, TextureHandle checker)
     {
@@ -158,6 +164,8 @@ internal sealed class HelloModes
         infoPanel.EnsureRoot();
 
         GateLabel = _gateLabel ?? throw new InvalidOperationException("The widget factory did not give the gate label.");
+        InputLabel = _inputLabel
+            ?? throw new InvalidOperationException("The widget factory did not give the input label.");
         Widgets = _widgets ?? throw new InvalidOperationException("The widget factory did not give the widget section.");
         WidgetPanel = widgets.Instance.Root!;
 
@@ -192,6 +200,9 @@ internal sealed class HelloModes
     /// <summary>Gets the gate label of the widget panel. The frame loop sets its text after each draw.</summary>
     public Label GateLabel { get; }
 
+    /// <summary>Gets the input label of the widget panel. The frame loop sets its text after each draw.</summary>
+    public Label InputLabel { get; }
+
     /// <summary>Gets the widget section. The smoke run aims its widget events at the widgets and reads the counts.</summary>
     public HelloWidgets Widgets { get; }
 
@@ -204,11 +215,11 @@ internal sealed class HelloModes
     /// <summary>Gets the count of runs of <c>hello.back</c> where <see cref="ModeHistory.Back"/> returned <see langword="true"/>.</summary>
     public int Backs { get; private set; }
 
-    /// <summary>The factory of <c>hello.widgets</c>. It builds the widget panel and writes the two out fields.</summary>
+    /// <summary>The factory of <c>hello.widgets</c>. It builds the widget panel and writes the three out fields.</summary>
     /// <param name="context">The panel context. The factory reads nothing from it.</param>
     /// <returns>The root of the widget panel.</returns>
     private Element CreateWidgetPanel(PanelContext context) =>
-        HelloScreen.BuildWidgetPanel(_checker, ModeButton, out _gateLabel, out _widgets);
+        HelloScreen.BuildWidgetPanel(_checker, ModeButton, out _gateLabel, out _inputLabel, out _widgets);
 
     /// <summary>The factory of <c>hello.state</c>.</summary>
     /// <param name="context">The panel context. The factory reads nothing from it.</param>

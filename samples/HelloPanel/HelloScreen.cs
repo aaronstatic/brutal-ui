@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.IO;
 using Brutal.Numerics;
 using BrutalUi.Core;
@@ -34,7 +35,7 @@ namespace HelloPanel;
 /// the panel, <c>Click me</c>, the toggle, the slider, the text field, <c>Mode (F1)</c>, and <c>Add</c>. A press on
 /// one of these widgets gives the focus to the widget. A press on the disabled button clears the focus: the button is
 /// focusable but disabled, and the press does not go on to the panel. A press on the scroll view gives the focus to
-/// the panel, the nearest focusable ancestor, because the scroll view is not focusable. The two labels and the image
+/// the panel, the nearest focusable ancestor, because the scroll view is not focusable. The three labels and the image
 /// are not pickable, so a point on them hits the panel. The widget section and its rows are pickable, so a press in a
 /// gap between the widgets gives the focus to the panel, the nearest focusable ancestor. The layout root and the two
 /// slots are not pickable (the layout-root rule and the slot rule), so a point that hits no panel hits no element, and
@@ -62,9 +63,18 @@ namespace HelloPanel;
 /// buffer never grows after the first frame.
 /// </para>
 /// <para>
+/// The third label is the input label. It shows the pointer delta and one held key of
+/// <see cref="UiContext.GameInput"/>, the game view of the input state. The frame loop sets its text with
+/// <see cref="InputText"/> after each draw. The gate rule of <see cref="UiContext.GameInput"/> empties the pointer
+/// part over the UI, so the label reads 0 over the panel and a non-zero delta over the game area. The rule empties
+/// the key part when the UI holds the keyboard focus, so the label then reads <c>Held key: none</c>, and a held W
+/// over the game area shows <c>Held key: W</c>. The label starts with the longest input text, so its buffer never
+/// grows after the first frame.
+/// </para>
+/// <para>
 /// The labels and the widgets use font 0, the default font of the renderer. The sample loads no font, so font 0 is
-/// the ImGui default font. The panel and the two labels use the font atlas texture, so they share one ImGui draw
-/// command. The gate label comes before the image. The image binds the checker texture, so it opens a second draw
+/// the ImGui default font. The panel and the three labels use the font atlas texture, so they share one ImGui draw
+/// command. The three labels come before the image. The image binds the checker texture, so it opens a second draw
 /// command. The widget section comes after the image and uses the font atlas texture again, so it opens a third draw
 /// command. The mode row follows the widget section, and its button keeps the same command.
 /// </para>
@@ -74,7 +84,7 @@ namespace HelloPanel;
 /// <c>hello-panel</c>, <c>hello-panel-root</c>, <c>hello-widgets</c>, <c>hello-row</c>, and <c>hello-status</c>. The
 /// sheet also holds the type rule <c>SlotContainer</c> for the two slots. The widget rules use the
 /// type names of the widgets, for example <c>Button</c>. The tree holds no inline value. The rules
-/// <c>.hello-panel &gt; Label</c> and <c>.hello-panel &gt; Image</c> are child rules, so the two labels and the image
+/// <c>.hello-panel &gt; Label</c> and <c>.hello-panel &gt; Image</c> are child rules, so the three labels and the image
 /// must stay direct children of the widget panel. Each status label is a child of a row, so the rule
 /// <c>.hello-row &gt; Label</c> gives its values, and the rule <c>.hello-panel &gt; Label</c> does not apply to it.
 /// </para>
@@ -111,6 +121,15 @@ internal static class HelloScreen
 
     /// <summary>The number of bytes of one RGBA texel.</summary>
     private const int BytesPerTexel = 4;
+
+    /// <summary>The clamp limit of one component of the input text.</summary>
+    private const float DeltaClampLimit = 9999f;
+
+    /// <summary>The first key code that the input text writes as one ASCII character.</summary>
+    private const int HeldKeyAsciiFirst = 32;
+
+    /// <summary>The last key code that the input text writes as one ASCII character.</summary>
+    private const int HeldKeyAsciiLast = 96;
 
     /// <summary>The width and the height of one checker cell, in texels.</summary>
     private const int CheckerCellSize = 8;
@@ -189,7 +208,7 @@ internal static class HelloScreen
         return new StyleSheetParser().Parse(bytes, SheetFileName).GetSheetOrThrow();
     }
 
-    /// <summary>Builds the widget panel: the two labels, the image, the widget section, and the mode row.</summary>
+    /// <summary>Builds the widget panel: the three labels, the image, the widget section, and the mode row.</summary>
     /// <remarks>
     /// <para>
     /// The factory of <c>hello.widgets</c> calls this method (see <see cref="HelloModes"/>). The panel is a column
@@ -200,12 +219,13 @@ internal static class HelloScreen
     /// </para>
     /// <para>
     /// The panel is focusable. So are <c>Click me</c>, the toggle, the slider, the text field, and
-    /// <paramref name="modeButton"/>. The disabled button and the scroll view take no focus. The two labels and the
+    /// <paramref name="modeButton"/>. The disabled button and the scroll view take no focus. The three labels and the
     /// image are not pickable, so a point on them hits the panel. The gate label starts with the longest text of
-    /// <see cref="GateText"/>.
+    /// <see cref="GateText"/>. The input label comes right after the gate label and starts with the longest text of
+    /// <see cref="InputText"/>.
     /// </para>
     /// <para>
-    /// The two labels and the image are direct children of the panel, because the rules
+    /// The three labels and the image are direct children of the panel, because the rules
     /// <c>.hello-panel &gt; Label</c> and <c>.hello-panel &gt; Image</c> are child rules. The widget section of
     /// <paramref name="widgets"/> follows the image. Its status labels are children of a row, so the rule
     /// <c>.hello-row &gt; Label</c> styles them. The mode row is the last child. It carries the <c>hello-row</c>
@@ -217,13 +237,14 @@ internal static class HelloScreen
     /// </param>
     /// <param name="modeButton">The <c>Mode (F1)</c> button. A click runs <c>hello.mode</c>.</param>
     /// <param name="gateLabel">The gate label. Set its text with <see cref="GateText"/>.</param>
+    /// <param name="inputLabel">The input label. Set its text with <see cref="InputText"/>.</param>
     /// <param name="widgets">
     /// The widget section, its widgets, its status labels, and its change counts. The smoke run aims its widget events
     /// at the widgets and reads the counts.
     /// </param>
     /// <returns>The root element of the widget panel.</returns>
     public static Element BuildWidgetPanel(
-        TextureHandle checker, Button modeButton, out Label gateLabel, out HelloWidgets widgets)
+        TextureHandle checker, Button modeButton, out Label gateLabel, out Label inputLabel, out HelloWidgets widgets)
     {
         // The rule .hello-panel > Label gives the color and the size. The label keeps font 0, the default font.
         // A label is not pickable, so the pointer hits the panel behind it.
@@ -232,6 +253,10 @@ internal static class HelloScreen
         // The gate label starts with the longest gate text, so its buffer holds each gate text with no growth.
         gateLabel = new Label(new Label.CreateInfo()) { IsPickable = false };
         gateLabel.SetText(PointerYesFocusYes);
+
+        // The input label starts with the longest input text, so its buffer holds each input text with no growth.
+        inputLabel = new Label(new Label.CreateInfo()) { IsPickable = false };
+        inputLabel.SetText(LongestInputText);
 
         // The rule .hello-panel > Image gives the top margin. The tint is a value of the image, not of the style.
         Image checkerImage = new(new Image.CreateInfo
@@ -253,7 +278,7 @@ internal static class HelloScreen
         modeRow.Children.Add(modeButton);
 
         // The child rules read the parent, so the labels and the image are direct children of the panel.
-        // The gate label comes before the image, so the panel and the two labels share one draw command.
+        // The three labels come before the image, so the panel and the three labels share one draw command.
         // The panel is focusable. So are Click me, the toggle, the slider, the text field, and Mode (F1). The
         // disabled button and the scroll view take no focus.
         Element panel = new() { IsFocusable = true };
@@ -261,6 +286,7 @@ internal static class HelloScreen
         panel.Classes.Add(PanelRootClass);
         panel.Children.Add(greeting);
         panel.Children.Add(gateLabel);
+        panel.Children.Add(inputLabel);
         panel.Children.Add(checkerImage);
         panel.Children.Add(widgets.Section);
         panel.Children.Add(modeRow);
@@ -372,4 +398,149 @@ internal static class HelloScreen
     /// The gate text when the pointer is over the UI and the UI has the keyboard focus. This is the longest gate text.
     /// </summary>
     private static ReadOnlySpan<byte> PointerYesFocusYes => "Pointer over UI: yes. Keyboard focus in UI: yes."u8;
+
+    /// <summary>
+    /// Gives the text of the input label for the game view of the input state.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The method writes <c>Game pointer delta: &lt;x&gt;, &lt;y&gt;. Held key: &lt;key&gt;</c> into
+    /// <paramref name="scratch"/> and returns the written part. It clamps each component of
+    /// <see cref="UiPointerState.Delta"/> to -9999 to 9999, rounds the value to an <see cref="int"/>, and writes it.
+    /// <see cref="int.TryFormat(Span{byte}, out int, ReadOnlySpan{char}, IFormatProvider?)"/> writes each count with
+    /// the invariant culture, so the method makes no string and boxes no value.
+    /// </para>
+    /// <para>
+    /// The held-key part names the lowest key code that <see cref="UiKeyState.IsDown(int)"/> reports down. A code from
+    /// 32 to 96 writes as one ASCII character, and another code writes as its number. With no key down, the part
+    /// writes <c>none</c>. The longest text needs 48 bytes, so a scratch buffer of 64 bytes always holds one input
+    /// text.
+    /// </para>
+    /// <para>
+    /// Pass the result to <see cref="Label.SetText(ReadOnlySpan{byte})"/>. Read <see cref="UiContext.GameInput"/> after
+    /// <see cref="UiContext.Update(float)"/>. The gate rule empties the pointer part of that view over the UI, so the
+    /// delta is (0, 0) there, and the label reads 0. The rule empties the key part when the UI holds the keyboard
+    /// focus, so the label then reads <c>Held key: none</c>.
+    /// </para>
+    /// </remarks>
+    /// <param name="game">The game view of the input state: <see cref="UiContext.GameInput"/>.</param>
+    /// <param name="scratch">The destination buffer. Give it 64 bytes.</param>
+    /// <returns>The part of <paramref name="scratch"/> that holds the text.</returns>
+    /// <exception cref="InvalidOperationException">The text does not fit in <paramref name="scratch"/>.</exception>
+    public static ReadOnlySpan<byte> InputText(in UiInputState game, Span<byte> scratch)
+    {
+        // The write pattern of HelloWidgets.WriteCount: one copy or format for each part, and no allocation.
+        if (!InputPrefix.TryCopyTo(scratch))
+        {
+            throw new InvalidOperationException("The input text does not fit in the scratch buffer.");
+        }
+
+        int length = InputPrefix.Length;
+        int x = DeltaComponent(game.Pointer.Delta.X);
+        if (!x.TryFormat(scratch[length..], out int written, default, CultureInfo.InvariantCulture))
+        {
+            throw new InvalidOperationException("The input text does not fit in the scratch buffer.");
+        }
+
+        length += written;
+        if (!InputSeparator.TryCopyTo(scratch[length..]))
+        {
+            throw new InvalidOperationException("The input text does not fit in the scratch buffer.");
+        }
+
+        length += InputSeparator.Length;
+        int y = DeltaComponent(game.Pointer.Delta.Y);
+        if (!y.TryFormat(scratch[length..], out written, default, CultureInfo.InvariantCulture))
+        {
+            throw new InvalidOperationException("The input text does not fit in the scratch buffer.");
+        }
+
+        length += written;
+        if (!HeldKeyPrefix.TryCopyTo(scratch[length..]))
+        {
+            throw new InvalidOperationException("The input text does not fit in the scratch buffer.");
+        }
+
+        length += HeldKeyPrefix.Length;
+        int heldKey = LowestHeldKey(in game);
+        if (heldKey < 0)
+        {
+            if (!HeldKeyNone.TryCopyTo(scratch[length..]))
+            {
+                throw new InvalidOperationException("The input text does not fit in the scratch buffer.");
+            }
+
+            length += HeldKeyNone.Length;
+        }
+        else if (heldKey >= HeldKeyAsciiFirst && heldKey <= HeldKeyAsciiLast)
+        {
+            scratch[length] = (byte)heldKey;
+            length++;
+        }
+        else
+        {
+            if (!heldKey.TryFormat(scratch[length..], out written, default, CultureInfo.InvariantCulture))
+            {
+                throw new InvalidOperationException("The input text does not fit in the scratch buffer.");
+            }
+
+            length += written;
+        }
+
+        return scratch[..length];
+    }
+
+    /// <summary>The prefix of the input text.</summary>
+    private static ReadOnlySpan<byte> InputPrefix => "Game pointer delta: "u8;
+
+    /// <summary>The text between the two components of the input text.</summary>
+    private static ReadOnlySpan<byte> InputSeparator => ", "u8;
+
+    /// <summary>The text between the pointer delta and the held key of the input text.</summary>
+    private static ReadOnlySpan<byte> HeldKeyPrefix => ". Held key: "u8;
+
+    /// <summary>The held-key value that the input text writes when no key is down.</summary>
+    private static ReadOnlySpan<byte> HeldKeyNone => "none"u8;
+
+    /// <summary>
+    /// The longest input text: the prefix, the separator, two clamped components of five bytes, and the held-key part
+    /// with <c>none</c>. The held-key part of <c>none</c> is longer than each code part. The input label starts with
+    /// it, so its buffer never grows after the first frame.
+    /// </summary>
+    private static ReadOnlySpan<byte> LongestInputText => "Game pointer delta: -9999, -9999. Held key: none"u8;
+
+    /// <summary>Clamps one component of the pointer delta and rounds it to an <see cref="int"/>.</summary>
+    /// <remarks>
+    /// The method clamps the <see cref="float"/> before the cast, so the cast always sees a value inside the range of
+    /// the result. A component that is not finite gives 0. Phase 1 writes a finite delta for every frame, so the check
+    /// guards a later change.
+    /// </remarks>
+    /// <param name="value">One component of <see cref="UiPointerState.Delta"/>.</param>
+    /// <returns>The rounded value, from -9999 to 9999.</returns>
+    private static int DeltaComponent(float value)
+    {
+        float clamped = float.IsFinite(value) ? Math.Clamp(value, -DeltaClampLimit, DeltaClampLimit) : 0f;
+        return (int)MathF.Round(clamped);
+    }
+
+    /// <summary>Finds the lowest key code that the game view reports down.</summary>
+    /// <remarks>
+    /// The method walks the codes from 0 to <see cref="UiKeyState.KeyCount"/> minus 1 and stops at the first
+    /// <see cref="UiKeyState.IsDown(int)"/> answer of <see langword="true"/>. The read of the key part copies nothing,
+    /// and the loop allocates nothing.
+    /// </remarks>
+    /// <param name="game">The game view of the input state: <see cref="UiContext.GameInput"/>.</param>
+    /// <returns>The lowest held code, or -1 when no key is down.</returns>
+    private static int LowestHeldKey(in UiInputState game)
+    {
+        for (int key = 0; key < UiKeyState.KeyCount; key++)
+        {
+            if (game.Keys.IsDown(key))
+            {
+                return key;
+            }
+        }
+
+        return -1;
+    }
 }

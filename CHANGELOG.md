@@ -37,9 +37,13 @@ This file lists each notable change of brutal-ui. The format follows [Keep a Cha
 - HelloPanel shows two modes with the layout `hello.layout`, the panels `hello.widgets`, `hello.state`, and `hello.info`, a `Mode (F1)` button, F1 for the switch, and F2 for the back step (panels-and-modes/panel-sample).
 - The HelloPanel smoke run switches the mode in each frame and prints a seventh line with the mode counts (panels-and-modes/panel-sample).
 - `ModeDiffAllocationTests`, the eighteenth allocation gate (panels-and-modes/panel-sample).
+- `UiInputState`, `UiContext.Input`, and `UiContext.GameInput`, the per-frame input state and its gated view (input/input-state).
+- `UiContext.ClearHeldKeys`, the request that clears the held keys at the end of the next drain (input/input-state).
+- `UiGamepadState` and `UiContext.SetGamepad`, the gamepad slots and their write seam (input/input-state).
 
 ### Changed
 
+- `GlfwUiInput` subscribes `GlfwWindow.OnFocus` and clears the held keys on a focus loss. A `KeyboardEnabled` switch to `false` clears the held keys (input/input-state).
 - `HelloScreen.Build` splits into four build methods, `UiManager` adds the root of the sample, and the class `hello-root` becomes `hello-slot-root` (panels-and-modes/panel-sample).
 - The remark of `PanelDefinition.DefaultSlot` states that the manager does not read it (panels-and-modes/mode-set).
 - The HelloPanel smoke run now drives each widget in each frame and prints a fifth line, `HelloPanel: widgets: clicks <C>, flips <T>, values <V>, scrolls <S>, edits <E>, submits <U>.` It exits with code 1 and writes `HelloPanel: the synthetic input did not reach each widget.` when a widget gets no change. The last frame now has 7 draw commands and 1100 vertices (interactive-elements/widget-sample).

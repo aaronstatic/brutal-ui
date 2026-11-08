@@ -200,6 +200,13 @@ public sealed class UiContext
     private EventQueue _events;
 
     /// <summary>
+    /// The writer of the input state. Both constructors create it, and the three hooks of
+    /// <see cref="DrainEvents"/> call it (Decision 2 of input-state).
+    /// </summary>
+    /// <remarks>The writer is a mutable struct. Change it only through this field.</remarks>
+    private InputStateWriter _input;
+
+    /// <summary>
     /// The path buffer of the event walk. The walk grows it by doubling and never shrinks it (A7).
     /// </summary>
     private Element[] _eventPath = new Element[EventWalk.InitialPathSize];
@@ -249,6 +256,7 @@ public sealed class UiContext
     {
         _textDefaults = CreateTextDefaults(null, default, 0f);
         _events = new EventQueue(DefaultEventQueueCapacity);
+        _input = InputStateWriter.Create();
     }
 
     /// <summary>
@@ -281,6 +289,7 @@ public sealed class UiContext
         // The ring rejects a capacity of 0, so map 0 to the default first (P1-1).
         int capacity = info.EventQueueCapacity == 0 ? DefaultEventQueueCapacity : info.EventQueueCapacity;
         _events = new EventQueue(capacity);
+        _input = InputStateWriter.Create();
     }
 
     /// <summary>
@@ -985,9 +994,110 @@ public sealed class UiContext
     /// and a scroll each hit-test again before the game reads the gate. An entry with a target from the caller
     /// changes no value.
     /// </para>
-    /// <para>The read allocates nothing.</para>
+    /// <para>
+    /// The read allocates nothing. <see cref="GameInput"/> applies this value at the end of the drain (A4 of
+    /// input-state).
+    /// </para>
     /// </remarks>
     public UiRoutingGate RoutingGate => new(_pointerHit is not null, _focusOwner is not null);
+
+    /// <summary>
+    /// Gets the raw input state of the last <see cref="Update(float)"/> call: the values that the drain recorded,
+    /// before the routing gate.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The frame rule: the drain writes the state during <see cref="Update(float)"/>, entry by entry, and writes
+    /// the delta at the end of the drain. Read this property after the call, when the frame values are complete.
+    /// </para>
+    /// <para>
+    /// Q2 of the input epic: the value is the state after the drain of the last <see cref="Update(float)"/> call. It
+    /// is fixed until the next call, so two reads in one frame agree.
+    /// </para>
+    /// <para>The read copies nothing and allocates nothing.</para>
+    /// </remarks>
+    public ref readonly UiInputState Input => ref _input.Raw;
+
+    /// <summary>
+    /// Gets the game view of the input state: the copy of <see cref="Input"/> that the routing gate filters.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The gate rule (A4): the end of the drain applies the gate one time, from the value that
+    /// <see cref="RoutingGate"/> gives at that point. <see cref="RoutingGate"/> gives the same value after
+    /// <see cref="Update(float)"/>. A focus change after <see cref="Update(float)"/> changes
+    /// <see cref="RoutingGate"/> and not this view until the next <see cref="Update(float)"/> call.
+    /// </para>
+    /// <para>
+    /// The pointer part is empty when <see cref="UiRoutingGate.PointerOverUi"/> was <see langword="true"/> at the
+    /// end of the last drain: the position holds (NaN, NaN), the delta is (0, 0), the scroll is (0, 0), and the
+    /// button masks are zero. The game then sees no pointer input from the UI. The key part is empty when
+    /// <see cref="UiRoutingGate.KeyboardFocusInUi"/> was <see langword="true"/> at that point: no key bits and the
+    /// <see cref="UiModifiers.None"/> modifiers. The gamepad slots get no gate.
+    /// </para>
+    /// <para>The read copies nothing and allocates nothing.</para>
+    /// </remarks>
+    public ref readonly UiInputState GameInput => ref _input.Game;
+
+    /// <summary>
+    /// Releases each key that <see cref="Input"/> holds down, at the end of the next drain.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Q2 of the input epic: the call sets a request only. The end of the next drain applies it, after the last
+    /// entry, so a key down of the same frame that came before the call also clears (Decision 10). A key down after
+    /// the call in the same frame also clears.
+    /// </para>
+    /// <para>
+    /// Each cleared key gets the released flag for that frame, and the modifiers become
+    /// <see cref="UiModifiers.None"/>. The clear runs before the game view is written, so both views agree.
+    /// </para>
+    /// <para>
+    /// The call does not touch the elements: an element that got a key down gets no key up.
+    /// <c>GlfwUiInput</c> calls it on a focus loss and on a <c>KeyboardEnabled</c> switch to
+    /// <see langword="false"/>.
+    /// </para>
+    /// <para>The call allocates nothing.</para>
+    /// </remarks>
+    public void ClearHeldKeys() => _input.RequestKeyClear();
+
+    /// <summary>
+    /// Writes one gamepad slot of <see cref="Input"/> and computes its pressed and released edges from the old
+    /// buttons of the slot.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This is the write seam of the gamepad-axes feature (the input epic, Notes question 1). Call it one time for
+    /// each slot in each frame, after <c>Glfw.PollEvents</c> and before <see cref="Update(float)"/>. A second call
+    /// for the same slot in one frame replaces the edges of the first call.
+    /// </para>
+    /// <para>
+    /// The method computes <c>Pressed = new &amp; ~old</c> and <c>Released = old &amp; ~new</c>, over the buttons
+    /// of the old raw slot and of <paramref name="state"/>. It writes the raw slot at once. The drain keeps the
+    /// gamepad edges, and the end of the next drain copies the slots to the game view.
+    /// </para>
+    /// <para>
+    /// The gate does not apply to a gamepad: <see cref="GameInput"/> holds the same slots as <see cref="Input"/>,
+    /// also when the pointer is over the UI or the UI holds the keyboard focus.
+    /// </para>
+    /// <para>The call allocates nothing.</para>
+    /// </remarks>
+    /// <param name="index">The slot index, 0 to 15.</param>
+    /// <param name="state">
+    /// The new state of the slot. Build it with <see cref="UiGamepadState(UiGamepadButtons, ReadOnlySpan{float})"/>.
+    /// </param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="index"/> is outside 0 to 15. The parameter name is <c>index</c>.
+    /// </exception>
+    public void SetGamepad(int index, in UiGamepadState state)
+    {
+        if ((uint)index >= (uint)UiInputState.GamepadCount)
+        {
+            throw new ArgumentOutOfRangeException(nameof(index));
+        }
+
+        _input.SetGamepad(index, in state);
+    }
 
     /// <summary>
     /// Moves the keyboard focus of this context to an element.
@@ -1492,6 +1602,14 @@ public sealed class UiContext
     /// A call from a handler of the drain throws. The flag is cleared in a <c>finally</c> block, so the context stays
     /// valid after an exception from a handler.
     /// </para>
+    /// <para>
+    /// The state write (input-state). Three hooks wrap the loop: the first hook clears the frame values of the input
+    /// state and keeps the start position, the second hook writes each entry into the raw state after the target
+    /// step, and the third hook writes the delta and the game view in the <c>finally</c> block. The third hook reads
+    /// the value that <see cref="RoutingGate"/> gives at that point. An exception of a handler still runs the third
+    /// hook, so the state holds each entry up to the throw. Read the result through <see cref="Input"/> or
+    /// <see cref="GameInput"/> after <see cref="Update(float)"/>.
+    /// </para>
     /// </remarks>
     /// <returns>The number of walks: the entries that the method sent to the walk.</returns>
     /// <exception cref="InvalidOperationException">A drain of this context runs already.</exception>
@@ -1514,6 +1632,9 @@ public sealed class UiContext
 
             // The stale focus rule (Decision 7 of keyboard-focus): an owner that cannot take the focus loses it here.
             DropStaleFocus();
+
+            // Hook 1 of input-state: clear the frame values of the input state and keep the start position.
+            _input.BeginFrame();
 
             // Read the count one time. An event that a handler pushes waits for the next drain (Decision 6).
             int remaining = _events.Count;
@@ -1550,6 +1671,9 @@ public sealed class UiContext
                     target = _focusOwner;
                     entry.Header.Target = target;
                 }
+
+                // Hook 2 of input-state: write this entry into the raw input state.
+                _input.Record(in entry, target is not null);
 
                 // The press target (Decision 13 of slider). A press and a move that the drain routes get the element of
                 // the left press with no chord. A routed release gets it only when the release ends the press. An entry
@@ -1670,6 +1794,9 @@ public sealed class UiContext
             _draining = false;
             t_pressTarget = previousPressTarget;
             FinishRelease();
+
+            // Hook 3 of input-state: write the delta and the game view from the gate at this point.
+            _input.EndFrame(RoutingGate);
         }
     }
 

@@ -13,11 +13,13 @@ namespace BrutalUi.Glfw;
 /// </summary>
 /// <remarks>
 /// <para>
-/// The adapter adds one handler to each of eight window events: <see cref="GlfwWindow.OnCursorPos"/>,
+/// The adapter adds one handler to each of nine window events: <see cref="GlfwWindow.OnCursorPos"/>,
 /// <see cref="GlfwWindow.OnMouseButton"/>, <see cref="GlfwWindow.OnScroll"/>, <see cref="GlfwWindow.OnCursorEnter"/>,
-/// <see cref="GlfwWindow.OnDrop"/>, <see cref="GlfwWindow.OnContentScale"/>, <see cref="GlfwWindow.OnKey"/>, and
-/// <see cref="GlfwWindow.OnChar"/>. It does not use <see cref="GlfwWindow.OnCharMods"/>. A key event and a char event
-/// have no target. The drain sends them to the focus owner of the context.
+/// <see cref="GlfwWindow.OnDrop"/>, <see cref="GlfwWindow.OnContentScale"/>, <see cref="GlfwWindow.OnKey"/>,
+/// <see cref="GlfwWindow.OnChar"/>, and <see cref="GlfwWindow.OnFocus"/>. It does not use
+/// <see cref="GlfwWindow.OnCharMods"/>. A key event and a char event have no target. The drain sends them to the
+/// focus owner of the context. A focus loss calls <see cref="UiContext.ClearHeldKeys"/> through
+/// <see cref="PushFocus(bool)"/>, so no key stays down when the window loses the focus.
 /// </para>
 /// <para>
 /// The ImGui rule: the ImGui <c>GlfwBackend</c> and this adapter both get each key event and each char event. The
@@ -124,8 +126,14 @@ public sealed class GlfwUiInput : IDisposable
     /// <summary>The handler of <see cref="GlfwWindow.OnChar"/>. The adapter creates it one time.</summary>
     private readonly GlfwCharCallback _onChar;
 
+    /// <summary>The handler of <see cref="GlfwWindow.OnFocus"/>. The adapter creates it one time.</summary>
+    private readonly GlfwWindowFocusCallback _onFocus;
+
     /// <summary>The last cursor position. A button event and a scroll event use it.</summary>
     private float2 _lastCursorPosition;
+
+    /// <summary>Backing field of <see cref="KeyboardEnabled"/>.</summary>
+    private bool _keyboardEnabled = true;
 
     /// <summary><see langword="true"/> after <see cref="Dispose"/>.</summary>
     private bool _disposed;
@@ -154,6 +162,7 @@ public sealed class GlfwUiInput : IDisposable
         window.OnContentScale += _onContentScale;
         window.OnKey += _onKey;
         window.OnChar += _onChar;
+        window.OnFocus += _onFocus;
     }
 
     /// <summary>
@@ -173,6 +182,7 @@ public sealed class GlfwUiInput : IDisposable
         _onContentScale = HandleContentScale;
         _onKey = HandleKey;
         _onChar = HandleChar;
+        _onFocus = HandleFocus;
     }
 
     /// <summary>
@@ -199,8 +209,31 @@ public sealed class GlfwUiInput : IDisposable
     /// key down with no key up. A key down while the value is <see langword="false"/> and a key up after the value
     /// becomes <see langword="true"/> again give a key up with no key down.
     /// </para>
+    /// <para>
+    /// The switch to <see langword="false"/> calls <see cref="UiContext.ClearHeldKeys"/>. The end of the next drain
+    /// releases each held key of <see cref="UiContext.Input"/>, so the state holds no key down. The call touches no
+    /// element, so an element still gets a key down with no key up. A write of the same value does nothing, so a
+    /// per-frame write clears only on the switch from <see langword="true"/> to <see langword="false"/>. The setter
+    /// also calls after <see cref="Dispose"/>, because the call only sets a flag.
+    /// </para>
     /// </remarks>
-    public bool KeyboardEnabled { get; set; } = true;
+    public bool KeyboardEnabled
+    {
+        get => _keyboardEnabled;
+        set
+        {
+            if (_keyboardEnabled == value)
+            {
+                return;
+            }
+
+            _keyboardEnabled = value;
+            if (!value)
+            {
+                Context.ClearHeldKeys();
+            }
+        }
+    }
 
     /// <summary>
     /// Removes the handlers from the events of the window. After this call, the adapter pushes no event. A second
@@ -228,6 +261,7 @@ public sealed class GlfwUiInput : IDisposable
         window.OnContentScale -= _onContentScale;
         window.OnKey -= _onKey;
         window.OnChar -= _onChar;
+        window.OnFocus -= _onFocus;
     }
 
     /// <summary>
@@ -462,6 +496,34 @@ public sealed class GlfwUiInput : IDisposable
         });
     }
 
+    /// <summary>
+    /// Calls <see cref="UiContext.ClearHeldKeys"/> for a window focus loss. A focus gain does nothing.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The method returns at once after <see cref="Dispose"/> and for a focus gain. The focus handler calls it with
+    /// the value of the focus event, converted to <see langword="bool"/>.
+    /// </para>
+    /// <para>
+    /// The call sets a clear request only. The end of the next drain releases each held key of
+    /// <see cref="UiContext.Input"/> (see <see cref="UiContext.ClearHeldKeys"/>). GLFW sends synthetic key releases
+    /// after the focus callback. Those events walk as before and clear their down bits, so a key gets no second
+    /// release.
+    /// </para>
+    /// </remarks>
+    /// <param name="focused">
+    /// <see langword="true"/> when the window gains the input focus, <see langword="false"/> when it loses the focus.
+    /// </param>
+    internal void PushFocus(bool focused)
+    {
+        if (_disposed || focused)
+        {
+            return;
+        }
+
+        Context.ClearHeldKeys();
+    }
+
     /// <summary>Checks the window and the context of the create info and returns the context.</summary>
     /// <param name="info">The create info.</param>
     /// <returns>The context of <paramref name="info"/>.</returns>
@@ -631,5 +693,16 @@ public sealed class GlfwUiInput : IDisposable
     private void HandleChar(GlfwWindow window, uint codepoint)
     {
         PushChar(codepoint, GlfwApi.Time);
+    }
+
+    /// <summary>
+    /// Converts a focus change and pushes it. The method maps <see cref="GlfwFocusEvent.GainFocus"/> to
+    /// <see langword="true"/> and every other value to <see langword="false"/>.
+    /// </summary>
+    /// <param name="window">The window that gains or loses the input focus.</param>
+    /// <param name="focusEvent">The focus event.</param>
+    private void HandleFocus(GlfwWindow window, GlfwFocusEvent focusEvent)
+    {
+        PushFocus(focusEvent == GlfwFocusEvent.GainFocus);
     }
 }

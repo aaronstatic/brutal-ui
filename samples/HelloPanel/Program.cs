@@ -610,6 +610,7 @@ internal static class Program
                 uiRenderer,
                 modes.WidgetPanel,
                 modes.GateLabel,
+                modes.InputLabel,
                 modes.Widgets,
                 state,
                 modes,
@@ -642,7 +643,7 @@ internal static class Program
     /// (3) The UI region: push the gamepad buttons into the action map (<c>UiActionMap.PushGamepad</c>, the first line,
     /// so the gate measures the map), push the smoke input (a run with a frame limit only), set the viewport size from <c>io.DisplaySize</c>, update the tree, read the focus owner, draw the
     /// tree, read
-    /// <see cref="UiContext.RoutingGate"/>, and set the text of the gate label. The input pass of
+    /// <see cref="UiContext.RoutingGate"/>, and set the text of the gate label and the input label. The input pass of
     /// <see cref="UiContext.Update(float)"/> drains the ring before the style pass, so the hover and the focus of this
     /// frame show in this frame. (4) <c>ImGui.Render</c>, then read the draw command count and the vertex count of the
     /// background draw list. (5) Record and present the frame. (6) Count the frame and the gate values.
@@ -675,7 +676,10 @@ internal static class Program
     /// The gate counts: after the draw, the loop reads the gate. A measured frame adds 1 to the pointer count when
     /// <see cref="UiRoutingGate.PointerOverUi"/> is <see langword="true"/>, and 1 to the focus count when
     /// <see cref="UiRoutingGate.KeyboardFocusInUi"/> is <see langword="true"/>. The gate read and the label update are
-    /// inside the UI region, so the allocation gate measures them. A measured frame adds 1 to the caret count when
+    /// inside the UI region, so the allocation gate measures them. The loop also sets the input label from
+    /// <see cref="UiContext.GameInput"/>. The read of the delta copies a struct part through a
+    /// <see langword="ref readonly"/> member, and the write formats into the fixed scratch buffer, so the update of the
+    /// input label allocates nothing. A measured frame adds 1 to the caret count when
     /// <see cref="UiContext.FocusedElement"/> is the text field after <see cref="UiContext.Update(float)"/>. The read
     /// is a reference compare inside the UI region, so the allocation gate measures it, and it allocates nothing. The
     /// loop also reads the current mode right after <see cref="UiContext.Update(float)"/>. A measured frame adds 1 to
@@ -723,6 +727,9 @@ internal static class Program
     /// <param name="panel">The root of the widget panel. The smoke input aims its pointer move at the panel. The
     /// manager keeps this panel mounted in the <c>top</c> slot through both modes.</param>
     /// <param name="gateLabel">The gate label of the screen. The loop sets its text after each draw.</param>
+    /// <param name="inputLabel">
+    /// The input label of the screen. The loop sets its text after each draw, from <see cref="UiContext.GameInput"/>.
+    /// </param>
     /// <param name="widgets">
     /// The widget section of the screen. The smoke input aims its widget events at the widgets, and the loop reads the
     /// widget counts after the last frame.
@@ -752,6 +759,7 @@ internal static class Program
         ImGuiRenderer uiRenderer,
         Element panel,
         Label gateLabel,
+        Label inputLabel,
         HelloWidgets widgets,
         HelloState state,
         HelloModes modes,
@@ -774,6 +782,10 @@ internal static class Program
         float2 addPoint = default;
         int mainFrames = 0;
         int detailFrames = 0;
+
+        // The scratch buffer of the input label. The longest input text needs 48 bytes, so the buffer never needs a
+        // change of its size. The loop allocates nothing in it.
+        byte[] inputScratch = new byte[64];
 
         // The counter value after the last release of the allocation context, or -1 before the first release.
         long releasedBytes = -1;
@@ -856,6 +868,9 @@ internal static class Program
 
             // The label shows the gate of this frame in the next frame. Each gate text fits the label buffer.
             gateLabel.SetText(HelloScreen.GateText(gate));
+
+            // The label shows the game view of this frame in the next frame. The reads allocate nothing.
+            inputLabel.SetText(HelloScreen.InputText(in ui.GameInput, inputScratch));
             long uiEndBytes = GC.GetAllocatedBytesForCurrentThread();
 
             ImGui.Render();

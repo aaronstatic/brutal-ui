@@ -167,12 +167,13 @@ internal sealed class PointerTree
         };
     }
 
-    /// <summary>Creates a key event with no target, the scan code 0, and no repeat.</summary>
+    /// <summary>Creates a key event with no target and the scan code 0.</summary>
     /// <param name="type"><see cref="UiEventType.KeyDown"/> or <see cref="UiEventType.KeyUp"/>.</param>
     /// <param name="key">The key code.</param>
     /// <param name="modifiers">The modifier keys.</param>
+    /// <param name="repeat"><see langword="true"/> to mark the event as a key repeat. Default <see langword="false"/>.</param>
     /// <returns>The event.</returns>
-    public static KeyEvent Key(UiEventType type, int key, UiModifiers modifiers)
+    public static KeyEvent Key(UiEventType type, int key, UiModifiers modifiers, bool repeat = false)
     {
         return new KeyEvent
         {
@@ -180,7 +181,7 @@ internal sealed class PointerTree
             Key = key,
             ScanCode = 0,
             Modifiers = modifiers,
-            IsRepeat = false,
+            IsRepeat = repeat,
         };
     }
 

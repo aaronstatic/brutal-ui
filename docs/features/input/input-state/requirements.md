@@ -14,7 +14,7 @@ This feature adds `UiInputState`, a per-frame struct on `UiContext` that holds t
 - The button part holds, for each `PointerButton`, three flags: down, pressed this frame, and released this frame. (A7)
 - The key part holds the same three flags for each GLFW key code, with the modifiers of the last key event. A key repeat sets no pressed flag.
 - The gamepad part holds a slot for each of the 16 GLFW gamepads. This feature defines the fields. gamepad-axes fills them.
-- `UiContext.Input.Game` returns the view that the routing gate filters. The pointer, button, and scroll parts are empty when `PointerOverUi` is `true`. The key part is empty when `KeyboardFocusInUi` is `true`. (A7)
+- `UiContext.GameInput` returns the view that the routing gate filters. The pointer, button, and scroll parts are empty when `PointerOverUi` is `true`. The key part is empty when `KeyboardFocusInUi` is `true`. (A7)
 - A button that goes down over the UI and comes up over the game gives no released flag in the game view. A press belongs to the side that got the down.
 - A focus loss and a `KeyboardEnabled` switch to `false` clear each held key, so no key stays down with no key up.
 - The state is a struct of fixed size. The write and each read allocate nothing after warm-up. The allocation gate covers the input pass with the state. (A3)
