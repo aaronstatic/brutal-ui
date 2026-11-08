@@ -23,7 +23,9 @@ namespace HelloPanel;
 /// The build-time rule: the constructor does all the allocation. It creates the store, the registry, the map, the
 /// row, and the bindings one time. The handlers are <see langword="static"/> fields and take the state as the
 /// target, so a command call allocates nothing. The frame loop only calls <see cref="UiActionMap.PushGamepad"/>, and
-/// the context calls the map for a key that no element took.
+/// the context calls the map for a key that no element took. <see cref="HelloModes"/> later registers
+/// <c>hello.mode</c> and <c>hello.back</c> in the registry of <see cref="Map"/>, so one registry serves the map, the
+/// buttons, and the panel context.
 /// </para>
 /// <para>
 /// The label rule: the longest score text is <c>2147483647</c>, 10 bytes. The start buffer of a label holds 32 bytes,
@@ -59,8 +61,8 @@ internal sealed class HelloState
     /// Creates the state and builds the store, the commands, the focus commands, the map, and the row.
     /// </summary>
     /// <remarks>
-    /// The constructor does not activate the map. The caller calls <see cref="UiActionMap.Activate(UiContext)"/> after
-    /// the context holds the row.
+    /// The constructor does not activate the map. The first apply of the mode that names the map activates it, so the
+    /// caller does not call <see cref="UiActionMap.Activate(UiContext)"/> (see <see cref="HelloModes"/>).
     /// </remarks>
     /// <param name="context">The context that the focus commands move the focus of.</param>
     /// <exception cref="ArgumentNullException"><paramref name="context"/> is <see langword="null"/>.</exception>
@@ -95,13 +97,15 @@ internal sealed class HelloState
         Row.Children.Add(scoreLabel);
     }
 
-    /// <summary>Gets the row: the <c>Add</c> button and the score label. Add it as the last child of the panel.</summary>
+    /// <summary>Gets the row: the <c>Add</c> button and the score label. <see cref="HelloScreen.BuildStatePanel"/> puts
+    /// the row in the state panel.</summary>
     public Element Row { get; }
 
     /// <summary>Gets the <c>Add</c> button. A click runs <c>hello.add</c>.</summary>
     public Button AddButton { get; }
 
-    /// <summary>Gets the action map. Call <see cref="UiActionMap.Activate(UiContext)"/> before the frame loop.</summary>
+    /// <summary>Gets the action map. The first apply of the mode that names the map activates it; the caller does not
+    /// call <see cref="UiActionMap.Activate(UiContext)"/> (see <see cref="HelloModes"/>).</summary>
     public UiActionMap Map { get; }
 
     /// <summary>Gets the score store. The label of the row shows it.</summary>

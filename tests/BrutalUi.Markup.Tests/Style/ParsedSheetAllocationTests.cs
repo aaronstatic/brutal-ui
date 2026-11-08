@@ -77,10 +77,12 @@ public sealed class ParsedSheetAllocationTests
         Assert.Empty(result.Errors);
         Assert.True(result.Succeeded);
         StyleSheet sheet = result.GetSheetOrThrow();
-        // HelloPanelSheetTests.TheSheetHoldsEachRule pins the rule count. The widget rules of widget-sample come after the 6 old rules.
+        // HelloPanelSheetTests.TheSheetHoldsEachRule pins the rule count. The widget rules of widget-sample come
+        // after the old layout rules and panel rules.
 
-        StyleProperties root = FindRule(sheet, ".hello-root").Properties;
-        AssertSetMembers(in root, StyleProperty.AlignItems, StyleProperty.Padding);
+        StyleProperties root = FindRule(sheet, ".hello-slot-root").Properties;
+        AssertSetMembers(in root, StyleProperty.FlexDirection, StyleProperty.AlignItems, StyleProperty.Padding);
+        Assert.Equal(FlexDirection.Column, root.FlexDirection);
         Assert.Equal(Align.FlexStart, root.AlignItems);
         AssertEdges(Length.Px(OldValues.RootPadding), root.Padding);
 
@@ -133,7 +135,8 @@ public sealed class ParsedSheetAllocationTests
         Assert.Equal(Length.Px(0f), image.Margin.Bottom);
         Assert.Equal(Length.Px(0f), image.Margin.Left);
 
-        // The tree of HelloScreen.Build with the same classes: each rule reaches its element.
+        // A tree with the same classes as HelloScreen.BuildWidgetPanel and HelloScreen.BuildLayout: each rule
+        // reaches its element.
         Label greeting = new(new Label.CreateInfo { Text = "Hello, brutal-ui" });
         Image checker = new(new Image.CreateInfo { Texture = default });
         Element panelElement = new();
@@ -141,7 +144,7 @@ public sealed class ParsedSheetAllocationTests
         panelElement.Children.Add(greeting);
         panelElement.Children.Add(checker);
         Element rootElement = new();
-        rootElement.Classes.Add(ClassName.Intern("hello-root"));
+        rootElement.Classes.Add(ClassName.Intern("hello-slot-root"));
         rootElement.Children.Add(panelElement);
 
         UiContext context = NewContext();

@@ -15,7 +15,8 @@
  * active rule sets the fill only. A focus rule sets the border color only. The
  * members are different, so the hover and the focus show at the same time.
  *
- * The sheet holds 31 rules. Button, Toggle, Slider, ScrollView, and TextField
+ * The sheet holds 33 rules. The three layout rules — .hello-slot-root, SlotContainer, and .hello-panel-root — sit at
+ * the top. Button, Toggle, Slider, ScrollView, and TextField
  * have their own rules. The four widgets with no own size (Toggle, Slider,
  * ScrollView, and TextField) get their size here. A widget with no size takes
  * no space and catches no input. This part gives the size of the toggle, of
@@ -43,10 +44,22 @@
     --scroll-hover-border: #7a94c8;
 }
 
-/* The root draws nothing. flex-start stops the stretch, so the panel keeps the size of its content. */
-.hello-root {
+/* The layout root is a column of the two slots. flex-start stops the stretch, so each slot keeps the size of its content. */
+.hello-slot-root {
+    flex-direction: column;
     align-items: flex-start;
     padding: 24px;
+}
+
+/* A slot is a column of its panels. The rule sets no padding and no margin, so the top-left corner of the widget panel stays at the root padding. */
+SlotContainer {
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+/* The bottom margin keeps the panels of one slot apart. */
+.hello-panel-root {
+    margin: 0 0 12px;
 }
 
 /* The panel is a column with a fill, a border, and round corners. */

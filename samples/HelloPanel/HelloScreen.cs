@@ -2,31 +2,43 @@ using System;
 using System.IO;
 using Brutal.Numerics;
 using BrutalUi.Core;
+using BrutalUi.Framework;
 using BrutalUi.Markup;
 
 namespace HelloPanel;
 
 /// <summary>
-/// Builds the screen of the sample: a root, a panel, two labels, one image, and the widget section of
-/// <see cref="HelloWidgets"/>. Also fills the pixels of the checker texture of the image, and gives the text of the
-/// gate label.
+/// Builds the trees of the sample: the widget panel, the state panel, the info panel, and the layout with the two
+/// slots. Also fills the pixels of the checker texture of the image, and gives the text of the gate label.
 /// </summary>
 /// <remarks>
 /// <para>
-/// The root fills the viewport and puts the panel at its top-left corner, inside the root padding. The panel is a
-/// column with a fill, a border, and round corners. The panel takes the size of its content.
+/// The mode model lives in <see cref="HelloModes"/>. That class registers the panels, the layout, and the two modes,
+/// and it owns the two commands, the two keys, and the mode button. This class builds trees only. The
+/// <see cref="UiManager"/> adds the layout root of <see cref="BuildLayout"/> to the context and mounts the panel
+/// roots into the slots.
 /// </para>
 /// <para>
-/// The screen reacts to the pointer and to Tab. The panel is not the only focusable element: four widgets of the
-/// widget section take the focus too. These are the <c>Click me</c> button, the toggle, the slider, and the text
-/// field. The disabled button and the scroll view take no focus. Tab walks the focusable elements in tree order: the
-/// panel, <c>Click me</c>, the toggle, the slider, the text field, and the <c>Add</c> button of the state row. A press on one of these widgets gives the
-/// focus to the widget. A press on the disabled button clears the focus: the button is focusable but disabled, and the
-/// press does not go on to the panel. A press on the scroll view gives the focus to the panel, the nearest focusable
-/// ancestor, because the scroll view is not focusable. The two labels and the image are not
-/// pickable, so a point on them hits the panel. The widget section and its rows are pickable, so a press in a gap
-/// between the widgets gives the focus to the panel, the nearest focusable ancestor. The root is not pickable (the
-/// layout-root rule): a point outside the panel hits no element, and the game gets the pointer.
+/// The tree: the layout root holds two slot containers, <c>top</c> and <c>bottom</c>. The widget panel
+/// (<see cref="BuildWidgetPanel"/>) sits in <c>top</c> in both modes. The state panel
+/// (<see cref="BuildStatePanel"/>) sits in <c>bottom</c> in <c>hello.main</c>, and the info panel
+/// (<see cref="BuildInfoPanel"/>) sits in <c>bottom</c> in <c>hello.detail</c>. The layout root is a column with
+/// padding, a slot is a column of its panels, and each panel is a column with a fill, a border, and round corners.
+/// A panel takes the size of its content.
+/// </para>
+/// <para>
+/// The screen reacts to the pointer and to Tab. The widget panel is not the only focusable element: five widgets take
+/// the focus too. These are the <c>Click me</c> button, the toggle, the slider, the text field, and the
+/// <c>Mode (F1)</c> button of the mode row. The <c>Add</c> button of the state row takes the focus too. The disabled
+/// button and the scroll view take no focus. In <c>hello.main</c>, Tab walks the focusable elements in tree order:
+/// the panel, <c>Click me</c>, the toggle, the slider, the text field, <c>Mode (F1)</c>, and <c>Add</c>. A press on
+/// one of these widgets gives the focus to the widget. A press on the disabled button clears the focus: the button is
+/// focusable but disabled, and the press does not go on to the panel. A press on the scroll view gives the focus to
+/// the panel, the nearest focusable ancestor, because the scroll view is not focusable. The two labels and the image
+/// are not pickable, so a point on them hits the panel. The widget section and its rows are pickable, so a press in a
+/// gap between the widgets gives the focus to the panel, the nearest focusable ancestor. The layout root and the two
+/// slots are not pickable (the layout-root rule and the slot rule), so a point that hits no panel hits no element, and
+/// the game gets the pointer.
 /// </para>
 /// <para>
 /// Two state rules of the sheet show the states of the panel. The <c>.hello-panel:hover</c> rule changes the fill of
@@ -36,11 +48,13 @@ namespace HelloPanel;
 /// or an active rule sets the fill, and a focus rule sets the border color.
 /// </para>
 /// <para>
-/// The widget section is the child of the panel after the image. <see cref="HelloWidgets"/> builds it, holds
-/// the status labels and the change counts, and gives the delegates of the widgets. The panel holds the state row
-/// last, after the widget section. <see cref="HelloState"/> builds the row: an <c>Add</c> button and a score label.
-/// The <c>Add</c> button takes the focus, so the Tab order ends with it. The row uses the <c>hello-row</c> class, so
-/// the sheet needs no new rule.
+/// The widget section is the child of the widget panel after the image. <see cref="HelloWidgets"/> builds it, holds
+/// the status labels and the change counts, and gives the delegates of the widgets. The mode row is the last child,
+/// after the widget section. It is a plain element with the <c>hello-row</c> class, and it holds the
+/// <c>Mode (F1)</c> button of <see cref="HelloModes"/>. A click on the button runs <c>hello.mode</c>, and the manager
+/// applies the other mode at the start of the next update. <see cref="HelloState"/> builds the state row: an
+/// <c>Add</c> button and a score label. <see cref="BuildStatePanel"/> puts that row in the state panel, so the row is
+/// no longer a child of the widget panel.
 /// </para>
 /// <para>
 /// The second label is the gate label. It shows the two values of <see cref="UiContext.RoutingGate"/>. The frame
@@ -52,20 +66,21 @@ namespace HelloPanel;
 /// the ImGui default font. The panel and the two labels use the font atlas texture, so they share one ImGui draw
 /// command. The gate label comes before the image. The image binds the checker texture, so it opens a second draw
 /// command. The widget section comes after the image and uses the font atlas texture again, so it opens a third draw
-/// command.
+/// command. The mode row follows the widget section, and its button keeps the same command.
 /// </para>
 /// <para>
 /// The sizes and the colors of the screen live in <c>HelloScreen.css</c>. <see cref="LoadSheet"/> parses the file,
-/// and <see cref="Build"/> sets the classes of the sheet. The class names of the sheet are <c>hello-root</c>,
-/// <c>hello-panel</c>, <c>hello-widgets</c>, <c>hello-row</c>, and <c>hello-status</c>. The widget rules use the
+/// and the build methods set the classes of the sheet. The class names of the sheet are <c>hello-slot-root</c>,
+/// <c>hello-panel</c>, <c>hello-panel-root</c>, <c>hello-widgets</c>, <c>hello-row</c>, and <c>hello-status</c>. The
+/// sheet also holds the type rule <c>SlotContainer</c> for the two slots. The widget rules use the
 /// type names of the widgets, for example <c>Button</c>. The tree holds no inline value. The rules
 /// <c>.hello-panel &gt; Label</c> and <c>.hello-panel &gt; Image</c> are child rules, so the two labels and the image
-/// must stay direct children of the panel. Each status label is a child of a row, so the rule
+/// must stay direct children of the widget panel. Each status label is a child of a row, so the rule
 /// <c>.hello-row &gt; Label</c> gives its values, and the rule <c>.hello-panel &gt; Label</c> does not apply to it.
 /// </para>
 /// <para>
-/// Copy this file, <c>HelloWidgets.cs</c>, and <c>HelloScreen.css</c> to start a screen of your game. Change a size
-/// or a color in the sheet, not in the code.
+/// Copy this file, <c>HelloModes.cs</c>, <c>HelloWidgets.cs</c>, and <c>HelloScreen.css</c> to start a screen with two
+/// modes of your game. Change a size or a color in the sheet, not in the code.
 /// </para>
 /// </remarks>
 internal static class HelloScreen
@@ -76,11 +91,20 @@ internal static class HelloScreen
     /// <summary>The text of the label.</summary>
     private const string GreetingText = "Hello, brutal-ui";
 
-    /// <summary>The class of the root: the class of the <c>.hello-root</c> rule of the sheet.</summary>
-    private static readonly ClassId RootClass = ClassName.Intern("hello-root");
+    /// <summary>The text of the label of the info panel.</summary>
+    private const string InfoText = "Detail mode. Press F2 to go back.";
+
+    /// <summary>The class of the layout root: the class of the <c>.hello-slot-root</c> rule of the sheet.</summary>
+    private static readonly ClassId SlotRootClass = ClassName.Intern("hello-slot-root");
 
     /// <summary>The class of the panel: the class of the <c>.hello-panel</c> rules of the sheet.</summary>
     private static readonly ClassId PanelClass = ClassName.Intern("hello-panel");
+
+    /// <summary>The class of each panel root: the class of the <c>.hello-panel-root</c> rule of the sheet.</summary>
+    private static readonly ClassId PanelRootClass = ClassName.Intern("hello-panel-root");
+
+    /// <summary>The class of a row: the class of the <c>.hello-row</c> rules of the sheet.</summary>
+    private static readonly ClassId RowClass = ClassName.Intern("hello-row");
 
     /// <summary>The tint of the image: opaque white, so the texels keep their colors.</summary>
     private static readonly Rgba8 ImageTint = new(255, 255, 255, 255);
@@ -165,55 +189,42 @@ internal static class HelloScreen
         return new StyleSheetParser().Parse(bytes, SheetFileName).GetSheetOrThrow();
     }
 
-    /// <summary>Builds the tree of the screen.</summary>
+    /// <summary>Builds the widget panel: the two labels, the image, the widget section, and the mode row.</summary>
     /// <remarks>
     /// <para>
-    /// The root has an auto size, so it takes the viewport size of its <see cref="UiContext"/>. Add the result to a
-    /// context with <see cref="UiContext.AddRoot(Element)"/>, and add the sheet of <see cref="LoadSheet"/> to the same
-    /// context. The tree sets the classes of the sheet and no inline value. The context must have a measurer, because
-    /// the tree holds <see cref="Label"/> elements and a <see cref="Button"/>. The image takes the size of
+    /// The factory of <c>hello.widgets</c> calls this method (see <see cref="HelloModes"/>). The panel is a column
+    /// with a fill, a border, and round corners, and it takes the size of its content. The tree sets the classes
+    /// <c>hello-panel</c> and <c>hello-panel-root</c> and no inline value. The context must have a measurer, because
+    /// the tree holds <see cref="Label"/> elements and two <see cref="Button"/> elements. The image takes the size of
     /// <paramref name="checker"/>, one pixel for each texel.
     /// </para>
     /// <para>
-    /// The root is not pickable. The panel is focusable. Four widgets of the widget section are focusable too: the
-    /// <c>Click me</c> button, the toggle, the slider, and the text field. The disabled button and the scroll view
-    /// take no focus. The <c>Add</c> button of the state row takes the focus too. Tab walks the panel,
-    /// <c>Click me</c>, the toggle, the slider, the text field, and <c>Add</c>. The two
-    /// labels and the image are not pickable, so a point on them hits the panel. The gate label starts with the
-    /// longest text of <see cref="GateText"/>.
+    /// The panel is focusable. So are <c>Click me</c>, the toggle, the slider, the text field, and
+    /// <paramref name="modeButton"/>. The disabled button and the scroll view take no focus. The two labels and the
+    /// image are not pickable, so a point on them hits the panel. The gate label starts with the longest text of
+    /// <see cref="GateText"/>.
     /// </para>
     /// <para>
     /// The two labels and the image are direct children of the panel, because the rules
     /// <c>.hello-panel &gt; Label</c> and <c>.hello-panel &gt; Image</c> are child rules. The widget section of
     /// <paramref name="widgets"/> follows the image. Its status labels are children of a row, so the rule
-    /// <c>.hello-row &gt; Label</c> styles them. The row of <paramref name="state"/> is the last child of the panel. Its
-    /// score label is a child of the row too, so the same rule styles it.
+    /// <c>.hello-row &gt; Label</c> styles them. The mode row is the last child. It carries the <c>hello-row</c>
+    /// class and holds <paramref name="modeButton"/>.
     /// </para>
     /// </remarks>
     /// <param name="checker">
     /// The texture of the image. The none handle is valid: the image then takes no space and draws nothing.
     /// </param>
-    /// <param name="state">
-    /// The state of the sample. Its row is the last child of the panel, after the widget section.
-    /// </param>
-    /// <param name="panel">
-    /// The panel. The frame loop of the sample reads its rectangle to aim the synthetic pointer move of the smoke run.
-    /// </param>
+    /// <param name="modeButton">The <c>Mode (F1)</c> button. A click runs <c>hello.mode</c>.</param>
     /// <param name="gateLabel">The gate label. Set its text with <see cref="GateText"/>.</param>
     /// <param name="widgets">
     /// The widget section, its widgets, its status labels, and its change counts. The smoke run aims its widget events
     /// at the widgets and reads the counts.
     /// </param>
-    /// <returns>The root element of the screen.</returns>
-    public static Element Build(
-        TextureHandle checker,
-        HelloState state,
-        out Element panel,
-        out Label gateLabel,
-        out HelloWidgets widgets)
+    /// <returns>The root element of the widget panel.</returns>
+    public static Element BuildWidgetPanel(
+        TextureHandle checker, Button modeButton, out Label gateLabel, out HelloWidgets widgets)
     {
-        ArgumentNullException.ThrowIfNull(state);
-
         // The rule .hello-panel > Label gives the color and the size. The label keeps font 0, the default font.
         // A label is not pickable, so the pointer hits the panel behind it.
         Label greeting = new(new Label.CreateInfo { Text = GreetingText }) { IsPickable = false };
@@ -236,25 +247,98 @@ internal static class HelloScreen
         // The widget section: a column of rows. Each row holds a widget and its status label.
         widgets = new HelloWidgets();
 
+        // The mode row comes last. Its button runs hello.mode, so Tab reaches it after the text field.
+        Element modeRow = new();
+        modeRow.Classes.Add(RowClass);
+        modeRow.Children.Add(modeButton);
+
         // The child rules read the parent, so the labels and the image are direct children of the panel.
         // The gate label comes before the image, so the panel and the two labels share one draw command.
-        // The panel is focusable. So are Click me, the toggle, the slider, the text field, and Add. The disabled
-        // button and the scroll view take no focus. Tab walks the panel and then these five widgets in tree order.
-        panel = new Element { IsFocusable = true };
+        // The panel is focusable. So are Click me, the toggle, the slider, the text field, and Mode (F1). The
+        // disabled button and the scroll view take no focus.
+        Element panel = new() { IsFocusable = true };
         panel.Classes.Add(PanelClass);
+        panel.Classes.Add(PanelRootClass);
         panel.Children.Add(greeting);
         panel.Children.Add(gateLabel);
         panel.Children.Add(checkerImage);
         panel.Children.Add(widgets.Section);
+        panel.Children.Add(modeRow);
+
+        return panel;
+    }
+
+    /// <summary>Builds the state panel: the row of <see cref="HelloState"/>.</summary>
+    /// <remarks>
+    /// <para>
+    /// The factory of <c>hello.state</c> calls this method (see <see cref="HelloModes"/>). The panel holds the row and
+    /// is not focusable; the <c>Add</c> button of the row takes the focus. The panel sets the classes
+    /// <c>hello-panel</c> and <c>hello-panel-root</c>, so it shows with the fill, the border, and the round corners of
+    /// the sheet, and the margin of the root rule keeps it apart from the panel above it.
+    /// </para>
+    /// <para>
+    /// The score label is a child of the row, so the rule <c>.hello-row &gt; Label</c> styles it. The mode keeps the
+    /// panel: the switch to <c>hello.detail</c> unmounts this root, and a back step mounts the same root with its
+    /// score.
+    /// </para>
+    /// </remarks>
+    /// <param name="state">The state of the sample. Its row is the only child of the panel.</param>
+    /// <returns>The root element of the state panel.</returns>
+    public static Element BuildStatePanel(HelloState state)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+
+        Element panel = new();
+        panel.Classes.Add(PanelClass);
+        panel.Classes.Add(PanelRootClass);
         panel.Children.Add(state.Row);
+        return panel;
+    }
 
-        // The root draws nothing. The rule .hello-root stops the stretch, so the panel keeps the size of its content.
-        // The root covers the viewport. It is not pickable (the layout-root rule), so a point outside the panel hits
-        // no element, and the gate gives the pointer to the game.
+    /// <summary>Builds the info panel: one label.</summary>
+    /// <remarks>
+    /// The factory of <c>hello.info</c> calls this method (see <see cref="HelloModes"/>). The mode
+    /// <c>hello.detail</c> shows the panel in the <c>bottom</c> slot, in place of the state panel. The label is a
+    /// direct child, so the rule <c>.hello-panel &gt; Label</c> gives its color and its size, and it is not pickable.
+    /// The panel is not focusable.
+    /// </remarks>
+    /// <returns>The root element of the info panel.</returns>
+    public static Element BuildInfoPanel()
+    {
+        Label info = new(new Label.CreateInfo { Text = InfoText }) { IsPickable = false };
+
+        Element panel = new();
+        panel.Classes.Add(PanelClass);
+        panel.Classes.Add(PanelRootClass);
+        panel.Children.Add(info);
+        return panel;
+    }
+
+    /// <summary>Builds the layout: the root and the two slots.</summary>
+    /// <remarks>
+    /// <para>
+    /// The factory of <c>hello.layout</c> calls this method (see <see cref="HelloModes"/>). The manager adds the root
+    /// to the context; the game does not add it (the root rule of <see cref="UiManager"/>). The root fills the viewport
+    /// and puts each slot at its top-left corner, inside the root padding. The root is a column, so the <c>top</c>
+    /// slot stands above the <c>bottom</c> slot, and a slot is a column of its panels.
+    /// </para>
+    /// <para>
+    /// The root draws nothing, and it is not pickable (the layout-root rule). A slot is not pickable too (the slot
+    /// rule): a point between two panels hits no element, and the game gets the pointer. Each mounted panel keeps its
+    /// own pick.
+    /// </para>
+    /// </remarks>
+    /// <returns>The root element of the layout.</returns>
+    public static Element BuildLayout()
+    {
+        SlotContainer top = new("top"u8) { IsPickable = false };
+        SlotContainer bottom = new("bottom"u8) { IsPickable = false };
+
+        // The rule .hello-slot-root stops the stretch, so each slot keeps the size of its content.
         Element root = new() { IsPickable = false };
-        root.Classes.Add(RootClass);
-        root.Children.Add(panel);
-
+        root.Classes.Add(SlotRootClass);
+        root.Children.Add(top);
+        root.Children.Add(bottom);
         return root;
     }
 

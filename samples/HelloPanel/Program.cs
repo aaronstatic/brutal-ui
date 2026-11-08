@@ -6,6 +6,7 @@ using Brutal.ImGuiApi.Backends;
 using Brutal.Numerics;
 using Brutal.VulkanApi;
 using BrutalUi.Core;
+using BrutalUi.Framework;
 using BrutalUi.Glfw;
 using BrutalUi.ImGui;
 
@@ -18,7 +19,7 @@ namespace HelloPanel;
 /// </summary>
 /// <remarks>
 /// <para>
-/// After a run, the sample writes six lines to standard output:
+/// After a run, the sample writes seven lines to standard output:
 /// <c>HelloPanel: &lt;count&gt; frames rendered.</c>,
 /// <c>HelloPanel: last frame: draw commands &lt;C&gt;, vertices &lt;V&gt;.</c>,
 /// <c>HelloPanel: bytes after warm-up: Update and Draw &lt;B&gt;, frame &lt;F&gt;, in &lt;M&gt; frames.</c>,
@@ -26,20 +27,24 @@ namespace HelloPanel;
 /// &lt;M&gt; measured frames.</c>,
 /// <c>HelloPanel: widgets: clicks &lt;C&gt;, flips &lt;T&gt;, values &lt;V&gt;, scrolls &lt;S&gt;, edits &lt;E&gt;,
 /// submits &lt;U&gt;.</c>, and
-/// <c>HelloPanel: state: adds &lt;A&gt;, resets &lt;R&gt;, versions &lt;V&gt;.</c> The counts of line 2 come from the ImGui
-/// background draw list of the last frame. The counts of line 5 come from <see cref="HelloWidgets"/> and cover the full
-/// run. The counts of line 6 come from <see cref="HelloState"/> and cover the full run. The exit code is 0 for success,
+/// <c>HelloPanel: state: adds &lt;A&gt;, resets &lt;R&gt;, versions &lt;V&gt;.</c>, and
+/// <c>HelloPanel: modes: switches &lt;S&gt;, backs &lt;B&gt;, main frames &lt;M&gt;, detail frames &lt;D&gt;.</c> The
+/// counts of line 2 come from the ImGui background draw list of the last frame. The counts of line 5 come from
+/// <see cref="HelloWidgets"/> and cover the full run. The counts of line 6 come from <see cref="HelloState"/> and cover
+/// the full run. The counts of line 7 cover the full run for the switches and the backs, and the measured frames for
+/// the two mode frame counts. The exit code is 0 for success,
 /// 1 for a runtime failure, for an allocation of the UI region after warm-up, or for a smoke run in which the
 /// synthetic input did not reach the UI, the gate read the pointer over the UI in each measured frame, a widget got no
-/// change, or the state row got no command, no action, or no store change, and 2 for a usage error.
+/// change, the state row got no command, no action, or no store change, or a mode count is 0, and 2 for a usage error.
 /// The command line contract is in <c>docs/features/dev-ops/solution-skeleton/context.md</c>.
 /// </para>
 /// <para>
 /// The sample reads the real input of the window through <see cref="GlfwUiInput"/>. The screen reacts to the pointer
 /// and to Tab. A run with <c>--frames</c> (the smoke run) also pushes synthetic events in each frame: the widget
 /// events first (a left press and a left release on the <c>Click me</c> button, on the toggle, and on the slider, and
-/// a scroll at the center of the scroll view), then a Tab, then an Escape key (each fourth frame), then the text field
-/// events (a char or a Backspace, an Enter, and a left press and a left release on the field), then a pointer move.
+/// a scroll at the center of the scroll view), then a Tab, then an Escape key (each fourth frame), then one F1 key or
+/// one F2 key, then the text field events (a char or a Backspace, an Enter, and a left press and a left release on
+/// the field), then a pointer move.
 /// The widget events include a click on the <c>Add</c> button of <see cref="HelloState"/>, after the toggle click and
 /// before the slider click. The frame loop also polls the gamepad and pushes the buttons into the action map. The first measured frame also fills
 /// the text field to its capacity and empties it again, so the two text labels get their longest text in a measured
@@ -179,6 +184,22 @@ internal static class Program
     /// The number of changes of the score store in the full run: <c>Score.Version - 1</c>, because the store starts at
     /// version 1.
     /// </param>
+    /// <param name="Switches">
+    /// The number of runs of the command <c>hello.mode</c> in the full run: <see cref="HelloModes.Switches"/> after the
+    /// last frame.
+    /// </param>
+    /// <param name="Backs">
+    /// The number of runs of the command <c>hello.back</c> with a true back step in the full run:
+    /// <see cref="HelloModes.Backs"/> after the last frame.
+    /// </param>
+    /// <param name="MainFrames">
+    /// The number of measured frames with <c>hello.main</c> as the current mode after
+    /// <see cref="UiContext.Update(float)"/>.
+    /// </param>
+    /// <param name="DetailFrames">
+    /// The number of measured frames with <c>hello.detail</c> as the current mode after
+    /// <see cref="UiContext.Update(float)"/>.
+    /// </param>
     private readonly record struct RunResult(
         int FramesRendered,
         int DrawCommandCount,
@@ -197,7 +218,11 @@ internal static class Program
         int Submits,
         int Adds,
         int Resets,
-        int Versions);
+        int Versions,
+        int Switches,
+        int Backs,
+        int MainFrames,
+        int DetailFrames);
 
     private static int Main(string[] args)
     {
@@ -278,12 +303,14 @@ internal static class Program
     /// <summary>
     /// Loads the sheet, starts GLFW, runs the sample, and ends GLFW. After the run, writes the frame count (line 1),
     /// the draw command count and the vertex count of the last frame (line 2), the allocated bytes after warm-up
-    /// (line 3), the gate counts of the measured frames (line 4), the widget counts of the full run (line 5), and the
-    /// state counts of the full run (line 6) to standard output. When the UI region allocates after warm-up, writes the allocation line to standard error and
+    /// (line 3), the gate counts of the measured frames (line 4), the widget counts of the full run (line 5), the
+    /// state counts of the full run (line 6), and the mode counts (line 7) to standard output. When the UI region allocates after warm-up, writes the allocation line to standard error and
     /// returns <see cref="ExitFailure"/>. When the synthetic input of a smoke run did not reach the UI, or when the
     /// gate read the pointer over the UI in each measured frame, writes the input line to standard error and returns
     /// <see cref="ExitFailure"/>. When a widget count of a smoke run is 0, or when the text field holds the focus after
     /// the update in no measured frame, writes the widget line to standard error and returns <see cref="ExitFailure"/>.
+    /// When a mode count of a smoke run is 0, writes the mode line to standard error and returns
+    /// <see cref="ExitFailure"/>.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -325,6 +352,14 @@ internal static class Program
     /// store version count of 0 means that the synthetic input did not reach the state row. The method writes the state
     /// line to standard error and returns <see cref="ExitFailure"/>.
     /// </para>
+    /// <para>
+    /// The mode check runs after the state check, with the same condition. The smoke run pushes the F1 key or the F2
+    /// key in each frame (Decision 5). F1 runs <c>hello.mode</c> and switches the mode. F2 runs <c>hello.back</c> and
+    /// steps back through the mode history. The switch and the back step move the panels, so the measured frames land
+    /// in the two modes. A count of 0 among the switches, the backs, the main frames, and the detail frames means that
+    /// the synthetic input did not reach the mode switch. The method writes the mode line to standard error and
+    /// returns <see cref="ExitFailure"/>.
+    /// </para>
     /// </remarks>
     /// <param name="frameLimit">The number of frames to render, or <see cref="NoFrameLimit"/>.</param>
     /// <returns>The exit code.</returns>
@@ -363,6 +398,9 @@ internal static class Program
             $"scrolls {result.Scrolls}, edits {result.Edits}, submits {result.Submits}.");
         Console.WriteLine(
             $"HelloPanel: state: adds {result.Adds}, resets {result.Resets}, versions {result.Versions}.");
+        Console.WriteLine(
+            $"HelloPanel: modes: switches {result.Switches}, backs {result.Backs}, " +
+            $"main frames {result.MainFrames}, detail frames {result.DetailFrames}.");
 
         // The gate reads the UI sum only. The frame sum also holds the managed bytes of the backends.
         if (result.UiAllocatedBytes > 0)
@@ -408,6 +446,15 @@ internal static class Program
             if (result.Adds == 0 || result.Resets == 0 || result.Versions == 0)
             {
                 Console.Error.WriteLine("HelloPanel: the synthetic input did not reach the state row.");
+                return ExitFailure;
+            }
+
+            // The mode check. The F1 key runs hello.mode, and the F2 key runs hello.back. The switch and the back
+            // step move the panels, so the measured frames land in the two modes. A count of 0 means that the
+            // synthetic input did not reach the mode switch.
+            if (result.Switches == 0 || result.Backs == 0 || result.MainFrames == 0 || result.DetailFrames == 0)
+            {
+                Console.Error.WriteLine("HelloPanel: the synthetic input did not reach the mode switch.");
                 return ExitFailure;
             }
         }
@@ -543,13 +590,15 @@ internal static class Program
             // The pool now holds 2 of its sets: the font atlas and the checker texture.
             handle = textures.AddVulkan(
                 vulkanBackend, checker.Sampler, checker.View, VkImageLayout.ShaderReadOnlyOptimal, checker.Size);
-            // The sheet gives each size and each color of the screen. The tree sets only the classes.
+            // The sheet gives each size and each color of the screen. The trees set only the classes.
             ui.AddSheet(sheet);
-            ui.AddRoot(HelloScreen.Build(
-                handle, state, out Element panel, out Label gateLabel, out HelloWidgets widgets));
 
-            // The map writes the unhandled input slot of the context. Activate it before the frame loop.
-            state.Map.Activate(ui);
+            // The modes own the panel context, the manager, the commands, the keys, and the mode button. The
+            // constructor builds each panel root at build time, and SetMode records hello.main. The first Update
+            // adds the layout root, mounts the panels, and activates the map before the input pass of frame 0, so
+            // the sample does not call UiActionMap.Activate.
+            HelloModes modes = new HelloModes(ui, state, handle);
+            modes.Manager.SetMode(HelloModes.MainName);
 
             return RunFrames(
                 window,
@@ -559,10 +608,11 @@ internal static class Program
                 input,
                 ui,
                 uiRenderer,
-                panel,
-                gateLabel,
-                widgets,
+                modes.WidgetPanel,
+                modes.GateLabel,
+                modes.Widgets,
                 state,
+                modes,
                 frameLimit);
         }
         finally
@@ -605,8 +655,10 @@ internal static class Program
     /// <para>
     /// The smoke input: a run with a frame limit pushes, at the start of the UI region of each frame, the widget events
     /// (a left press and a left release at the center of the <c>Click me</c> button, at the center of the toggle, at the
-    /// center of the <c>Add</c> button, and at a point of the slider, and a scroll at the center of the scroll view), then one Tab key down and one Tab key up
-    /// with no target, then in each fourth frame one Escape key down and one Escape key up with no target, then the
+    /// cached center of the <c>Add</c> button, and at a point of the slider, and a scroll at the center of the scroll view), then one Tab key down and one Tab key up
+    /// with no target, then in each fourth frame one Escape key down and one Escape key up with no target, then one F1
+    /// key down and one F1 key up or one F2 key down and one F2 key up with no target (the mode script, Decision 5),
+    /// then the
     /// text field events (a char or a Backspace key down and a main Enter key down with the
     /// field as the target, and a left press and a left release at the center of the field), then one pointer move.
     /// The move goes to the center of the panel in an even frame and outside the panel in an odd frame. The widget
@@ -625,7 +677,10 @@ internal static class Program
     /// <see cref="UiRoutingGate.KeyboardFocusInUi"/> is <see langword="true"/>. The gate read and the label update are
     /// inside the UI region, so the allocation gate measures them. A measured frame adds 1 to the caret count when
     /// <see cref="UiContext.FocusedElement"/> is the text field after <see cref="UiContext.Update(float)"/>. The read
-    /// is a reference compare inside the UI region, so the allocation gate measures it, and it allocates nothing.
+    /// is a reference compare inside the UI region, so the allocation gate measures it, and it allocates nothing. The
+    /// loop also reads the current mode right after <see cref="UiContext.Update(float)"/>. A measured frame adds 1 to
+    /// the main count when the current mode is <c>hello.main</c>, and 1 to the detail count when the current mode is
+    /// <c>hello.detail</c>. The read is a reference compare inside the UI region, so it allocates nothing.
     /// </para>
     /// <para>
     /// The UI region runs between <c>ImGui.NewFrame</c> and <c>ImGui.Render</c>, because the renderer draws on the
@@ -652,8 +707,9 @@ internal static class Program
     /// <para>
     /// <see cref="Run"/> writes the frame count as line 1, the two counts of the last frame as line 2, the two sums
     /// and the measured frame count as line 3, the two gate counts and the measured frame count as line 4, the
-    /// widget counts as line 5, and the state counts as line 6. The loop reads the widget counts and the state counts
-    /// after the last frame, so they cover the full run.
+    /// widget counts as line 5, the state counts as line 6, and the mode counts as line 7. The loop reads the widget
+    /// counts, the state counts, and the switch and back counts after the last frame, so they cover the full run. The
+    /// main count and the detail count cover the measured frames.
     /// </para>
     /// </remarks>
     /// <param name="window">The window.</param>
@@ -664,7 +720,8 @@ internal static class Program
     /// <paramref name="ui"/>.</param>
     /// <param name="ui">The UI context that holds the screen.</param>
     /// <param name="uiRenderer">The brutal-ui renderer. It is also the measurer of <paramref name="ui"/>.</param>
-    /// <param name="panel">The panel of the screen. The smoke input aims its pointer move at the panel.</param>
+    /// <param name="panel">The root of the widget panel. The smoke input aims its pointer move at the panel. The
+    /// manager keeps this panel mounted in the <c>top</c> slot through both modes.</param>
     /// <param name="gateLabel">The gate label of the screen. The loop sets its text after each draw.</param>
     /// <param name="widgets">
     /// The widget section of the screen. The smoke input aims its widget events at the widgets, and the loop reads the
@@ -674,11 +731,16 @@ internal static class Program
     /// The state of the sample. The loop pushes the gamepad buttons into its action map, the smoke input aims a click at
     /// its <c>Add</c> button, and the loop reads its counts after the last frame.
     /// </param>
+    /// <param name="modes">
+    /// The modes of the sample. The loop reads the current mode after each update, caches the center of the
+    /// <c>Add</c> button in the frames that end in <c>hello.main</c> (Decision 6), counts the measured frames in each
+    /// mode, and reads the switch and back counts after the last frame.
+    /// </param>
     /// <param name="frameLimit">The number of frames to render, or <see cref="NoFrameLimit"/>.</param>
     /// <returns>
     /// The result of the run: the frame count, the draw list counts of the last frame, the allocation sums of the
-    /// measured frames, the gate counts of the measured frames, the widget counts of the full run, and the state counts
-    /// of the full run.
+    /// measured frames, the gate counts of the measured frames, the widget counts of the full run, the state counts
+    /// of the full run, and the mode counts.
     /// </returns>
     private static RunResult RunFrames(
         GlfwWindow window,
@@ -692,6 +754,7 @@ internal static class Program
         Label gateLabel,
         HelloWidgets widgets,
         HelloState state,
+        HelloModes modes,
         int frameLimit)
     {
         ImGuiIOPtr io = ImGui.GetIO();
@@ -706,6 +769,11 @@ internal static class Program
         int pointerOverUiFrames = 0;
         int keyboardFocusInUiFrames = 0;
         int caretFrames = 0;
+
+        // The cached Add point (Decision 6) and the mode frame counts. A float2 local allocates nothing.
+        float2 addPoint = default;
+        int mainFrames = 0;
+        int detailFrames = 0;
 
         // The counter value after the last release of the allocation context, or -1 before the first release.
         long releasedBytes = -1;
@@ -757,7 +825,7 @@ internal static class Program
             // The smoke input (Decision 8). The events are structs, so the pushes allocate nothing.
             if (frameLimit != NoFrameLimit)
             {
-                PushSmokeInput(ui, panel, widgets, state, framesRendered);
+                PushSmokeInput(ui, panel, widgets, addPoint, framesRendered);
             }
 
             float2 displaySize = io.DisplaySize;
@@ -765,6 +833,17 @@ internal static class Program
 
             // The input pass of Update drains the events of the poll and of the smoke input first.
             ui.Update(io.DeltaTime);
+
+            // The mode diff applies at the start of Update. The read gives the current mode of this frame after the
+            // diff. The read is a reference compare inside the UI region, so it allocates nothing.
+            ModeDefinition? currentMode = modes.Manager.CurrentMode;
+
+            // Decision 6: the smoke run aims the Add click at a point cached in a frame with hello.main as the
+            // current mode. The hit test of the next frame reads the layout of this frame, so the point stays valid.
+            if (ReferenceEquals(currentMode, modes.Main))
+            {
+                addPoint = ViewportCenter(state.AddButton);
+            }
 
             // The caret pass of Update runs for the focus owner only (CR-3). The compare allocates nothing.
             bool fieldFocused = ui.FocusedElement == widgets.TextField;
@@ -812,6 +891,16 @@ internal static class Program
                 {
                     caretFrames++;
                 }
+
+                if (ReferenceEquals(currentMode, modes.Main))
+                {
+                    mainFrames++;
+                }
+
+                if (ReferenceEquals(currentMode, modes.Detail))
+                {
+                    detailFrames++;
+                }
             }
         }
 
@@ -833,22 +922,38 @@ internal static class Program
             widgets.Submits,
             state.Adds,
             state.Resets,
-            checked((int)(state.Score.Version - 1)));
+            checked((int)(state.Score.Version - 1)),
+            modes.Switches,
+            modes.Backs,
+            mainFrames,
+            detailFrames);
     }
 
     /// <summary>
     /// Pushes the synthetic input of one frame of the smoke run: the widget events, one Tab key down and one Tab key up,
-    /// one Escape key down and one Escape key up in each fourth frame, the longest text burst in the first measured
-    /// frame only, the text field events, and then one pointer move.
+    /// one Escape key down and one Escape key up in each fourth frame, one F1 key down and one F1 key up or one F2 key
+    /// down and one F2 key up, the longest text burst in the first measured frame only, the text field events, and then
+    /// one pointer move.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The state script: a left press and a left release at the center of the <c>Add</c> button of
-    /// <see cref="HelloState"/>. The pair comes after the toggle pair and before the slider pair. The click runs
-    /// <c>hello.add</c> and raises the score. The slider press then keeps the focus, so the Tab still moves the focus
-    /// from the slider to the text field. In each frame with <c>frameIndex % 4 == 3</c>, an Escape key down and key up
-    /// with no target follow the Tab. The text field holds the focus then, and a focused field passes a non-text key to
-    /// the action map. The map runs <c>hello.reset</c>, so the score text changes and the label binding does real work.
+    /// The state script: a left press and a left release at <paramref name="addPoint"/>, the cached center of the
+    /// <c>Add</c> button of <see cref="HelloState"/> (Decision 6). The pair comes after the toggle pair and before the
+    /// slider pair. The click runs <c>hello.add</c> and raises the score. The slider press then keeps the focus, so the
+    /// Tab still moves the focus from the slider to the text field. In each frame with <c>frameIndex % 4 == 3</c>, an
+    /// Escape key down and key up with no target follow the Tab. The text field holds the focus then, and a focused
+    /// field passes a non-text key to the action map. The map runs <c>hello.reset</c>, so the score text changes and the
+    /// label binding does real work.
+    /// </para>
+    /// <para>
+    /// The mode script (Decision 5): after the Escape block and before the longest text burst, one key down and one key
+    /// up with no target. The key is <c>F1</c> when <c>(frameIndex - WarmUpFrames) % 2 == 0</c>, and <c>F2</c>
+    /// otherwise. The rule runs in each frame, also in the warm-up frames. The text field holds the focus, because the
+    /// field press comes later in the drain, and a focused field passes a non-text key to the action map. <c>F1</c>
+    /// runs <c>hello.mode</c> and switches the mode. <c>F2</c> runs <c>hello.back</c> and steps back through the mode
+    /// history. The frame rule: a key of frame N applies at the start of the update of frame N+1, so each measured
+    /// frame from the first one runs one diff. With <c>--frames 120</c>, the run gives 60 switches, 59 backs, 59
+    /// measured <c>hello.main</c> frames, and 58 measured <c>hello.detail</c> frames.
     /// </para>
     /// <para>
     /// The widget script: a left press and a left release at the center of the <c>Click me</c> button. The button
@@ -905,20 +1010,25 @@ internal static class Program
     /// </para>
     /// </remarks>
     /// <param name="ui">The UI context that gets the events.</param>
-    /// <param name="panel">The panel of the screen.</param>
+    /// <param name="panel">The root of the widget panel. The move aims at its center in an even frame and at a point
+    /// outside it in an odd frame.</param>
     /// <param name="widgets">The widget section of the screen. The widget events aim at its widgets.</param>
-    /// <param name="state">The state of the sample. The click aims at its <c>Add</c> button.</param>
+    /// <param name="addPoint">The cached center of the <c>Add</c> button of <see cref="HelloState"/> from the last
+    /// frame with <c>hello.main</c> as the current mode (Decision 6). The click aims at it, because that button has
+    /// no parent in a <c>hello.detail</c> frame. The click runs the <c>hello.add</c> command.</param>
     /// <param name="frameIndex">The index of the frame: the number of frames that the loop rendered before it.</param>
     private static void PushSmokeInput(
-        UiContext ui, Element panel, HelloWidgets widgets, HelloState state, int frameIndex)
+        UiContext ui, Element panel, HelloWidgets widgets, float2 addPoint, int frameIndex)
     {
         double time = Glfw.Time;
 
         // The widget script. The widget events come before the move (the order rule). The Add click comes before the
         // slider click, so the slider press keeps the focus and the Tab still moves it from the slider to the field.
+        // The click aims at the cached point (Decision 6), because the Add button has no parent in a hello.detail
+        // frame.
         PushClick(ui, ViewportCenter(widgets.ClickButton), time);
         PushClick(ui, ViewportCenter(widgets.Toggle), time);
-        PushClick(ui, ViewportCenter(state.AddButton), time);
+        PushClick(ui, addPoint, time);
         PushClick(ui, SliderPoint(widgets.Slider, frameIndex), time);
 
         // The scroll at the center of the view. The delta is (0, -1) in an even frame and (0, 1) in an odd frame, so
@@ -973,6 +1083,27 @@ internal static class Program
                 IsRepeat = false,
             });
         }
+
+        // The mode script (Decision 5). F1 runs hello.mode, and F2 runs hello.back. The keys have no target and come
+        // after the Escape block, so the text field holds the focus and passes them to the map. The rule runs in each
+        // frame, also in the warm-up frames.
+        int modeKey = (frameIndex - WarmUpFrames) % 2 == 0 ? (int)GlfwKey.F1 : (int)GlfwKey.F2;
+        ui.PushEvent(new KeyEvent
+        {
+            Header = new UiEventHeader(UiEventType.KeyDown, time, null),
+            Key = modeKey,
+            ScanCode = 0,
+            Modifiers = UiModifiers.None,
+            IsRepeat = false,
+        });
+        ui.PushEvent(new KeyEvent
+        {
+            Header = new UiEventHeader(UiEventType.KeyUp, time, null),
+            Key = modeKey,
+            ScanCode = 0,
+            Modifiers = UiModifiers.None,
+            IsRepeat = false,
+        });
 
         // The longest text burst runs in the first measured frame only, before the char or the Backspace of the frame.
         TextField field = widgets.TextField;

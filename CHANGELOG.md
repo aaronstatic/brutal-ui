@@ -34,9 +34,13 @@ This file lists each notable change of brutal-ui. The format follows [Keep a Cha
 - `SlotContainer` with `Mount`, `Unmount`, and `SlotContainer.Find` (panels-and-modes/slot-container).
 - `UiContext.OnBeforeUpdate` and `UiBeforeUpdateHandler`, the slot that `Update` calls first (panels-and-modes/mode-set).
 - `UiManager` with `Register`, `SetMode`, the deferred mode diff, the layout swap, and the action map switch, and `ModeHistory` with `Back` (panels-and-modes/mode-set).
+- HelloPanel shows two modes with the layout `hello.layout`, the panels `hello.widgets`, `hello.state`, and `hello.info`, a `Mode (F1)` button, F1 for the switch, and F2 for the back step (panels-and-modes/panel-sample).
+- The HelloPanel smoke run switches the mode in each frame and prints a seventh line with the mode counts (panels-and-modes/panel-sample).
+- `ModeDiffAllocationTests`, the eighteenth allocation gate (panels-and-modes/panel-sample).
 
 ### Changed
 
+- `HelloScreen.Build` splits into four build methods, `UiManager` adds the root of the sample, and the class `hello-root` becomes `hello-slot-root` (panels-and-modes/panel-sample).
 - The remark of `PanelDefinition.DefaultSlot` states that the manager does not read it (panels-and-modes/mode-set).
 - The HelloPanel smoke run now drives each widget in each frame and prints a fifth line, `HelloPanel: widgets: clicks <C>, flips <T>, values <V>, scrolls <S>, edits <E>, submits <U>.` It exits with code 1 and writes `HelloPanel: the synthetic input did not reach each widget.` when a widget gets no change. The last frame now has 7 draw commands and 1100 vertices (interactive-elements/widget-sample).
 - A chord now gives no click: a click needs the left press that set `Active`, with no other button down during the gesture, and a release of the left button that ends the press. A `PointerUp` with a target from the caller gives no click (CR-1 and CR-6 of button-and-toggle). `UiContext.CurrentPressTarget` holds the press target for one walk (interactive-elements/slider).

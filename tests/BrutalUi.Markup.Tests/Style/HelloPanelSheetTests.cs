@@ -16,15 +16,15 @@ namespace BrutalUi.Markup.Tests.Style;
 /// assembly. A parse test needs no GPU, so a headless verifier checks the sheet.
 /// </para>
 /// <para>
-/// The tests read the real sheet, so they intern the real class names of the sample (<c>hello-root</c>,
-/// <c>hello-panel</c>, <c>hello-widgets</c>, <c>hello-row</c>, and <c>hello-status</c>). Each expected value comes
-/// from the sheet.
+/// The tests read the real sheet, so they intern the real class names of the sample (<c>hello-slot-root</c>,
+/// <c>hello-panel</c>, <c>hello-panel-root</c>, <c>hello-widgets</c>, <c>hello-row</c>, and <c>hello-status</c>).
+/// Each expected value comes from the sheet.
 /// </para>
 /// </remarks>
 public sealed class HelloPanelSheetTests
 {
-    /// <summary>The number of rules of the sheet after phase 4 of widget-sample.</summary>
-    private const int RuleCount = 31;
+    /// <summary>The number of rules of the sheet after phase 1 of panels-and-modes/panel-sample.</summary>
+    private const int RuleCount = 33;
 
     /// <summary>The width of one byte of text in pixels, from the measurer of the tests.</summary>
     private const float ByteWidth = 8f;
@@ -77,7 +77,9 @@ public sealed class HelloPanelSheetTests
     /// <summary>The selector text of each rule of the sheet, in the order of the sheet.</summary>
     private static readonly string[] SelectorTexts =
     [
-        ".hello-root",
+        ".hello-slot-root",
+        "SlotContainer",
+        ".hello-panel-root",
         ".hello-panel",
         ".hello-panel:hover",
         ".hello-panel:focus",
@@ -110,7 +112,7 @@ public sealed class HelloPanelSheetTests
         ".hello-status > Label",
     ];
 
-    /// <summary>The sheet parses with no error, holds 31 rules, and holds each selector text one time.</summary>
+    /// <summary>The sheet parses with no error, holds 33 rules, and holds each selector text one time.</summary>
     [Fact]
     public void TheSheetHoldsEachRule()
     {
@@ -505,7 +507,7 @@ public sealed class HelloPanelSheetTests
     }
 
     /// <summary>
-    /// The tree of the tests: a root <c>.hello-root</c>, a panel <c>.hello-panel</c> with a label, a section
+    /// The tree of the tests: a root <c>.hello-slot-root</c>, a panel <c>.hello-panel</c> with a label, a section
     /// <c>.hello-widgets</c>, and a row <c>.hello-row</c> with a <see cref="Button"/> and a status label. Rows 2 to 5
     /// hold the toggle, the slider, the scroll view, and the text field with its status column <c>.hello-status</c>.
     /// </summary>
@@ -601,7 +603,7 @@ public sealed class HelloPanelSheetTests
             panel.Children.Add(section);
 
             Element root = new();
-            root.Classes.Add(ClassName.Intern("hello-root"));
+            root.Classes.Add(ClassName.Intern("hello-slot-root"));
             root.Children.Add(panel);
 
             UiContext context = new(new UiContext.CreateInfo { Measurer = new ByteMeasurer() })
