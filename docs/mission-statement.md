@@ -86,6 +86,10 @@ The layout engine is a C# implementation of the Yoga subset that games use. Writ
 
 Each release runs an allocation test on layout and draw, and a benchmark on a 1000-element tree. The numbers go in the changelog.
 
+### Scale, drag, and shadow
+
+Public alpha feedback named these three: UI scaling for HiDPI displays and a player scale setting, in-game drag and drop for inventory-like screens, and shadows for depth. The window content-scale event already reaches the `UiContext.OnContentScale` slot. The plan gives it a consumer, scales the layout, the style lengths, and the fonts, and inverse-transforms the pointer. Drag and drop builds on the widget capture rule; window dragging ships with the window model, and the general form follows. Shadows come through the paint members and the draw callbacks that the section above defers.
+
 ---
 
 *This document is a living guide. It evolves as the project develops, but the core mission does not change.*

@@ -23,6 +23,10 @@ brutal-ui gives BRUTAL developers a retained-mode game UI framework with zero al
 
 > An epic is one row. Its child features live in `docs/features/<epic>/epic-overview.md`.
 
+## Public-alpha feedback
+
+The repository went public on 2026-11-09. The first outside reports named three gaps: UI scaling, in-game drag and drop, and shadows. Phase 6 of `docs/technical-design.md` now holds them. The content-scale event reaches the `UiContext.OnContentScale` slot. No layer consumes it yet. Window dragging ships with the phase 4 window model. Item drag needs a drag source, a ghost, and drop targets. The mission statement defers effects beyond the draw list. Shadows lead that work. One game also targets SDL3. `BrutalUi.Core` knows nothing about the windowing layer, and the input seam is public. A `BrutalUi.Sdl` adapter over `Brutal.Sdl` is a port, not a redesign. It is a candidate, not yet planned.
+
 ## Integration Points
 
 - **dev-ops → every later epic:** Each later epic adds code to the projects of `dev-ops/solution-skeleton`. Each later epic runs `scripts/test-linux.sh` and `scripts/test-windows.ps1`.

@@ -1334,7 +1334,7 @@ The Vulkan backend binds one render pass at construction. Phase 5 tests a second
 
 ## 13. Configuration
 
-- `UiContext.CreateInfo` sets the display scale, the default stylesheet, the font set, and the renderer.
+- `UiContext.CreateInfo` sets the default stylesheet, the font set, and the measurer. The display scale lands with phase 6: the context holds the scale, and the layout pass, the style lengths, and the font measure read it.
 - Mode, panel, and window definitions load from XML files or from C# records.
 - Window positions persist to a JSON file next to the executable.
 
@@ -1439,6 +1439,12 @@ Stores, bindings, panels, modes, slots, commands, event bus, services, the actio
 ### Phase 5: world space (2 weeks)
 
 `WorldPanel`, offscreen render target, the WorldSpace sample, the upstream issue if the render pass needs a change.
+
+### Phase 6: scale, drag, and shadow (3 weeks)
+
+UI scaling: a display-scale factor that the layout pass, the style lengths, the font measure, and the pointer inverse transform follow. The content-scale event of the window already reaches `UiContext.OnContentScale`; this phase gives it a consumer. See Configuration, section 13.
+In-game drag and drop: a drag source, a drag ghost element, and drop targets, on the capture rule of `IDragCapture`. Window dragging lands with the window manager in phase 4; this is the general form for inventory-style screens.
+Shadows: the first paint members and draw callbacks beyond the flat `ImDrawList` fills, for the drop shadow and depth effects that the mission statement defers.
 
 ---
 
