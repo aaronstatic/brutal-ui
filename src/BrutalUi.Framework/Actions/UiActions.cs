@@ -8,7 +8,9 @@ namespace BrutalUi.Framework;
 /// <remarks>
 /// <para>
 /// An action name is UTF-8. The map compares two names by their bytes, so <c>Cancel</c> and <c>cancel</c> are two
-/// names. A game can use other names, and each name needs an add with <see cref="UiActionMap.AddAction"/>.
+/// names. A game can use other names, and each name needs an add with
+/// <see cref="UiActionMap.AddAction(ReadOnlySpan{byte}, ReadOnlySpan{byte})"/> or
+/// <see cref="UiActionMap.AddAction(ReadOnlySpan{byte}, UiActionType)"/>.
 /// </para>
 /// <para>
 /// The names are the words of the requirement: confirm, cancel, navigate up, and navigate down. Each property gives a

@@ -17,13 +17,16 @@ namespace HelloPanel;
 /// <see cref="LabelBindings.BindText{T, TValue}(Label, Store{T}, Func{T, TValue}, string?, IFormatProvider?)"/>. The
 /// action <c>Cancel</c> runs the command <c>hello.reset</c> from the Escape key and from the gamepad button
 /// <c>B</c>. The actions <c>NavigateUp</c> and <c>NavigateDown</c> run the focus commands from the Up key and the
-/// Down key, and from <c>DpadUp</c> and <c>DpadDown</c>.
+/// Down key, and from <c>DpadUp</c> and <c>DpadDown</c>. The action <c>Move</c> is a Vector2 action with no
+/// command. The W, A, S, and D keys and the left stick of gamepad slot 0 fill its value, and the frame loop
+/// shows <see cref="UiActionMap.ReadVector"/> in the move label.
 /// </para>
 /// <para>
 /// The build-time rule: the constructor does all the allocation. It creates the store, the registry, the map, the
 /// row, and the bindings one time. The handlers are <see langword="static"/> fields and take the state as the
-/// target, so a command call allocates nothing. The frame loop only calls <see cref="UiActionMap.PushGamepad"/>, and
-/// the context calls the map for a key that no element took. <see cref="HelloModes"/> later registers
+/// target, so a command call allocates nothing. The read slot of the active map reads the keys, the buttons, and
+/// the pad of slot 0 in <see cref="UiContext.Update(float)"/>, and the context calls the map for a key that no
+/// element took. <see cref="HelloModes"/> later registers
 /// <c>hello.mode</c> and <c>hello.back</c> in the registry of <see cref="Map"/>, so one registry serves the map, the
 /// buttons, and the panel context.
 /// </para>
@@ -35,6 +38,9 @@ namespace HelloPanel;
 /// </remarks>
 internal sealed class HelloState
 {
+    /// <summary>The UTF-8 name of the Vector2 move action. The frame loop shows its value in the move label.</summary>
+    public static ReadOnlySpan<byte> MoveAction => "Move"u8;
+
     /// <summary>The class of the row: the class of the <c>.hello-row</c> rules of the sheet.</summary>
     private static readonly ClassId RowClass = ClassName.Intern("hello-row");
 
@@ -87,6 +93,9 @@ internal sealed class HelloState
         Map.BindGamepadButton(UiActions.NavigateUp, UiGamepadButtons.DpadUp);
         Map.BindKey(UiActions.NavigateDown, (int)GlfwKey.Down);
         Map.BindGamepadButton(UiActions.NavigateDown, UiGamepadButtons.DpadDown);
+        Map.AddAction(MoveAction, UiActionType.Vector2);
+        Map.BindKeyVector(MoveAction, (int)GlfwKey.W, (int)GlfwKey.A, (int)GlfwKey.S, (int)GlfwKey.D);
+        Map.BindGamepadStick(MoveAction, UiGamepadStick.Left);
 
         AddButton = new Button(new Button.CreateInfo { Text = "Add" }).BindCommand(commands, "hello.add"u8);
         Label scoreLabel = new Label(new Label.CreateInfo()) { IsPickable = false }.BindText(Score, s_scoreText);

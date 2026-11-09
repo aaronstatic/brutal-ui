@@ -10,8 +10,8 @@ namespace BrutalUi.Framework.Tests;
 
 /// <summary>
 /// The allocation gate of the action map (the seventeenth gate). After warm-up, the key path, the mouse path, the
-/// gamepad path, and the focus actions, each through <c>Update</c> and <c>Draw</c>, must allocate 0 bytes in the Debug
-/// build.
+/// gamepad path, the focus actions, and the typed frame read with the five queries, each through <c>Update</c> and
+/// <c>Draw</c>, must allocate 0 bytes in the Debug build.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -19,10 +19,18 @@ namespace BrutalUi.Framework.Tests;
 /// 300. The root is not pickable, so a press outside the panel hits no element and reaches the map. The panel is 200 by
 /// 200 and holds three focusable buttons and a <see cref="TextField"/>. The <see cref="CommandRegistry"/> holds 16
 /// counted commands <c>cmd-00</c> to <c>cmd-15</c> and the two focus commands. Each counted command has its own
-/// <c>Counter</c> target and one shared static handler. The <see cref="UiActionMap"/> holds 18 actions: 16 counted
-/// actions <c>act-00</c> to <c>act-15</c> and the two focus actions. It holds 12 key bindings (some with Control or
-/// Shift, and also Escape, W, Up, and Down), 3 mouse button bindings, and 4 gamepad button bindings (<c>A</c>,
-/// <c>B</c>, <c>DpadUp</c>, and <c>DpadDown</c>). The map is active on the context.
+/// <c>Counter</c> target and one shared static handler. The <see cref="UiActionMap"/> holds 23 actions: 16 counted
+/// actions <c>act-00</c> to <c>act-15</c>, the two focus actions, and five typed actions <c>Move</c> (Vector2),
+/// <c>Look</c> (Vector2), <c>Zoom</c> (Axis), <c>Throttle</c> (Axis), and <c>Fire</c> (Button with no command). It
+/// holds 28 bindings: 13 key bindings (some with Control or Shift, and also Escape, Space, W, Up, and Down), 3 mouse
+/// button bindings, 5 gamepad button bindings (<c>A</c>, <c>B</c>, <c>DpadUp</c>, <c>DpadDown</c>, and <c>X</c>), one
+/// four-key vector, one two-key axis, one stick, two pad axes, one pointer delta, and one scroll. The map is active
+/// on the context.
+/// </para>
+/// <para>
+/// The query step drives the typed frame read and the five queries. It writes two pad states of slot 0, pushes W,
+/// Space, a pointer move, and a scroll outside the panel, and adds each query result to a float and an int field of
+/// the scene. The scene holds the events, the two pad states, and the sums as fields.
 /// </para>
 /// <para>
 /// The rule: a measured body creates no lambda, no string, no boxed value, no array, and no Assert. The scene builds
@@ -44,6 +52,24 @@ public sealed class ActionMapAllocationTests
     private const int WKey = 87;
     private const int F1Key = 290;
     private const int F12Key = 301;
+    private const int SpaceKey = 32;
+    private const int AKey = 65;
+    private const int DKey = 68;
+
+    /// <summary>The name of the Vector2 move action of the typed read.</summary>
+    private static ReadOnlySpan<byte> MoveAction => "Move"u8;
+
+    /// <summary>The name of the Vector2 look action of the typed read.</summary>
+    private static ReadOnlySpan<byte> LookAction => "Look"u8;
+
+    /// <summary>The name of the Axis zoom action of the typed read.</summary>
+    private static ReadOnlySpan<byte> ZoomAction => "Zoom"u8;
+
+    /// <summary>The name of the Axis throttle action of the typed read.</summary>
+    private static ReadOnlySpan<byte> ThrottleAction => "Throttle"u8;
+
+    /// <summary>The name of the Button fire action of the typed read.</summary>
+    private static ReadOnlySpan<byte> FireAction => "Fire"u8;
 
     /// <summary>The handler that adds one to the counter target. It sits in a field, so no call creates a delegate.</summary>
     private static readonly CommandHandler s_count = static target => ((Counter)target!).Calls++;
@@ -96,6 +122,26 @@ public sealed class ActionMapAllocationTests
         public required PointerEvent PressLeft;
 
         public required PointerEvent ReleaseLeft;
+
+        public required KeyEvent Space;
+
+        public required KeyEvent WRelease;
+
+        public required KeyEvent SpaceRelease;
+
+        public required PointerEvent MoveOutside;
+
+        public required ScrollEvent ScrollOutside;
+
+        public required UiGamepadState PadDown;
+
+        public required UiGamepadState PadUp;
+
+        /// <summary>The sum of each vector and axis read by the query step.</summary>
+        public float ValueSum;
+
+        /// <summary>The sum of each true Button flag read by the query step.</summary>
+        public int FlagSum;
     }
 
     private static Scene BuildScene()
@@ -169,7 +215,25 @@ public sealed class ActionMapAllocationTests
         map.BindGamepadButton(actions[14], UiGamepadButtons.B);
         map.BindGamepadButton(UiActions.NavigateUp, UiGamepadButtons.DpadUp);
         map.BindGamepadButton(UiActions.NavigateDown, UiGamepadButtons.DpadDown);
+
+        map.AddAction(MoveAction, UiActionType.Vector2);
+        map.AddAction(LookAction, UiActionType.Vector2);
+        map.AddAction(ZoomAction, UiActionType.Axis);
+        map.AddAction(ThrottleAction, UiActionType.Axis);
+        map.AddAction(FireAction, UiActionType.Button);
+        map.BindKey(FireAction, SpaceKey);
+        map.BindKeyVector(MoveAction, WKey, AKey, SKey, DKey);
+        map.BindKeyAxis(ThrottleAction, SKey, WKey);
+        map.BindGamepadButton(FireAction, UiGamepadButtons.X);
+        map.BindGamepadStick(MoveAction, UiGamepadStick.Left);
+        map.BindGamepadAxis(ZoomAction, UiGamepadAxis.RightTrigger);
+        map.BindGamepadAxis(ZoomAction, UiGamepadAxis.LeftTrigger, -1f);
+        map.BindMouseDelta(LookAction);
+        map.BindScroll(ZoomAction);
         map.Activate(context);
+
+        UiGamepadState padDown = new(UiGamepadButtons.X | UiGamepadButtons.A, stackalloc float[] { 1f, 0f, 0f, 0f, 0.25f, 0.5f });
+        UiGamepadState padUp = new(UiGamepadButtons.None, []);
 
         float2 outside = new(300f, 250f);
         float2 onButton = new(40f, 12f);
@@ -195,6 +259,13 @@ public sealed class ActionMapAllocationTests
             ReleaseRight = Pointer(UiEventType.PointerUp, outside, PointerButton.Right),
             PressLeft = Pointer(UiEventType.PointerDown, onButton, PointerButton.Left),
             ReleaseLeft = Pointer(UiEventType.PointerUp, onButton, PointerButton.Left),
+            Space = Key(SpaceKey, UiModifiers.None, false),
+            WRelease = KeyUp(WKey),
+            SpaceRelease = KeyUp(SpaceKey),
+            MoveOutside = Pointer(UiEventType.PointerMove, outside),
+            ScrollOutside = Scroll(outside, new float2(0f, 3f)),
+            PadDown = padDown,
+            PadUp = padUp,
         };
 
         // One frame builds the layout, so the first press hits the right place.
@@ -226,13 +297,38 @@ public sealed class ActionMapAllocationTests
     }
 
     /// <summary>Creates a pointer event with no target.</summary>
-    private static PointerEvent Pointer(UiEventType type, float2 position, PointerButton button)
+    private static PointerEvent Pointer(UiEventType type, float2 position, PointerButton button = PointerButton.Left)
     {
         return new PointerEvent
         {
             Header = new UiEventHeader(type, 0d, null),
             Position = position,
             Button = button,
+            Modifiers = UiModifiers.None,
+        };
+    }
+
+    /// <summary>Creates a key up event with no target.</summary>
+    private static KeyEvent KeyUp(int key)
+    {
+        return new KeyEvent
+        {
+            Header = new UiEventHeader(UiEventType.KeyUp, 0d, null),
+            Key = key,
+            ScanCode = 0,
+            Modifiers = UiModifiers.None,
+            IsRepeat = false,
+        };
+    }
+
+    /// <summary>Creates a scroll event with no target.</summary>
+    private static ScrollEvent Scroll(float2 position, float2 delta)
+    {
+        return new ScrollEvent
+        {
+            Header = new UiEventHeader(UiEventType.Scroll, 0d, null),
+            Position = position,
+            Delta = delta,
             Modifiers = UiModifiers.None,
         };
     }
@@ -300,6 +396,46 @@ public sealed class ActionMapAllocationTests
         context.Draw(scene.Renderer);
     }
 
+    /// <summary>
+    /// The measured body of the fifth test. Frame 1: no focus, pad slot 0 with <c>X</c> and <c>A</c> down and stick
+    /// values, W down, Space down, a pointer move, and a scroll outside the panel, then <c>Update</c> and the five
+    /// queries. Frame 2: the pad with no button, W up, Space up, <c>Update</c>, the queries again, and <c>Draw</c>.
+    /// </summary>
+    private static void QueryStep(Scene scene)
+    {
+        UiContext context = scene.Context;
+        UiActionMap map = scene.Map;
+        context.ClearFocus();
+
+        context.SetGamepad(0, in scene.PadDown);
+        context.PushEvent(in scene.W);
+        context.PushEvent(in scene.Space);
+        context.PushEvent(in scene.MoveOutside);
+        context.PushEvent(in scene.ScrollOutside);
+        context.Update(0.016f);
+        ReadQueries(scene);
+
+        context.SetGamepad(0, in scene.PadUp);
+        context.PushEvent(in scene.WRelease);
+        context.PushEvent(in scene.SpaceRelease);
+        context.Update(0.016f);
+        ReadQueries(scene);
+        context.Draw(scene.Renderer);
+    }
+
+    /// <summary>Runs the five queries and adds the results to the sum fields of the scene.</summary>
+    private static void ReadQueries(Scene scene)
+    {
+        UiActionMap map = scene.Map;
+        float2 move = map.ReadVector(MoveAction);
+        float2 look = map.ReadVector(LookAction);
+        scene.ValueSum += move.X + move.Y + look.X + look.Y + map.ReadAxis(ZoomAction) + map.ReadAxis(ThrottleAction);
+        scene.FlagSum += Count(map.WasPressed(FireAction)) + Count(map.IsHeld(FireAction)) + Count(map.WasReleased(FireAction));
+    }
+
+    /// <summary>Gives 1 for <see langword="true"/> and 0 for <see langword="false"/>.</summary>
+    private static int Count(bool value) => value ? 1 : 0;
+
     private static void RunKeySteps(Scene scene, int steps)
     {
         for (int i = 0; i < steps; i++)
@@ -329,6 +465,14 @@ public sealed class ActionMapAllocationTests
         for (int i = 0; i < steps; i++)
         {
             FocusStep(scene);
+        }
+    }
+
+    private static void RunQuerySteps(Scene scene, int steps)
+    {
+        for (int i = 0; i < steps; i++)
+        {
+            QueryStep(scene);
         }
     }
 
@@ -387,6 +531,21 @@ public sealed class ActionMapAllocationTests
         AllocationGate.ReleaseAllocationContext();
         long before = GC.GetAllocatedBytesForCurrentThread();
         RunFocusSteps(scene, Iterations);
+        long after = GC.GetAllocatedBytesForCurrentThread();
+
+        Assert.Equal(0L, after - before);
+    }
+
+    /// <summary>The typed frame read and the five queries allocate nothing after warm-up.</summary>
+    [Fact]
+    public void TheTypedReadAndTheQueriesAllocateNothing()
+    {
+        Scene scene = BuildScene();
+        RunQuerySteps(scene, WarmUpRounds);
+
+        AllocationGate.ReleaseAllocationContext();
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        RunQuerySteps(scene, Iterations);
         long after = GC.GetAllocatedBytesForCurrentThread();
 
         Assert.Equal(0L, after - before);
@@ -451,5 +610,20 @@ public sealed class ActionMapAllocationTests
         FocusStep(scene);
 
         Assert.Same(scene.Second, scene.Context.FocusedElement);
+
+        // The query step: pad A runs its command one time through the frame read. The five queries add a fixed
+        // amount to the sums. Frame 1: Move reads the stick (1, 0) - W and S are both down from the key step, so the
+        // four-key part gives 0 - Look reads the first move (260, 238) from the last pointer place, Zoom reads 0.25
+        // plus the scroll 3, and Throttle reads 0. Frame 2: W goes up, so Move reads (0, -1) and Throttle reads -1.
+        // The flags: Fire reads pressed and held in frame 1, and released in frame 2.
+        int aFrameRead = counters[13].Calls;
+        float valueBefore = scene.ValueSum;
+        int flagBefore = scene.FlagSum;
+
+        QueryStep(scene);
+
+        Assert.Equal(aFrameRead + 1, counters[13].Calls);
+        Assert.Equal(500.25, (double)scene.ValueSum - valueBefore, 5);
+        Assert.Equal(3, scene.FlagSum - flagBefore);
     }
 }

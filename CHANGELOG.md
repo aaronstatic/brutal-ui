@@ -43,9 +43,18 @@ This file lists each notable change of brutal-ui. The format follows [Keep a Cha
 - `UiGamepadAxis` and `UiGamepadDeadzone`, the six axes and the deadzone helper (input/gamepad-axes).
 - `UiGamepadState.Axis(UiGamepadAxis)`, `LeftStick`, and `RightStick` (input/gamepad-axes).
 - `GlfwUiInput.PollGamepads`, `StickDeadzone`, and `TriggerDeadzone`, the poll of the 16 gamepad slots with the deadzones (input/gamepad-axes).
+- `UiContext.OnInputRead` and `UiInputReadHandler`, the read slot that `Update` calls after the input pass and before the binding pass (input/input-actions).
+- `UiActionType`, `UiGamepadStick`, and the typed `UiActionMap.AddAction(action, type)`, the three action types and the action with no command (input/input-actions).
+- `UiActionMap.BindKeyVector`, `BindGamepadStick`, `BindGamepadAxis`, `BindKeyAxis`, `BindMouseDelta`, and `BindScroll`, the six new binds of the typed map (input/input-actions).
+- `UiActionMap.GamepadSlot`, the gamepad slot that the frame read of an active map reads (input/input-actions).
+- `UiActionMap.ReadVector`, `ReadAxis`, `WasPressed`, `IsHeld`, and `WasReleased`, the five queries of the typed map (input/input-actions).
 
 ### Changed
 
+- An active `UiActionMap` reads the gamepad buttons of `GamepadSlot` in `UiContext.Update` and invokes their commands. A game drops its `PushGamepad` call for an active map, because the push would invoke each press a second time (input/input-actions).
+- `BindKey`, `BindMouseButton`, and `BindGamepadButton` throw `ArgumentException` for an Axis or Vector2 action. Each bind needs an action of the type that its input fills (input/input-actions).
+- The HelloPanel sample shows the `Move` vector in a fifth label, and the frame loop no longer pushes the gamepad. The `Move` action reads W, A, S, D and the left stick of slot 0 (input/input-actions).
+- A `KeyAxis` pair and a `KeyVector` key set bound in any order is one binding, and a repeat throws. `BindKey` and `BindMouseButton` reject codes above the state range at bind time (input/input-actions).
 - The slots of `UiInputState` hold the values after the deadzone when `PollGamepads` writes them, and a trigger holds 0 to 1 (input/gamepad-axes).
 - `GlfwUiInput` subscribes `GlfwWindow.OnFocus` and clears the held keys on a focus loss. A `KeyboardEnabled` switch to `false` clears the held keys (input/input-state).
 - `HelloScreen.Build` splits into four build methods, `UiManager` adds the root of the sample, and the class `hello-root` becomes `hello-slot-root` (panels-and-modes/panel-sample).

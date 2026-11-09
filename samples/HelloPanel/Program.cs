@@ -612,6 +612,7 @@ internal static class Program
                 modes.GateLabel,
                 modes.InputLabel,
                 modes.StickLabel,
+                modes.MoveLabel,
                 modes.Widgets,
                 state,
                 modes,
@@ -641,16 +642,17 @@ internal static class Program
     /// window event to ImGui first and then to the adapter, and the adapter pushes it into the ring of the context. The
     /// gamepad poll (<see cref="GlfwUiInput.PollGamepads()"/>) sits outside the UI region, so an allocation of the BRUTAL
     /// binding cannot fail the allocation gate. The poll writes the state of the 16 slots into the raw input state.
-    /// (2) Start the frame of the GLFW backend, the Vulkan backend, and ImGui. (3) The UI region: push the buttons of
-    /// raw slot 0 (<c>ui.Input.Gamepad(0).Buttons</c>) into the action map (<c>UiActionMap.PushGamepad</c>, the first
-    /// line, so the gate measures the map; the raw slot holds the poll of this frame before <see
-    /// cref="UiContext.Update(float)"/> (A6)), push the smoke input (a run with a frame limit only), set the viewport
+    /// (2) Start the frame of the GLFW backend, the Vulkan backend, and ImGui. (3) The UI region: push the smoke input
+    /// (a run with a frame limit only), set the viewport
     /// size from <c>io.DisplaySize</c>, update the tree, read the focus owner, draw the
     /// tree, read
-    /// <see cref="UiContext.RoutingGate"/>, and set the text of the gate label, the input label, and the stick label.
-    /// The input pass of
+    /// <see cref="UiContext.RoutingGate"/>, and set the text of the gate label, the input label, the stick label, and
+    /// the move label. The input pass of
     /// <see cref="UiContext.Update(float)"/> drains the ring before the style pass, so the hover and the focus of this
-    /// frame show in this frame. (4) <c>ImGui.Render</c>, then read the draw command count and the vertex count of the
+    /// frame show in this frame. The raw slot holds the poll of this frame before <see
+    /// cref="UiContext.Update(float)"/> (A6), so the read slot of the active map reads the new buttons of slot 0 and
+    /// invokes their commands (Q4). The UI region pushes no gamepad state. (4) <c>ImGui.Render</c>, then read the draw
+    /// command count and the vertex count of the
     /// background draw list. (5) Record and present the frame. (6) Count the frame and the gate values.
     /// </para>
     /// <para>
@@ -686,7 +688,10 @@ internal static class Program
     /// <see langword="ref readonly"/> member, and the write formats into the fixed scratch buffer, so the update of the
     /// input label allocates nothing. The loop also sets the stick label from slot 0 of that view. The read of the left
     /// stick copies two <see cref="float"/> values, and the write formats into the fixed scratch buffer, so the update
-    /// of the stick label allocates nothing. A measured frame adds 1 to the caret count when
+    /// of the stick label allocates nothing. The loop also sets the move label from the <c>Move</c> action of the map
+    /// of <paramref name="state"/>, with <see cref="UiActionMap.ReadVector"/>, after <see
+    /// cref="UiContext.Update(float)"/>. The read of the value copies one <see cref="float2"/>, and the write formats
+    /// into the fixed scratch buffer, so the update of the move label allocates nothing. A measured frame adds 1 to the caret count when
     /// <see cref="UiContext.FocusedElement"/> is the text field after <see cref="UiContext.Update(float)"/>. The read
     /// is a reference compare inside the UI region, so the allocation gate measures it, and it allocates nothing. The
     /// loop also reads the current mode right after <see cref="UiContext.Update(float)"/>. A measured frame adds 1 to
@@ -741,13 +746,18 @@ internal static class Program
     /// The stick label of the screen. The loop sets its text after each draw, from slot 0 of
     /// <see cref="UiContext.GameInput"/>.
     /// </param>
+    /// <param name="moveLabel">
+    /// The move label of the screen. The loop sets its text after each draw, from the <c>Move</c> action of the map
+    /// of <paramref name="state"/>.
+    /// </param>
     /// <param name="widgets">
     /// The widget section of the screen. The smoke input aims its widget events at the widgets, and the loop reads the
     /// widget counts after the last frame.
     /// </param>
     /// <param name="state">
-    /// The state of the sample. The loop pushes the gamepad buttons into its action map, the smoke input aims a click at
-    /// its <c>Add</c> button, and the loop reads its counts after the last frame.
+    /// The state of the sample. Its map reads the frame input in <see cref="UiContext.Update(float)"/> (Q4), the
+    /// loop reads the <c>Move</c> value of the map for the move label, the smoke input aims a click at its <c>Add</c>
+    /// button, and the loop reads its counts after the last frame.
     /// </param>
     /// <param name="modes">
     /// The modes of the sample. The loop reads the current mode after each update, caches the center of the
@@ -772,6 +782,7 @@ internal static class Program
         Label gateLabel,
         Label inputLabel,
         Label stickLabel,
+        Label moveLabel,
         HelloWidgets widgets,
         HelloState state,
         HelloModes modes,
@@ -803,6 +814,10 @@ internal static class Program
         // change of its size. The loop allocates nothing in it.
         byte[] stickScratch = new byte[32];
 
+        // The scratch buffer of the move label. The longest move text needs 18 bytes, so the buffer never needs a
+        // change of its size. The loop allocates nothing in it.
+        byte[] moveScratch = new byte[32];
+
         // The counter value after the last release of the allocation context, or -1 before the first release.
         long releasedBytes = -1;
         while (frameLimit == NoFrameLimit || framesRendered < frameLimit)
@@ -813,8 +828,8 @@ internal static class Program
             Glfw.PollEvents();
 
             // The gamepad poll stays outside the UI region, so an allocation of the BRUTAL binding cannot fail the
-            // allocation gate. The poll writes the state of the 16 slots. The push of slot 0 into the map is the
-            // first line of the UI region.
+            // allocation gate. The poll writes the state of the 16 slots. Update reads the pad of slot 0 through the
+            // active map.
             input.PollGamepads();
 
             // A minimized window can have a framebuffer of size zero, and the swapchain then fails.
@@ -848,9 +863,8 @@ internal static class Program
             }
 
             // The UI region. Put no other call inside it. The raw slot holds the poll of this frame before
-            // Update (A6), so the push reads the new buttons.
+            // Update (A6), so Update reads the pad of slot 0 through the active map.
             long uiStartBytes = GC.GetAllocatedBytesForCurrentThread();
-            state.Map.PushGamepad(ui.Input.Gamepad(0).Buttons);
 
             // The smoke input (Decision 8). The events are structs, so the pushes allocate nothing.
             if (frameLimit != NoFrameLimit)
@@ -892,6 +906,10 @@ internal static class Program
 
             // The label shows the left stick of slot 0 of this frame in the next frame. The reads allocate nothing.
             stickLabel.SetText(HelloScreen.StickText(in ui.GameInput.Gamepad(0), stickScratch));
+
+            // The label shows the Move value of the active map of this frame in the next frame. Update wrote the
+            // value in the read slot, and the reads allocate nothing.
+            moveLabel.SetText(HelloScreen.MoveText(state.Map.ReadVector(HelloState.MoveAction), moveScratch));
             long uiEndBytes = GC.GetAllocatedBytesForCurrentThread();
 
             ImGui.Render();

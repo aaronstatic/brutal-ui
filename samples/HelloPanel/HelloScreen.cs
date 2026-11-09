@@ -35,7 +35,7 @@ namespace HelloPanel;
 /// the panel, <c>Click me</c>, the toggle, the slider, the text field, <c>Mode (F1)</c>, and <c>Add</c>. A press on
 /// one of these widgets gives the focus to the widget. A press on the disabled button clears the focus: the button is
 /// focusable but disabled, and the press does not go on to the panel. A press on the scroll view gives the focus to
-/// the panel, the nearest focusable ancestor, because the scroll view is not focusable. The four labels and the image
+/// the panel, the nearest focusable ancestor, because the scroll view is not focusable. The five labels and the image
 /// are not pickable, so a point on them hits the panel. The widget section and its rows are pickable, so a press in a
 /// gap between the widgets gives the focus to the panel, the nearest focusable ancestor. The layout root and the two
 /// slots are not pickable (the layout-root rule and the slot rule), so a point that hits no panel hits no element, and
@@ -79,9 +79,17 @@ namespace HelloPanel;
 /// same text. The label starts with the longest stick text, so its buffer never grows after the first frame.
 /// </para>
 /// <para>
+/// The fifth label is the move label. It shows the value of the <c>Move</c> Vector2 action of
+/// <see cref="UiActionMap"/>, which the frame loop reads with <see cref="UiActionMap.ReadVector"/>. The frame loop
+/// sets its text with <see cref="MoveText"/> after each draw. The action holds a key composite and a stick bind,
+/// so the value has a length of 1 or less. Holding W gives <c>Move: 0.00, 1.00</c>, and holding W and D gives
+/// <c>Move: 0.71, 0.71</c>. The label starts with the longest move text, so its buffer never grows after the
+/// first frame.
+/// </para>
+/// <para>
 /// The labels and the widgets use font 0, the default font of the renderer. The sample loads no font, so font 0 is
-/// the ImGui default font. The panel and the four labels use the font atlas texture, so they share one ImGui draw
-/// command. The four labels come before the image. The image binds the checker texture, so it opens a second draw
+/// the ImGui default font. The panel and the five labels use the font atlas texture, so they share one ImGui draw
+/// command. The five labels come before the image. The image binds the checker texture, so it opens a second draw
 /// command. The widget section comes after the image and uses the font atlas texture again, so it opens a third draw
 /// command. The mode row follows the widget section, and its button keeps the same command.
 /// </para>
@@ -91,7 +99,7 @@ namespace HelloPanel;
 /// <c>hello-panel</c>, <c>hello-panel-root</c>, <c>hello-widgets</c>, <c>hello-row</c>, and <c>hello-status</c>. The
 /// sheet also holds the type rule <c>SlotContainer</c> for the two slots. The widget rules use the
 /// type names of the widgets, for example <c>Button</c>. The tree holds no inline value. The rules
-/// <c>.hello-panel &gt; Label</c> and <c>.hello-panel &gt; Image</c> are child rules, so the four labels and the image
+/// <c>.hello-panel &gt; Label</c> and <c>.hello-panel &gt; Image</c> are child rules, so the five labels and the image
 /// must stay direct children of the widget panel. Each status label is a child of a row, so the rule
 /// <c>.hello-row &gt; Label</c> gives its values, and the rule <c>.hello-panel &gt; Label</c> does not apply to it.
 /// </para>
@@ -218,7 +226,7 @@ internal static class HelloScreen
         return new StyleSheetParser().Parse(bytes, SheetFileName).GetSheetOrThrow();
     }
 
-    /// <summary>Builds the widget panel: the four labels, the image, the widget section, and the mode row.</summary>
+    /// <summary>Builds the widget panel: the five labels, the image, the widget section, and the mode row.</summary>
     /// <remarks>
     /// <para>
     /// The factory of <c>hello.widgets</c> calls this method (see <see cref="HelloModes"/>). The panel is a column
@@ -229,14 +237,15 @@ internal static class HelloScreen
     /// </para>
     /// <para>
     /// The panel is focusable. So are <c>Click me</c>, the toggle, the slider, the text field, and
-    /// <paramref name="modeButton"/>. The disabled button and the scroll view take no focus. The four labels and the
+    /// <paramref name="modeButton"/>. The disabled button and the scroll view take no focus. The five labels and the
     /// image are not pickable, so a point on them hits the panel. The gate label starts with the longest text of
     /// <see cref="GateText"/>. The input label comes right after the gate label and starts with the longest text of
     /// <see cref="InputText"/>. The stick label comes right after the input label and starts with the longest text
-    /// of <see cref="StickText"/>.
+    /// of <see cref="StickText"/>. The move label comes right after the stick label and starts with the longest
+    /// text of <see cref="MoveText"/>.
     /// </para>
     /// <para>
-    /// The four labels and the image are direct children of the panel, because the rules
+    /// The five labels and the image are direct children of the panel, because the rules
     /// <c>.hello-panel &gt; Label</c> and <c>.hello-panel &gt; Image</c> are child rules. The widget section of
     /// <paramref name="widgets"/> follows the image. Its status labels are children of a row, so the rule
     /// <c>.hello-row &gt; Label</c> styles them. The mode row is the last child. It carries the <c>hello-row</c>
@@ -250,6 +259,7 @@ internal static class HelloScreen
     /// <param name="gateLabel">The gate label. Set its text with <see cref="GateText"/>.</param>
     /// <param name="inputLabel">The input label. Set its text with <see cref="InputText"/>.</param>
     /// <param name="stickLabel">The stick label. Set its text with <see cref="StickText"/>.</param>
+    /// <param name="moveLabel">The move label. Set its text with <see cref="MoveText"/>.</param>
     /// <param name="widgets">
     /// The widget section, its widgets, its status labels, and its change counts. The smoke run aims its widget events
     /// at the widgets and reads the counts.
@@ -257,7 +267,7 @@ internal static class HelloScreen
     /// <returns>The root element of the widget panel.</returns>
     public static Element BuildWidgetPanel(
         TextureHandle checker, Button modeButton, out Label gateLabel, out Label inputLabel, out Label stickLabel,
-        out HelloWidgets widgets)
+        out Label moveLabel, out HelloWidgets widgets)
     {
         // The rule .hello-panel > Label gives the color and the size. The label keeps font 0, the default font.
         // A label is not pickable, so the pointer hits the panel behind it.
@@ -274,6 +284,10 @@ internal static class HelloScreen
         // The stick label starts with the longest stick text, so its buffer holds each stick text with no growth.
         stickLabel = new Label(new Label.CreateInfo()) { IsPickable = false };
         stickLabel.SetText(LongestStickText);
+
+        // The move label starts with the longest move text, so its buffer holds each move text with no growth.
+        moveLabel = new Label(new Label.CreateInfo()) { IsPickable = false };
+        moveLabel.SetText(LongestMoveText);
 
         // The rule .hello-panel > Image gives the top margin. The tint is a value of the image, not of the style.
         Image checkerImage = new(new Image.CreateInfo
@@ -295,7 +309,7 @@ internal static class HelloScreen
         modeRow.Children.Add(modeButton);
 
         // The child rules read the parent, so the labels and the image are direct children of the panel.
-        // The four labels come before the image, so the panel and the four labels share one draw command.
+        // The five labels come before the image, so the panel and the five labels share one draw command.
         // The panel is focusable. So are Click me, the toggle, the slider, the text field, and Mode (F1). The
         // disabled button and the scroll view take no focus.
         Element panel = new() { IsFocusable = true };
@@ -305,6 +319,7 @@ internal static class HelloScreen
         panel.Children.Add(gateLabel);
         panel.Children.Add(inputLabel);
         panel.Children.Add(stickLabel);
+        panel.Children.Add(moveLabel);
         panel.Children.Add(checkerImage);
         panel.Children.Add(widgets.Section);
         panel.Children.Add(modeRow);
@@ -641,4 +656,71 @@ internal static class HelloScreen
         float clamped = float.IsFinite(value) ? Math.Clamp(value, -StickClampLimit, StickClampLimit) : 0f;
         return MathF.Round(clamped, 2) + 0f;
     }
+
+    /// <summary>
+    /// Gives the text of the move label for the value of a Vector2 action.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The method writes <c>Move: &lt;x&gt;, &lt;y&gt;</c> into <paramref name="scratch"/> and returns the written
+    /// part. Each component goes through <see cref="StickComponent"/>, so the value is -1 to 1 with two decimals.
+    /// The <c>Move</c> action of the sample holds a key composite and a stick bind, and both groups clamp, so its
+    /// value is already inside that range. A bigger component renders as <c>1.00</c> or <c>-1.00</c>.
+    /// <see cref="float.TryFormat(Span{byte}, out int, ReadOnlySpan{char}, IFormatProvider?)"/> writes each
+    /// component with the <c>F2</c> format and the invariant culture, so the method makes no string and boxes no
+    /// value.
+    /// </para>
+    /// <para>
+    /// The longest text needs 18 bytes, so a scratch buffer of 32 bytes always holds one move text. Pass the
+    /// result to <see cref="Label.SetText(ReadOnlySpan{byte})"/>. Read the value with
+    /// <see cref="UiActionMap.ReadVector"/> after <see cref="UiContext.Update(float)"/>, while the map is active.
+    /// </para>
+    /// </remarks>
+    /// <param name="value">The value of a Vector2 action.</param>
+    /// <param name="scratch">The destination buffer. Give it 32 bytes.</param>
+    /// <returns>The part of <paramref name="scratch"/> that holds the text.</returns>
+    /// <exception cref="InvalidOperationException">The text does not fit in <paramref name="scratch"/>.</exception>
+    public static ReadOnlySpan<byte> MoveText(float2 value, Span<byte> scratch)
+    {
+        // The write pattern of StickText: one copy or format for each part, and no allocation.
+        if (!MovePrefix.TryCopyTo(scratch))
+        {
+            throw new InvalidOperationException("The move text does not fit in the scratch buffer.");
+        }
+
+        int length = MovePrefix.Length;
+        float x = StickComponent(value.X);
+        if (!x.TryFormat(scratch[length..], out int written, "F2", CultureInfo.InvariantCulture))
+        {
+            throw new InvalidOperationException("The move text does not fit in the scratch buffer.");
+        }
+
+        length += written;
+        if (!MoveSeparator.TryCopyTo(scratch[length..]))
+        {
+            throw new InvalidOperationException("The move text does not fit in the scratch buffer.");
+        }
+
+        length += MoveSeparator.Length;
+        float y = StickComponent(value.Y);
+        if (!y.TryFormat(scratch[length..], out written, "F2", CultureInfo.InvariantCulture))
+        {
+            throw new InvalidOperationException("The move text does not fit in the scratch buffer.");
+        }
+
+        length += written;
+        return scratch[..length];
+    }
+
+    /// <summary>The prefix of the move text.</summary>
+    private static ReadOnlySpan<byte> MovePrefix => "Move: "u8;
+
+    /// <summary>The text between the two components of the move text.</summary>
+    private static ReadOnlySpan<byte> MoveSeparator => ", "u8;
+
+    /// <summary>
+    /// The longest move text: the prefix, the separator, and two clamped components of five bytes. The text is 18
+    /// bytes. The move label starts with it, so its buffer never grows after the first frame.
+    /// </summary>
+    private static ReadOnlySpan<byte> LongestMoveText => "Move: -1.00, -1.00"u8;
 }

@@ -194,6 +194,11 @@ public sealed class UiContext
     private bool _beforeUpdate;
 
     /// <summary>
+    /// Tells if the input-read handler runs. <see cref="Update(float)"/> throws when the handler calls it.
+    /// </summary>
+    private bool _inputRead;
+
+    /// <summary>
     /// The ring of queued events. Both constructors create it, so a push never allocates (Decision 8).
     /// </summary>
     /// <remarks>The ring is a mutable struct. Change it only through this field.</remarks>
@@ -618,6 +623,14 @@ public sealed class UiContext
     /// <see cref="Update(float)"/> drains them. Read <see cref="RoutingGate"/> after the call.
     /// </para>
     /// <para>
+    /// The read slot of <see cref="OnInputRead"/> runs after the input pass and before the binding pass. The handler
+    /// reads <see cref="GameInput"/> and <see cref="Input"/> with the values of this frame, after the gate. A value
+    /// that the handler writes reaches the binding pass of the same call. A handler that calls
+    /// <see cref="Update(float)"/> gets <see cref="InvalidOperationException"/>. An exception from the handler stops
+    /// the call before the binding pass. The state of the frame stays, and the next <see cref="Update(float)"/>
+    /// calls the handler again.
+    /// </para>
+    /// <para>
     /// The input pass drains the ring each frame. The ring holds <see cref="DefaultEventQueueCapacity"/> entries by
     /// default and drops its oldest entry when it is full (Decision 4). A game with long hitches sets
     /// <see cref="CreateInfo.EventQueueCapacity"/> to a larger value. <see cref="DroppedEventCount"/> shows a drop.
@@ -637,8 +650,8 @@ public sealed class UiContext
     /// rules, the inline set, and the parent text. An element with no rule and no inline value gets the defaults.
     /// </para>
     /// <para>
-    /// The frame order is: the input pass, the binding pass, the style pass, the transition pass, the layout pass, the
-    /// caret pass, and the clear pass.
+    /// The frame order is: the input pass, the read slot, the binding pass, the style pass, the transition pass, the
+    /// layout pass, the caret pass, and the clear pass.
     /// The input pass changes the states, so the style pass of the same call reads the new states. The binding pass
     /// calls the handler of each binding of <see cref="Element.AddBinding(IBindingSource, BindingHandler, object?)"/>
     /// whose source holds a new version. A value that an input handler writes reaches the binding pass of the same
@@ -689,6 +702,9 @@ public sealed class UiContext
     /// <exception cref="InvalidOperationException">
     /// The before-update slot calls this method. The before-update of this context runs already.
     /// </exception>
+    /// <exception cref="InvalidOperationException">
+    /// The input-read slot calls this method. The read slot of this context runs already.
+    /// </exception>
     public void Update(float deltaTime)
     {
         // A binding handler runs inside the binding pass. A nested call would run the passes again.
@@ -701,6 +717,12 @@ public sealed class UiContext
         if (_beforeUpdate)
         {
             throw new InvalidOperationException("A before-update handler must not call Update.");
+        }
+
+        // An input-read handler runs inside this call. A nested call would run the passes again.
+        if (_inputRead)
+        {
+            throw new InvalidOperationException("An input-read handler must not call Update.");
         }
 
         // The before-update slot runs first (Q1 of panels-and-modes). The passes of this call read the roots after
@@ -722,6 +744,22 @@ public sealed class UiContext
         // The input pass (A5): the drain walks the queued events and changes the states before the style pass
         // reads them.
         DrainEvents();
+
+        // The read slot runs after the drain (Q1 of input-actions). The handler reads the input state of this
+        // frame, and a store write in the handler reaches the binding pass of the same call.
+        UiInputReadHandler? inputRead = OnInputRead;
+        if (inputRead is not null)
+        {
+            _inputRead = true;
+            try
+            {
+                inputRead(this);
+            }
+            finally
+            {
+                _inputRead = false;
+            }
+        }
 
         // The binding pass. It applies each new store version before the style pass reads the elements.
         UpdateBindings();
@@ -1413,6 +1451,22 @@ public sealed class UiContext
     /// </para>
     /// </remarks>
     public UiBeforeUpdateHandler? OnBeforeUpdate { get; set; }
+
+    /// <summary>
+    /// Gets or sets the handler that <see cref="Update(float)"/> calls after the drain of the input pass.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Q1 of input-actions: the slot is the seam of the typed action map. The map lives in a higher layer, and Core
+    /// names no type of that layer. <c>UiActionMap.Activate</c> writes the slot. A write with <c>=</c> replaces the
+    /// delegate. Do not use <c>+=</c>: the map reads the slot to know if it is active. A null slot does nothing.
+    /// </para>
+    /// <para>
+    /// Set the slot at build time, not in the frame loop. Create the delegate one time.
+    /// <see cref="UiInputReadHandler"/> states the call rules.
+    /// </para>
+    /// </remarks>
+    public UiInputReadHandler? OnInputRead { get; set; }
 
     /// <summary>
     /// Calls <see cref="OnFileDrop"/> at once with the paths of a file drop. A null slot makes the call do nothing.
