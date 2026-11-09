@@ -40,9 +40,13 @@ This file lists each notable change of brutal-ui. The format follows [Keep a Cha
 - `UiInputState`, `UiContext.Input`, and `UiContext.GameInput`, the per-frame input state and its gated view (input/input-state).
 - `UiContext.ClearHeldKeys`, the request that clears the held keys at the end of the next drain (input/input-state).
 - `UiGamepadState` and `UiContext.SetGamepad`, the gamepad slots and their write seam (input/input-state).
+- `UiGamepadAxis` and `UiGamepadDeadzone`, the six axes and the deadzone helper (input/gamepad-axes).
+- `UiGamepadState.Axis(UiGamepadAxis)`, `LeftStick`, and `RightStick` (input/gamepad-axes).
+- `GlfwUiInput.PollGamepads`, `StickDeadzone`, and `TriggerDeadzone`, the poll of the 16 gamepad slots with the deadzones (input/gamepad-axes).
 
 ### Changed
 
+- The slots of `UiInputState` hold the values after the deadzone when `PollGamepads` writes them, and a trigger holds 0 to 1 (input/gamepad-axes).
 - `GlfwUiInput` subscribes `GlfwWindow.OnFocus` and clears the held keys on a focus loss. A `KeyboardEnabled` switch to `false` clears the held keys (input/input-state).
 - `HelloScreen.Build` splits into four build methods, `UiManager` adds the root of the sample, and the class `hello-root` becomes `hello-slot-root` (panels-and-modes/panel-sample).
 - The remark of `PanelDefinition.DefaultSlot` states that the manager does not read it (panels-and-modes/mode-set).

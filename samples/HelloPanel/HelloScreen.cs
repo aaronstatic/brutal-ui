@@ -35,7 +35,7 @@ namespace HelloPanel;
 /// the panel, <c>Click me</c>, the toggle, the slider, the text field, <c>Mode (F1)</c>, and <c>Add</c>. A press on
 /// one of these widgets gives the focus to the widget. A press on the disabled button clears the focus: the button is
 /// focusable but disabled, and the press does not go on to the panel. A press on the scroll view gives the focus to
-/// the panel, the nearest focusable ancestor, because the scroll view is not focusable. The three labels and the image
+/// the panel, the nearest focusable ancestor, because the scroll view is not focusable. The four labels and the image
 /// are not pickable, so a point on them hits the panel. The widget section and its rows are pickable, so a press in a
 /// gap between the widgets gives the focus to the panel, the nearest focusable ancestor. The layout root and the two
 /// slots are not pickable (the layout-root rule and the slot rule), so a point that hits no panel hits no element, and
@@ -72,9 +72,16 @@ namespace HelloPanel;
 /// grows after the first frame.
 /// </para>
 /// <para>
+/// The fourth label is the stick label. It shows the left stick of gamepad slot 0 of
+/// <see cref="UiContext.GameInput"/>, the game view of the input state. The frame loop sets its text with
+/// <see cref="StickText"/> after each draw. The gamepad poll stores the stick after the deadzone, so the length is
+/// 1 or less. A stick at rest gives <c>Left stick: 0.00, 0.00</c>, and a small tilt inside the deadzone gives the
+/// same text. The label starts with the longest stick text, so its buffer never grows after the first frame.
+/// </para>
+/// <para>
 /// The labels and the widgets use font 0, the default font of the renderer. The sample loads no font, so font 0 is
-/// the ImGui default font. The panel and the three labels use the font atlas texture, so they share one ImGui draw
-/// command. The three labels come before the image. The image binds the checker texture, so it opens a second draw
+/// the ImGui default font. The panel and the four labels use the font atlas texture, so they share one ImGui draw
+/// command. The four labels come before the image. The image binds the checker texture, so it opens a second draw
 /// command. The widget section comes after the image and uses the font atlas texture again, so it opens a third draw
 /// command. The mode row follows the widget section, and its button keeps the same command.
 /// </para>
@@ -84,7 +91,7 @@ namespace HelloPanel;
 /// <c>hello-panel</c>, <c>hello-panel-root</c>, <c>hello-widgets</c>, <c>hello-row</c>, and <c>hello-status</c>. The
 /// sheet also holds the type rule <c>SlotContainer</c> for the two slots. The widget rules use the
 /// type names of the widgets, for example <c>Button</c>. The tree holds no inline value. The rules
-/// <c>.hello-panel &gt; Label</c> and <c>.hello-panel &gt; Image</c> are child rules, so the three labels and the image
+/// <c>.hello-panel &gt; Label</c> and <c>.hello-panel &gt; Image</c> are child rules, so the four labels and the image
 /// must stay direct children of the widget panel. Each status label is a child of a row, so the rule
 /// <c>.hello-row &gt; Label</c> gives its values, and the rule <c>.hello-panel &gt; Label</c> does not apply to it.
 /// </para>
@@ -124,6 +131,9 @@ internal static class HelloScreen
 
     /// <summary>The clamp limit of one component of the input text.</summary>
     private const float DeltaClampLimit = 9999f;
+
+    /// <summary>The clamp limit of one component of the stick text.</summary>
+    private const float StickClampLimit = 1f;
 
     /// <summary>The first key code that the input text writes as one ASCII character.</summary>
     private const int HeldKeyAsciiFirst = 32;
@@ -208,7 +218,7 @@ internal static class HelloScreen
         return new StyleSheetParser().Parse(bytes, SheetFileName).GetSheetOrThrow();
     }
 
-    /// <summary>Builds the widget panel: the three labels, the image, the widget section, and the mode row.</summary>
+    /// <summary>Builds the widget panel: the four labels, the image, the widget section, and the mode row.</summary>
     /// <remarks>
     /// <para>
     /// The factory of <c>hello.widgets</c> calls this method (see <see cref="HelloModes"/>). The panel is a column
@@ -219,13 +229,14 @@ internal static class HelloScreen
     /// </para>
     /// <para>
     /// The panel is focusable. So are <c>Click me</c>, the toggle, the slider, the text field, and
-    /// <paramref name="modeButton"/>. The disabled button and the scroll view take no focus. The three labels and the
+    /// <paramref name="modeButton"/>. The disabled button and the scroll view take no focus. The four labels and the
     /// image are not pickable, so a point on them hits the panel. The gate label starts with the longest text of
     /// <see cref="GateText"/>. The input label comes right after the gate label and starts with the longest text of
-    /// <see cref="InputText"/>.
+    /// <see cref="InputText"/>. The stick label comes right after the input label and starts with the longest text
+    /// of <see cref="StickText"/>.
     /// </para>
     /// <para>
-    /// The three labels and the image are direct children of the panel, because the rules
+    /// The four labels and the image are direct children of the panel, because the rules
     /// <c>.hello-panel &gt; Label</c> and <c>.hello-panel &gt; Image</c> are child rules. The widget section of
     /// <paramref name="widgets"/> follows the image. Its status labels are children of a row, so the rule
     /// <c>.hello-row &gt; Label</c> styles them. The mode row is the last child. It carries the <c>hello-row</c>
@@ -238,13 +249,15 @@ internal static class HelloScreen
     /// <param name="modeButton">The <c>Mode (F1)</c> button. A click runs <c>hello.mode</c>.</param>
     /// <param name="gateLabel">The gate label. Set its text with <see cref="GateText"/>.</param>
     /// <param name="inputLabel">The input label. Set its text with <see cref="InputText"/>.</param>
+    /// <param name="stickLabel">The stick label. Set its text with <see cref="StickText"/>.</param>
     /// <param name="widgets">
     /// The widget section, its widgets, its status labels, and its change counts. The smoke run aims its widget events
     /// at the widgets and reads the counts.
     /// </param>
     /// <returns>The root element of the widget panel.</returns>
     public static Element BuildWidgetPanel(
-        TextureHandle checker, Button modeButton, out Label gateLabel, out Label inputLabel, out HelloWidgets widgets)
+        TextureHandle checker, Button modeButton, out Label gateLabel, out Label inputLabel, out Label stickLabel,
+        out HelloWidgets widgets)
     {
         // The rule .hello-panel > Label gives the color and the size. The label keeps font 0, the default font.
         // A label is not pickable, so the pointer hits the panel behind it.
@@ -257,6 +270,10 @@ internal static class HelloScreen
         // The input label starts with the longest input text, so its buffer holds each input text with no growth.
         inputLabel = new Label(new Label.CreateInfo()) { IsPickable = false };
         inputLabel.SetText(LongestInputText);
+
+        // The stick label starts with the longest stick text, so its buffer holds each stick text with no growth.
+        stickLabel = new Label(new Label.CreateInfo()) { IsPickable = false };
+        stickLabel.SetText(LongestStickText);
 
         // The rule .hello-panel > Image gives the top margin. The tint is a value of the image, not of the style.
         Image checkerImage = new(new Image.CreateInfo
@@ -278,7 +295,7 @@ internal static class HelloScreen
         modeRow.Children.Add(modeButton);
 
         // The child rules read the parent, so the labels and the image are direct children of the panel.
-        // The three labels come before the image, so the panel and the three labels share one draw command.
+        // The four labels come before the image, so the panel and the four labels share one draw command.
         // The panel is focusable. So are Click me, the toggle, the slider, the text field, and Mode (F1). The
         // disabled button and the scroll view take no focus.
         Element panel = new() { IsFocusable = true };
@@ -287,6 +304,7 @@ internal static class HelloScreen
         panel.Children.Add(greeting);
         panel.Children.Add(gateLabel);
         panel.Children.Add(inputLabel);
+        panel.Children.Add(stickLabel);
         panel.Children.Add(checkerImage);
         panel.Children.Add(widgets.Section);
         panel.Children.Add(modeRow);
@@ -542,5 +560,85 @@ internal static class HelloScreen
         }
 
         return -1;
+    }
+
+    /// <summary>
+    /// Gives the text of the stick label for the left stick of one gamepad slot.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The method writes <c>Left stick: &lt;x&gt;, &lt;y&gt;</c> into <paramref name="scratch"/> and returns the
+    /// written part. Each component goes through <see cref="StickComponent"/>, so the value is -1 to 1 with two
+    /// decimals. <see cref="float.TryFormat(Span{byte}, out int, ReadOnlySpan{char}, IFormatProvider?)"/> writes
+    /// each component with the <c>F2</c> format and the invariant culture, so the method makes no string and boxes
+    /// no value.
+    /// </para>
+    /// <para>
+    /// The longest text needs 24 bytes, so a scratch buffer of 32 bytes always holds one stick text. Pass the
+    /// result to <see cref="Label.SetText(ReadOnlySpan{byte})"/>. Read <see cref="UiContext.GameInput"/> after
+    /// <see cref="UiContext.Update(float)"/>. The poll stores the stick of slot 0 after the deadzone, so a stick at
+    /// rest reads <c>Left stick: 0.00, 0.00</c>, and a small tilt inside the deadzone gives the same text.
+    /// </para>
+    /// </remarks>
+    /// <param name="pad">One gamepad slot: <see cref="UiInputState.Gamepad(int)"/>.</param>
+    /// <param name="scratch">The destination buffer. Give it 32 bytes.</param>
+    /// <returns>The part of <paramref name="scratch"/> that holds the text.</returns>
+    /// <exception cref="InvalidOperationException">The text does not fit in <paramref name="scratch"/>.</exception>
+    public static ReadOnlySpan<byte> StickText(in UiGamepadState pad, Span<byte> scratch)
+    {
+        // The write pattern of InputText: one copy or format for each part, and no allocation.
+        if (!StickPrefix.TryCopyTo(scratch))
+        {
+            throw new InvalidOperationException("The stick text does not fit in the scratch buffer.");
+        }
+
+        int length = StickPrefix.Length;
+        float x = StickComponent(pad.LeftStick.X);
+        if (!x.TryFormat(scratch[length..], out int written, "F2", CultureInfo.InvariantCulture))
+        {
+            throw new InvalidOperationException("The stick text does not fit in the scratch buffer.");
+        }
+
+        length += written;
+        if (!StickSeparator.TryCopyTo(scratch[length..]))
+        {
+            throw new InvalidOperationException("The stick text does not fit in the scratch buffer.");
+        }
+
+        length += StickSeparator.Length;
+        float y = StickComponent(pad.LeftStick.Y);
+        if (!y.TryFormat(scratch[length..], out written, "F2", CultureInfo.InvariantCulture))
+        {
+            throw new InvalidOperationException("The stick text does not fit in the scratch buffer.");
+        }
+
+        length += written;
+        return scratch[..length];
+    }
+
+    /// <summary>The prefix of the stick text.</summary>
+    private static ReadOnlySpan<byte> StickPrefix => "Left stick: "u8;
+
+    /// <summary>The text between the two components of the stick text.</summary>
+    private static ReadOnlySpan<byte> StickSeparator => ", "u8;
+
+    /// <summary>
+    /// The longest stick text: the prefix, the separator, and two clamped components of five bytes. The text is 24
+    /// bytes. The stick label starts with it, so its buffer never grows after the first frame.
+    /// </summary>
+    private static ReadOnlySpan<byte> LongestStickText => "Left stick: -1.00, -1.00"u8;
+
+    /// <summary>Clamps one stick component and rounds it to two decimals.</summary>
+    /// <remarks>
+    /// A component that is not finite gives 0. The method clamps the value to -1 to 1, then rounds it to two
+    /// decimals. The <c>+ 0f</c> turns -0 into +0, so the label never shows <c>-0.00</c>. The poll stores a stick
+    /// with a length of 1 or less, so each component is already -1 to 1; the clamp guards a hand-made state.
+    /// </remarks>
+    /// <param name="value">One component of <see cref="UiGamepadState.LeftStick"/>.</param>
+    /// <returns>The clamped and rounded value, from -1 to 1.</returns>
+    private static float StickComponent(float value)
+    {
+        float clamped = float.IsFinite(value) ? Math.Clamp(value, -StickClampLimit, StickClampLimit) : 0f;
+        return MathF.Round(clamped, 2) + 0f;
     }
 }

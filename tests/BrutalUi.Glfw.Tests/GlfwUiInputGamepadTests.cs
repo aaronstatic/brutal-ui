@@ -11,7 +11,8 @@ namespace BrutalUi.Glfw.Tests;
 
 /// <summary>
 /// The checks of <see cref="GlfwUiInput.PollGamepad(int)"/> and of the conversion <c>GamepadButtons</c>. Most tests use
-/// the test seam with no window and no GLFW call. The last test starts GLFW and skips when no display exists.
+/// the test seam with no window and no GLFW call. The last test starts GLFW and skips when no display exists. It
+/// measures both polls: <see cref="GlfwUiInput.PollGamepads()"/> and <see cref="GlfwUiInput.PollGamepad(int)"/>.
 /// </summary>
 /// <remarks>
 /// The class is in the collection of <see cref="GlfwUiInputAllocationTests"/>, because the live poll starts and stops
@@ -30,12 +31,17 @@ public sealed class GlfwUiInputGamepadTests
         return new GlfwUiInput(context);
     }
 
-    /// <summary>The measured body. It uses no lambda, no boxing, no string, and no Assert.</summary>
+    /// <summary>
+    /// The measured body. It calls <see cref="GlfwUiInput.PollGamepads()"/> and then
+    /// <see cref="GlfwUiInput.PollGamepad(int)"/> in each iteration. It uses no lambda, no boxing, no string, and no
+    /// Assert.
+    /// </summary>
     private static UiGamepadButtons Poll(GlfwUiInput input, int count)
     {
         UiGamepadButtons last = UiGamepadButtons.None;
         for (int i = 0; i < count; i++)
         {
+            input.PollGamepads();
             last = input.PollGamepad();
         }
 
@@ -169,6 +175,11 @@ public sealed class GlfwUiInputGamepadTests
             if (absentId >= 0)
             {
                 Assert.Equal(UiGamepadButtons.None, input.PollGamepad(absentId));
+
+                // The full poll writes the absent slot too: not connected and no button in the raw state.
+                input.PollGamepads();
+                Assert.False(input.Context.Input.Gamepad(absentId).Connected);
+                Assert.Equal(UiGamepadButtons.None, input.Context.Input.Gamepad(absentId).Buttons);
             }
         }
         finally

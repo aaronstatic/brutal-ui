@@ -2,7 +2,7 @@
 
 **Epic:** input
 **Status:** In Progress
-**Last Updated:** 2026-11-08 16:55
+**Last Updated:** 2026-11-08 19:50
 
 > **This file is the epic marker.** Its presence in `docs/features/input/` tells every Beast Mode command that this folder is an **epic**, not a plain feature. Keep it present and keep the required sections below filled in. The master `docs/overview.md` tracks this epic as a **single row**. The per-feature detail lives **here**.
 
@@ -23,7 +23,7 @@ The constituent features of this epic, in build order. Each feature is a subfold
 | # | Feature | Status | Tasks | Description |
 |---|---------|--------|-------|-------------|
 | 1 | input-state | Complete | 32/32 (100%) | The per-frame `UiInputState` on `UiContext`: the pointer position and delta, each button down, pressed, and released, the scroll delta, and the held keys. A view that the routing gate filters. |
-| 2 | gamepad-axes | Planned | - | The full gamepad state in `BrutalUi.Glfw`: the buttons, six axes with a radial deadzone, a connected flag, for each of the 16 GLFW slots, written into the input state. |
+| 2 | gamepad-axes | Complete | 22/22 (100%) | The full gamepad state in `BrutalUi.Glfw`: the buttons, six axes with a radial deadzone, a connected flag, for each of the 16 GLFW slots, written into the input state. |
 | 3 | input-actions | Planned | - | Typed actions in `UiActionMap`: Button, Axis, and Vector2, with key composites, sticks, triggers, and the mouse delta, and the queries `WasPressed`, `IsHeld`, `WasReleased`, `ReadAxis`, and `ReadVector`. |
 | 4 | control-schemes | Planned | - | Named control schemes on the map, the active device from the last input, and a change slot for the prompt glyphs of a game. |
 | 5 | binding-remap | Planned | - | A runtime rebind: listen for the next input, replace a binding, report a conflict, restore the defaults, and write or parse the bindings as text lines. |
@@ -35,7 +35,7 @@ The constituent features of this epic, in build order. Each feature is a subfold
 ## Build Order / Dependencies
 
 1. **input-state** - It comes first because each later feature reads it. It is the one Core change of the epic, and it closes the four gaps that map-controls names.
-2. **gamepad-axes** - It depends on the gamepad fields of #1. It changes `BrutalUi.Glfw` and the Core enum only, so it is small and tests with a hand-made state.
+2. **gamepad-axes** - It depends on the gamepad fields of #1. It changes `BrutalUi.Glfw` and the Core enum only, so it is small and tests with a hand-made state. It is complete and Ready for Review on this branch.
 3. **input-actions** - It depends on #1 for the held state and on #2 for the stick and trigger bindings. It is the hardest feature, and it unblocks spacegame map-controls (Q1).
 4. **control-schemes** - It depends on the typed bindings of #3, because a scheme is a group of bindings by device.
 5. **binding-remap** - It depends on #3 for the binding list and on #4 so a rebind stays inside one scheme. It closes the epic.
@@ -60,7 +60,7 @@ The constituent features of this epic, in build order. Each feature is a subfold
 
 ## Integration & Architecture
 
-- **Within the epic:** The input pass of `UiContext.Update` writes `UiInputState` after it drains the ring. `ui.Input` is the raw state, and `ui.GameInput` is the view that the routing gate filters. `GlfwUiInput.PollGamepad` writes the gamepad state into the same struct. `UiActionMap` reads the state at `Update` and holds the value of each action for the frame. A scheme is a tag on each binding. The remap edits the binding list of the map and writes it as text.
+- **Within the epic:** The input pass of `UiContext.Update` writes `UiInputState` after it drains the ring. `ui.Input` is the raw state, and `ui.GameInput` is the view that the routing gate filters. `GlfwUiInput.PollGamepads` writes the gamepad state into the same struct. `UiActionMap` reads the state at `Update` and holds the value of each action for the frame. A scheme is a tag on each binding. The remap edits the binding list of the map and writes it as text.
 - **With other epics / features:** input-routing gives the ring, the walk, the focus owner, and `UiRoutingGate`. state-and-commands gives `UiActionMap`, `CommandRegistry`, and the gamepad button poll. panels-and-modes/mode-set switches the map of a mode and keeps the one active map rule. The spacegame map-view epic reads the actions in map-controls.
 - **Key architectural decisions for the epic as a whole:**
   - Q2 A per-frame input state on `UiContext`, with a view that the routing gate filters.
@@ -84,8 +84,8 @@ The constituent features of this epic, in build order. Each feature is a subfold
 
 ## Master Overview Rollup
 
-- **Rollup status:** In Progress (1/5 features complete, 32/32 tasks of feature 1)
-- **One-line summary for master:** input-state is complete: the per-frame `UiInputState` on `UiContext`, the gated `ui.GameInput` view, the clear rules, and the 16 gamepad slots with their write seam (32 tasks, 40 new tests, the nineteenth allocation gate). gamepad-axes, input-actions, control-schemes, and binding-remap stay planned. It unblocks the spacegame map controls.
+- **Rollup status:** In Progress (2/5 features complete, 54/54 tasks done across the two built features)
+- **One-line summary for master:** input-state and gamepad-axes are complete. gamepad-axes fills the 16 slots that input-state opened: `UiGamepadAxis` and the pure `UiGamepadDeadzone` helper in Core (radial stick zone with the rescale and the clamp to length 1, trigger mapped to 0 to 1 then zoned at the low end), the `LeftStick`, `RightStick`, and `Axis(UiGamepadAxis)` reads, and `GlfwUiInput.PollGamepads` with `StickDeadzone` (0.15) and `TriggerDeadzone` (0.1), which writes every slot each frame through `SetGamepad` and gives `default` to an absent or disposed pad. 22 tasks, 17 new tests (Core 1795, Glfw 40), solution 2881 with 0 failed, 0 bytes measured, 9 plants plus a 3-finding review (all LOW, all fixed). HelloPanel shows the left stick in a fourth label. input-actions, control-schemes, and binding-remap stay planned. The display-host checks (the `test-linux.sh` smoke PASS, plant 9's byte measure, and the stick-label demo) await a host with a window. It still unblocks the spacegame map controls.
 
 ---
 

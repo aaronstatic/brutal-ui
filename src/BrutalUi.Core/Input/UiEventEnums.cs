@@ -139,6 +139,35 @@ public enum UiGamepadButtons
 }
 
 /// <summary>
+/// The six axes of a gamepad.
+/// </summary>
+/// <remarks>
+/// Value <c>i</c> is the GLFW gamepad axis <c>i</c>, so the input adapter reads the GLFW axes with no table.
+/// Core reads no gamepad. The enum is the shared type of the GLFW adapter and the state reads, and
+/// input-actions binds through it.
+/// </remarks>
+public enum UiGamepadAxis
+{
+    /// <summary>The left stick X axis. GLFW constant <c>GLFW_GAMEPAD_AXIS_LEFT_X</c>, value 0.</summary>
+    LeftStickX = 0,
+
+    /// <summary>The left stick Y axis. GLFW constant <c>GLFW_GAMEPAD_AXIS_LEFT_Y</c>, value 1. GLFW gives -1 for up.</summary>
+    LeftStickY = 1,
+
+    /// <summary>The right stick X axis. GLFW constant <c>GLFW_GAMEPAD_AXIS_RIGHT_X</c>, value 2.</summary>
+    RightStickX = 2,
+
+    /// <summary>The right stick Y axis. GLFW constant <c>GLFW_GAMEPAD_AXIS_RIGHT_Y</c>, value 3. GLFW gives -1 for up.</summary>
+    RightStickY = 3,
+
+    /// <summary>The left trigger. GLFW constant <c>GLFW_GAMEPAD_AXIS_LEFT_TRIGGER</c>, value 4. The stored value is 0 to 1.</summary>
+    LeftTrigger = 4,
+
+    /// <summary>The right trigger. GLFW constant <c>GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER</c>, value 5. The stored value is 0 to 1.</summary>
+    RightTrigger = 5,
+}
+
+/// <summary>
 /// The modifier keys that are down at the time of an event.
 /// </summary>
 /// <remarks>

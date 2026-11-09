@@ -66,11 +66,11 @@ namespace BrutalUi.Glfw;
 /// <see cref="UiContext.OnFileDrop"/> or <see cref="UiContext.OnContentScale"/> goes this way.
 /// </para>
 /// <para>
-/// The gamepad: the adapter reads one gamepad when the game calls <see cref="PollGamepad(int)"/>, and it adds no
-/// handler for it. Call the method one time in each frame, after <c>Glfw.PollEvents</c>. Give the result to
-/// <c>UiActionMap.PushGamepad</c> of <c>BrutalUi.Framework</c>. The adapter reads no axis and applies no deadzone. The
-/// system can hold the Guide button, so the button can stay up. GLFW joystick state is global, so the poll needs no
-/// window.
+/// The gamepad: <see cref="PollGamepads()"/> writes the full state of the 16 slots into
+/// <see cref="UiContext.Input"/>, with the deadzones. <see cref="PollGamepad(int)"/> still returns the buttons of
+/// one slot for <c>UiActionMap.PushGamepad</c> of <c>BrutalUi.Framework</c>. Call one poll one time in each frame,
+/// after <c>Glfw.PollEvents</c>. The system can hold the Guide button, so the button can stay up. GLFW joystick
+/// state is global, so the poll needs no window.
 /// </para>
 /// </remarks>
 public sealed class GlfwUiInput : IDisposable
@@ -95,6 +95,15 @@ public sealed class GlfwUiInput : IDisposable
 
     /// <summary>The number of GLFW gamepad buttons (<c>GLFW_GAMEPAD_BUTTON_LAST</c> plus 1).</summary>
     private const int GamepadButtonCount = 15;
+
+    /// <summary>The number of GLFW gamepad axes (<c>GLFW_GAMEPAD_AXIS_LAST</c> plus 1).</summary>
+    private const int GamepadAxisCount = 6;
+
+    /// <summary>The default <see cref="StickDeadzone"/>.</summary>
+    private const float DefaultStickDeadzone = 0.15f;
+
+    /// <summary>The default <see cref="TriggerDeadzone"/>.</summary>
+    private const float DefaultTriggerDeadzone = 0.1f;
 
     /// <summary>The position of a cursor leave. A move to this position hits no element and clears the hover.</summary>
     private static readonly float2 LeavePosition = new(float.NaN, float.NaN);
@@ -134,6 +143,12 @@ public sealed class GlfwUiInput : IDisposable
 
     /// <summary>Backing field of <see cref="KeyboardEnabled"/>.</summary>
     private bool _keyboardEnabled = true;
+
+    /// <summary>Backing field of <see cref="StickDeadzone"/>.</summary>
+    private float _stickDeadzone = DefaultStickDeadzone;
+
+    /// <summary>Backing field of <see cref="TriggerDeadzone"/>.</summary>
+    private float _triggerDeadzone = DefaultTriggerDeadzone;
 
     /// <summary><see langword="true"/> after <see cref="Dispose"/>.</summary>
     private bool _disposed;
@@ -236,6 +251,66 @@ public sealed class GlfwUiInput : IDisposable
     }
 
     /// <summary>
+    /// Gets or sets the radial deadzone that <see cref="PollGamepads()"/> applies to each stick. The default is
+    /// 0.15.
+    /// </summary>
+    /// <value>The deadzone, from 0 to 1.</value>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// The value is <see cref="float.NaN"/> or is outside 0 to 1. The parameter name is <c>value</c>.
+    /// </exception>
+    /// <remarks>
+    /// <see cref="UiGamepadDeadzone.ApplyStick"/> applies the zone: a stick length up to the value reads (0, 0),
+    /// and a length above it rescales to the 0 to 1 range. The next <see cref="PollGamepads()"/> call uses the new
+    /// value. The setter also works after <see cref="Dispose"/>, because it only sets a field.
+    /// </remarks>
+    public float StickDeadzone
+    {
+        get => _stickDeadzone;
+        set
+        {
+            if (!(value >= 0f && value <= 1f))
+            {
+                throw new ArgumentOutOfRangeException(nameof(value), value, "The deadzone must be from 0 to 1.");
+            }
+
+            _stickDeadzone = value;
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets the linear deadzone that <see cref="PollGamepads()"/> applies to each trigger. The default is
+    /// 0.1.
+    /// </summary>
+    /// <value>The deadzone on the 0 to 1 scale, from 0 to 1.</value>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// The value is <see cref="float.NaN"/> or is outside 0 to 1. The parameter name is <c>value</c>.
+    /// </exception>
+    /// <remarks>
+    /// <para>
+    /// <see cref="UiGamepadDeadzone.ApplyTrigger"/> first maps the GLFW range of -1 to 1 onto 0 to 1, then applies
+    /// the zone at the low end of that 0 to 1 scale. The next <see cref="PollGamepads()"/> call uses the new value.
+    /// The setter also works after <see cref="Dispose"/>, because it only sets a field.
+    /// </para>
+    /// <para>
+    /// A pad whose mapping holds no trigger gives the GLFW value 0. With the default zone, its trigger then reads
+    /// 0.444. Common SDL mappings hold both triggers.
+    /// </para>
+    /// </remarks>
+    public float TriggerDeadzone
+    {
+        get => _triggerDeadzone;
+        set
+        {
+            if (!(value >= 0f && value <= 1f))
+            {
+                throw new ArgumentOutOfRangeException(nameof(value), value, "The deadzone must be from 0 to 1.");
+            }
+
+            _triggerDeadzone = value;
+        }
+    }
+
+    /// <summary>
     /// Removes the handlers from the events of the window. After this call, the adapter pushes no event. A second
     /// call does nothing.
     /// </summary>
@@ -276,7 +351,8 @@ public sealed class GlfwUiInput : IDisposable
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="gamepadId"/> is below 0 or above 15.</exception>
     /// <remarks>
     /// The method checks the id first, then <see cref="Dispose"/>. An id outside the range throws also after
-    /// <see cref="Dispose"/>. The method reads no axis and applies no deadzone. Call it on the main thread, after
+    /// <see cref="Dispose"/>. The method reads no axis and applies no deadzone; see
+    /// <see cref="PollGamepads()"/> for the full state with the deadzones. Call it on the main thread, after
     /// <c>Glfw.PollEvents</c>.
     /// </remarks>
     public UiGamepadButtons PollGamepad(int gamepadId = 0)
@@ -307,6 +383,46 @@ public sealed class GlfwUiInput : IDisposable
     }
 
     /// <summary>
+    /// Reads the 16 gamepad slots, applies the two deadzone settings, and writes each slot through
+    /// <see cref="UiContext.SetGamepad(int, in UiGamepadState)"/>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Call the method one time in each frame, on the main thread, after <c>Glfw.Init</c> and
+    /// <c>Glfw.PollEvents</c>, and before <see cref="UiContext.Update(float)"/>. It reads each slot one time and
+    /// calls <see cref="UiContext.SetGamepad(int, in UiGamepadState)"/> for each slot, so the pressed and released
+    /// edges come from the last poll.
+    /// </para>
+    /// <para>
+    /// An absent joystick and a joystick with no gamepad mapping give a <c>default</c> state: not connected, no
+    /// button, and six axes of 0. After <see cref="Dispose"/>, each call writes <c>default</c> into each slot and
+    /// makes no GLFW call, so a held button gets one released edge. The method raises no hot-plug event.
+    /// </para>
+    /// <para>The call allocates nothing. It does not change <see cref="PollGamepad(int)"/>.</para>
+    /// </remarks>
+    public void PollGamepads()
+    {
+        for (int id = 0; id <= GamepadIdLast; id++)
+        {
+            UiGamepadState state = default;
+            if (!_disposed && GlfwApi.GetGamepadState(id, out GlfwGamepadState raw))
+            {
+                // The binding declares Buttons and Axes as fixed buffers. The local raw is a fixed variable, so no pin is needed.
+                unsafe
+                {
+                    state = GamepadState(
+                        new ReadOnlySpan<byte>(raw.Buttons, GamepadButtonCount),
+                        new ReadOnlySpan<float>(raw.Axes, GamepadAxisCount),
+                        _stickDeadzone,
+                        _triggerDeadzone);
+                }
+            }
+
+            Context.SetGamepad(id, in state);
+        }
+    }
+
+    /// <summary>
     /// Converts the button values of a GLFW gamepad state. A button with the value
     /// <see cref="GlfwButtonAction.Press"/> sets the bit <c>1 &lt;&lt; i</c> for its index <c>i</c>.
     /// </summary>
@@ -328,6 +444,51 @@ public sealed class GlfwUiInput : IDisposable
         }
 
         return (UiGamepadButtons)bits;
+    }
+
+    /// <summary>
+    /// Converts the button and axis values of one GLFW gamepad state into a <see cref="UiGamepadState"/>, and
+    /// applies the two deadzones.
+    /// </summary>
+    /// <param name="buttons">The button values, one for each GLFW gamepad button. See <see cref="GamepadButtons"/>.</param>
+    /// <param name="axes">
+    /// The axis values, in the axis order of <see cref="UiGamepadAxis"/>: values 0 and 1 are the left stick, values
+    /// 2 and 3 are the right stick, and values 4 and 5 are the triggers.
+    /// </param>
+    /// <param name="stickDeadzone">The radial deadzone for the sticks, from 0 to 1.</param>
+    /// <param name="triggerDeadzone">The linear deadzone for the triggers, from 0 to 1.</param>
+    /// <returns>A connected state with the converted buttons and the six stored axis values.</returns>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="axes"/> holds fewer than six values. The parameter name is <c>axes</c>.
+    /// </exception>
+    /// <remarks>
+    /// The method calls <see cref="UiGamepadDeadzone.ApplyStick"/> for each stick and
+    /// <see cref="UiGamepadDeadzone.ApplyTrigger"/> for each trigger. It writes the six results into a stack buffer,
+    /// so the call allocates nothing.
+    /// </remarks>
+    internal static UiGamepadState GamepadState(
+        ReadOnlySpan<byte> buttons, ReadOnlySpan<float> axes, float stickDeadzone, float triggerDeadzone)
+    {
+        if (axes.Length < GamepadAxisCount)
+        {
+            throw new ArgumentException("The axes span must hold six values.", nameof(axes));
+        }
+
+        UiGamepadButtons bits = GamepadButtons(buttons);
+        float2 left = UiGamepadDeadzone.ApplyStick(new float2(axes[0], axes[1]), stickDeadzone);
+        float2 right = UiGamepadDeadzone.ApplyStick(new float2(axes[2], axes[3]), stickDeadzone);
+        float leftTrigger = UiGamepadDeadzone.ApplyTrigger(axes[4], triggerDeadzone);
+        float rightTrigger = UiGamepadDeadzone.ApplyTrigger(axes[5], triggerDeadzone);
+
+        Span<float> values = stackalloc float[GamepadAxisCount];
+        values[0] = left.X;
+        values[1] = left.Y;
+        values[2] = right.X;
+        values[3] = right.Y;
+        values[4] = leftTrigger;
+        values[5] = rightTrigger;
+
+        return new UiGamepadState(bits, values);
     }
 
     /// <summary>

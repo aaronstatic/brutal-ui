@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.CompilerServices;
+using Brutal.Numerics;
 
 namespace BrutalUi.Core;
 
@@ -28,8 +29,9 @@ internal struct GamepadAxes
 /// button values with no table.
 /// </para>
 /// <para>
-/// <see cref="Axis(int)"/> gives the GLFW axis <c>i</c> with no deadzone; the gamepad-axes feature applies the
-/// deadzone.
+/// <see cref="Axis(int)"/> and <see cref="Axis(UiGamepadAxis)"/> give one stored axis value.
+/// <c>GlfwUiInput.PollGamepads</c> stores each value after the deadzone. A stick axis is -1 to 1, and a trigger is
+/// 0 to 1. A state from the public constructor holds the values that its caller gives.
 /// </para>
 /// <para>
 /// <c>default(UiGamepadState)</c> is a disconnected slot with no button and no axis.
@@ -90,13 +92,16 @@ public struct UiGamepadState
     /// <remarks><see cref="UiContext.SetGamepad"/> writes the edges; the constructor leaves them <see cref="UiGamepadButtons.None"/>.</remarks>
     public readonly UiGamepadButtons Released => _released;
 
-    /// <summary>Gets the value of one axis, with no deadzone applied.</summary>
+    /// <summary>Gets the stored value of one axis.</summary>
     /// <param name="axis">The GLFW axis index, 0 to 5.</param>
     /// <returns>The axis value that the last write stored.</returns>
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="axis"/> is outside 0 to 5. The parameter name is <c>axis</c>.
     /// </exception>
-    /// <remarks>The gamepad-axes feature applies the deadzone; this query returns the stored value.</remarks>
+    /// <remarks>
+    /// <c>GlfwUiInput.PollGamepads</c> stores each value after the deadzone. A stick axis is -1 to 1, and a trigger
+    /// is 0 to 1. A state from the public constructor holds the values that its caller gives.
+    /// </remarks>
     public readonly float Axis(int axis)
     {
         if ((uint)axis >= (uint)AxisCount)
@@ -106,6 +111,29 @@ public struct UiGamepadState
 
         return _axes[axis];
     }
+
+    /// <summary>Gets the stored value of one named axis.</summary>
+    /// <param name="axis">The axis to read.</param>
+    /// <returns>The axis value that the last write stored.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="axis"/> casts to a value outside 0 to 5. The parameter name is <c>axis</c>.
+    /// </exception>
+    /// <remarks>The read returns the value of <see cref="Axis(int)"/> for <c>(int)axis</c>.</remarks>
+    public readonly float Axis(UiGamepadAxis axis) => Axis((int)axis);
+
+    /// <summary>Gets the left stick as (X, Y).</summary>
+    /// <remarks>
+    /// X is <see cref="UiGamepadAxis.LeftStickX"/> (axis 0) and Y is <see cref="UiGamepadAxis.LeftStickY"/>
+    /// (axis 1). GLFW gives -1 for up. The length is 1 or less after <c>GlfwUiInput.PollGamepads</c>.
+    /// </remarks>
+    public readonly float2 LeftStick => new(_axes[0], _axes[1]);
+
+    /// <summary>Gets the right stick as (X, Y).</summary>
+    /// <remarks>
+    /// X is <see cref="UiGamepadAxis.RightStickX"/> (axis 2) and Y is <see cref="UiGamepadAxis.RightStickY"/>
+    /// (axis 3). GLFW gives -1 for up. The length is 1 or less after <c>GlfwUiInput.PollGamepads</c>.
+    /// </remarks>
+    public readonly float2 RightStick => new(_axes[2], _axes[3]);
 
     /// <summary>
     /// Writes the buttons, the axes, and the edges into the given slot:
