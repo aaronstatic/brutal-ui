@@ -23,6 +23,11 @@ public sealed partial class UiActionMap
     /// <see cref="UiContext.Update(float)"/>, so a game must not push the same pad into an active map (Decision 9 of
     /// the input epic): the push would invoke each press a second time.
     /// </para>
+    /// <para>
+    /// The lock rule: a locked map takes no binding of another scheme, so a push invokes no command of that binding. An
+    /// unlocked map keeps the body of the input-actions feature: it takes every binding, whatever its tag. See
+    /// <see cref="SetScheme(int)"/>.
+    /// </para>
     /// </remarks>
     /// <param name="buttons">The buttons that are down now.</param>
     /// <returns>The count of commands that the registry ran.</returns>
@@ -41,7 +46,8 @@ public sealed partial class UiActionMap
         for (int i = 0; i < count; i++)
         {
             ref readonly InputBinding binding = ref bindings[i];
-            if (binding.Kind == InputKind.GamepadButton && ((int)pressed & binding.Code) != 0 && Invoke(binding.Action))
+            if (binding.Kind == InputKind.GamepadButton && SchemeAllows(binding)
+                && ((int)pressed & binding.Code) != 0 && Invoke(binding.Action))
             {
                 invoked++;
             }
@@ -74,10 +80,16 @@ public sealed partial class UiActionMap
     /// Resolves a key with modifiers and invokes the command of its action.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// The method is the raw resolve: it works with no <see cref="Activate"/> and has no repeat rule. The first binding
     /// in the order of the bind with the same key and the same modifiers wins (the modifier rule). The method allocates
     /// nothing and throws nothing of its own. A binding whose action has no command gives
     /// <see langword="false"/>, and the method calls no registry. An exception of the command leaves the method.
+    /// </para>
+    /// <para>
+    /// The lock rule: the method takes the lock of the map, so a binding of another scheme gives no match. With no lock,
+    /// each binding can match, whatever its tag. See <see cref="SetScheme(int)"/>.
+    /// </para>
     /// </remarks>
     /// <param name="key">The GLFW key code.</param>
     /// <param name="modifiers">The modifier keys that are down. Caps Lock and Num Lock do not count.</param>
@@ -87,7 +99,7 @@ public sealed partial class UiActionMap
     /// </returns>
     public bool PressKey(int key, UiModifiers modifiers)
     {
-        int index = Find(InputKind.Key, key, modifiers);
+        int index = FindAllowed(InputKind.Key, key, modifiers);
         if (index < 0)
         {
             return false;
@@ -100,11 +112,17 @@ public sealed partial class UiActionMap
     /// Resolves a mouse button with modifiers and invokes the command of its action.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// The method is the raw resolve: it works with no <see cref="Activate"/>, and it does not check if the press hit
     /// an element. The first mouse binding in the order of the bind with the same button and the same modifiers wins
     /// (the modifier rule). A key binding never matches. The method allocates nothing and throws nothing of its own. A
     /// binding whose action has no command gives <see langword="false"/>, and the method calls no registry. An
     /// exception of the command leaves the method.
+    /// </para>
+    /// <para>
+    /// The lock rule: the method takes the lock of the map, so a binding of another scheme gives no match. With no lock,
+    /// each binding can match, whatever its tag. See <see cref="SetScheme(int)"/>.
+    /// </para>
     /// </remarks>
     /// <param name="button">The mouse button.</param>
     /// <param name="modifiers">The modifier keys that are down. Caps Lock and Num Lock do not count.</param>
@@ -114,7 +132,7 @@ public sealed partial class UiActionMap
     /// </returns>
     public bool PressMouseButton(PointerButton button, UiModifiers modifiers)
     {
-        int index = Find(InputKind.MouseButton, (int)button, modifiers);
+        int index = FindAllowed(InputKind.MouseButton, (int)button, modifiers);
         if (index < 0)
         {
             return false;
@@ -124,6 +142,11 @@ public sealed partial class UiActionMap
     }
 
     /// <summary>The slot handler: the context calls it for an input that no element took.</summary>
+    /// <remarks>
+    /// The handler keeps the text guard and the repeat rule, then calls <see cref="PressKey"/> or
+    /// <see cref="PressMouseButton"/>, so the lock of <see cref="SetScheme(int)"/> applies to this path too: a binding of
+    /// another scheme runs no command.
+    /// </remarks>
     /// <param name="type">The type of the input.</param>
     /// <param name="code">The GLFW key code of a key down, or the GLFW mouse button value of a press.</param>
     /// <param name="modifiers">The modifier keys that are down.</param>
@@ -202,8 +225,34 @@ public sealed partial class UiActionMap
     /// rule).
     /// </para>
     /// <para>
+    /// The device track: the read starts one device local from <c>_activeScheme</c>, and each case that gave a value
+    /// writes the id of its device. A key, a mouse button, a key composite, the pointer delta, and a scroll write
+    /// KeyboardMouse. A gamepad button, a stick, and an axis write Gamepad. The test reads the input, so a gamepad axis
+    /// of exactly 0 gives no value, because the poll baked the deadzone in (A2), and a scale multiplies the value and
+    /// never the device test: a scroll with a scale of 0 still reports KeyboardMouse. The read stores the
+    /// local back before the finish pass, so the report carries from frame to frame: a frame with no input keeps the
+    /// last report. The tag of a binding never sets the device, so a custom scheme name groups bindings only (Q1).
+    /// </para>
+    /// <para>
+    /// The filter rule: the read starts both loops with <see cref="SchemeAllows"/> on the binding, so a locked map reads
+    /// no binding of another scheme and invokes no command of one. A binding of the default scheme reads under every
+    /// lock. With no lock, the map reads each binding, whatever its tag, so the device track can still move. A filtered
+    /// binding gives no value, so it writes no device. See <see cref="SetScheme(int)"/>.
+    /// </para>
+    /// <para>
+    /// The change call: the method ends with one report of the scheme that it now stands on, after the finish pass and
+    /// after the invoke pass. The report compares the value that the map stands on with the value that the map last
+    /// reported, and calls <see cref="OnSchemeChanged"/> only when the two differ, so one change gives one call and a
+    /// frame with the same device gives none. Two flips inside one read give one call with the last value. A locked map
+    /// reports the locked id. An early return of the pair test at the top of the method calls nothing, because the map
+    /// is no longer active on the context. The handler is code inside <see cref="UiContext.Update(float)"/>, so a bind
+    /// or a scheme change in it takes effect at the next frame.
+    /// </para>
+    /// <para>
     /// The method allocates nothing and throws nothing of its own. An exception of a command of the invoke pass leaves
-    /// the method, and the map keeps the values of the frame, because the finish runs before the pass.
+    /// the method, and the map keeps the values of the frame, because the finish runs before the pass. An exception of
+    /// the handler of <see cref="OnSchemeChanged"/> leaves the method the same way, and the map keeps the values and the
+    /// report of the frame.
     /// </para>
     /// </remarks>
     /// <param name="context">The context that calls the handler.</param>
@@ -222,6 +271,9 @@ public sealed partial class UiActionMap
         int actionCount = _actionCount;
         InputBinding[] bindings = _bindings;
         int bindingCount = _bindingCount;
+        int kb = _keyboardScheme;
+        int gp = _gamepadScheme;
+        int device = _activeScheme;
 
         for (int i = 0; i < actionCount; i++)
         {
@@ -235,6 +287,11 @@ public sealed partial class UiActionMap
         for (int i = 0; i < bindingCount; i++)
         {
             ref readonly InputBinding binding = ref bindings[i];
+            if (!SchemeAllows(binding))
+            {
+                continue;
+            }
+
             switch (binding.Kind)
             {
                 case InputKind.Key:
@@ -243,8 +300,14 @@ public sealed partial class UiActionMap
                     {
                         ref readonly UiKeyState keys = ref input.Keys;
                         ref ActionEntry a = ref actions[binding.Action];
-                        a.Down |= keys.IsDown(binding.Code);
-                        a.Press |= keys.WasPressed(binding.Code);
+                        bool down = keys.IsDown(binding.Code);
+                        bool press = keys.WasPressed(binding.Code);
+                        a.Down |= down;
+                        a.Press |= press;
+                        if (down || press)
+                        {
+                            device = kb;
+                        }
                     }
 
                     break;
@@ -257,8 +320,14 @@ public sealed partial class UiActionMap
                         ref readonly UiPointerButtonState buttons = ref input.Buttons;
                         PointerButton button = (PointerButton)binding.Code;
                         ref ActionEntry a = ref actions[binding.Action];
-                        a.Down |= buttons.IsDown(button);
-                        a.Press |= buttons.WasPressed(button);
+                        bool down = buttons.IsDown(button);
+                        bool press = buttons.WasPressed(button);
+                        a.Down |= down;
+                        a.Press |= press;
+                        if (down || press)
+                        {
+                            device = kb;
+                        }
                     }
 
                     break;
@@ -267,8 +336,15 @@ public sealed partial class UiActionMap
                 case InputKind.GamepadButton:
                 {
                     ref ActionEntry a = ref actions[binding.Action];
-                    a.Down |= ((int)pad.Buttons & binding.Code) != 0;
-                    a.Press |= ((int)pressed & binding.Code) != 0;
+                    bool down = ((int)pad.Buttons & binding.Code) != 0;
+                    bool press = ((int)pressed & binding.Code) != 0;
+                    a.Down |= down;
+                    a.Press |= press;
+                    if (down || press)
+                    {
+                        device = gp;
+                    }
+
                     break;
                 }
 
@@ -279,6 +355,11 @@ public sealed partial class UiActionMap
                     float y = DownBit(in keys, binding.Code) - DownBit(in keys, binding.Code2);
                     ref ActionEntry a = ref actions[binding.Action];
                     a.Sum = a.Sum + new float2(x, y);
+                    if (x != 0f || y != 0f)
+                    {
+                        device = kb;
+                    }
+
                     break;
                 }
 
@@ -288,6 +369,11 @@ public sealed partial class UiActionMap
                     float value = DownBit(in keys, binding.Code1) - DownBit(in keys, binding.Code);
                     ref ActionEntry a = ref actions[binding.Action];
                     a.Sum = a.Sum + new float2(value, 0f);
+                    if (value != 0f)
+                    {
+                        device = kb;
+                    }
+
                     break;
                 }
 
@@ -296,12 +382,18 @@ public sealed partial class UiActionMap
                     float2 stick = binding.Code == (int)UiGamepadStick.Right ? pad.RightStick : pad.LeftStick;
                     ref ActionEntry a = ref actions[binding.Action];
                     a.Sum = a.Sum + new float2(stick.X, -stick.Y);
+                    if (stick.X != 0f || stick.Y != 0f)
+                    {
+                        device = gp;
+                    }
+
                     break;
                 }
 
                 case InputKind.GamepadAxis:
                 {
-                    float value = pad.Axis(binding.Code) * binding.Scale;
+                    float axis = pad.Axis(binding.Code);
+                    float value = axis * binding.Scale;
                     if (binding.Code == (int)UiGamepadAxis.LeftStickY || binding.Code == (int)UiGamepadAxis.RightStickY)
                     {
                         value = -value;
@@ -309,6 +401,11 @@ public sealed partial class UiActionMap
 
                     ref ActionEntry a = ref actions[binding.Action];
                     a.Sum = a.Sum + new float2(value, 0f);
+                    if (axis != 0f)
+                    {
+                        device = gp;
+                    }
+
                     break;
                 }
 
@@ -318,18 +415,30 @@ public sealed partial class UiActionMap
                     float2 delta = pointer.Delta;
                     ref ActionEntry a = ref actions[binding.Action];
                     a.Free = a.Free + new float2(delta.X * binding.Scale, delta.Y * binding.Scale);
+                    if (delta.X != 0f || delta.Y != 0f)
+                    {
+                        device = kb;
+                    }
+
                     break;
                 }
 
                 case InputKind.Scroll:
                 {
-                    float value = input.Pointer.ScrollDelta.Y * binding.Scale;
+                    float delta = input.Pointer.ScrollDelta.Y;
                     ref ActionEntry a = ref actions[binding.Action];
-                    a.Free = a.Free + new float2(value, 0f);
+                    a.Free = a.Free + new float2(delta * binding.Scale, 0f);
+                    if (delta != 0f)
+                    {
+                        device = kb;
+                    }
+
                     break;
                 }
             }
         }
+
+        _activeScheme = device;
 
         for (int i = 0; i < actionCount; i++)
         {
@@ -357,7 +466,8 @@ public sealed partial class UiActionMap
             for (int i = 0; i < bindingCount; i++)
             {
                 ref readonly InputBinding binding = ref bindings[i];
-                if (binding.Kind != InputKind.GamepadButton || ((int)pressed & binding.Code) == 0)
+                if (!SchemeAllows(binding) || binding.Kind != InputKind.GamepadButton
+                    || ((int)pressed & binding.Code) == 0)
                 {
                     continue;
                 }
@@ -370,6 +480,8 @@ public sealed partial class UiActionMap
                 Invoke(binding.Action);
             }
         }
+
+        ReportSchemeChange();
     }
 
     /// <summary>Turns one key of the frame into 1 or 0 for the sum of a composite.</summary>

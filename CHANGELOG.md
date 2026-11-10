@@ -48,9 +48,11 @@ This file lists each notable change of brutal-ui. The format follows [Keep a Cha
 - `UiActionMap.BindKeyVector`, `BindGamepadStick`, `BindGamepadAxis`, `BindKeyAxis`, `BindMouseDelta`, and `BindScroll`, the six new binds of the typed map (input/input-actions).
 - `UiActionMap.GamepadSlot`, the gamepad slot that the frame read of an active map reads (input/input-actions).
 - `UiActionMap.ReadVector`, `ReadAxis`, `WasPressed`, `IsHeld`, and `WasReleased`, the five queries of the typed map (input/input-actions).
+- `UiScheme`, `UiSchemeChangedHandler`, `UiActionMap.AddScheme`, `SchemeName`, `ActiveScheme`, `LockedScheme`, `OnSchemeChanged`, and `SetScheme`, the named control schemes with the active device, its change slot, and its lock. Each of the nine binds takes one scheme overload, and the duplicate check is per scheme, so one input binds in two schemes. HelloPanel shows the active scheme in a sixth label (input/control-schemes).
 
 ### Changed
 
+- A locked `UiActionMap` ends a held binding of another scheme and reports one release for it in that frame, even though the player never released the input. A press of another scheme under a lock invokes no command and is not kept for the clear of the lock (input/control-schemes).
 - An active `UiActionMap` reads the gamepad buttons of `GamepadSlot` in `UiContext.Update` and invokes their commands. A game drops its `PushGamepad` call for an active map, because the push would invoke each press a second time (input/input-actions).
 - `BindKey`, `BindMouseButton`, and `BindGamepadButton` throw `ArgumentException` for an Axis or Vector2 action. Each bind needs an action of the type that its input fills (input/input-actions).
 - The HelloPanel sample shows the `Move` vector in a fifth label, and the frame loop no longer pushes the gamepad. The `Move` action reads W, A, S, D and the left stick of slot 0 (input/input-actions).

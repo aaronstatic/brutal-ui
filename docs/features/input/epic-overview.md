@@ -2,7 +2,7 @@
 
 **Epic:** input
 **Status:** In Progress
-**Last Updated:** 2026-11-09 19:30
+**Last Updated:** 2026-11-09 23:50
 
 > **This file is the epic marker.** Its presence in `docs/features/input/` tells every Beast Mode command that this folder is an **epic**, not a plain feature. Keep it present and keep the required sections below filled in. The master `docs/overview.md` tracks this epic as a **single row**. The per-feature detail lives **here**.
 
@@ -25,7 +25,7 @@ The constituent features of this epic, in build order. Each feature is a subfold
 | 1 | input-state | Complete | 32/32 (100%) | The per-frame `UiInputState` on `UiContext`: the pointer position and delta, each button down, pressed, and released, the scroll delta, and the held keys. A view that the routing gate filters. |
 | 2 | gamepad-axes | Complete | 22/22 (100%) | The full gamepad state in `BrutalUi.Glfw`: the buttons, six axes with a radial deadzone, a connected flag, for each of the 16 GLFW slots, written into the input state. |
 | 3 | input-actions | Complete | 41/41 (100%) | Typed actions in `UiActionMap`: Button, Axis, and Vector2, with key composites, sticks, triggers, and the mouse delta, and the queries `WasPressed`, `IsHeld`, `WasReleased`, `ReadAxis`, and `ReadVector`. |
-| 4 | control-schemes | Planned | - | Named control schemes on the map, the active device from the last input, and a change slot for the prompt glyphs of a game. |
+| 4 | control-schemes | Complete | 34/34 (100%) | Named control schemes on the map, the active device from the last input, and a change slot for the prompt glyphs of a game. |
 | 5 | binding-remap | Planned | - | A runtime rebind: listen for the next input, replace a binding, report a conflict, restore the defaults, and write or parse the bindings as text lines. |
 
 > Reference any feature with the slash form `input/<feature-name>`. Task counts come from each feature's own `tasks.md`, and `/update-epic` refreshes them.
@@ -37,7 +37,7 @@ The constituent features of this epic, in build order. Each feature is a subfold
 1. **input-state** - It comes first because each later feature reads it. It is the one Core change of the epic, and it closes the four gaps that map-controls names.
 2. **gamepad-axes** - It depends on the gamepad fields of #1. It changes `BrutalUi.Glfw` and the Core enum only, so it is small and tests with a hand-made state. It is complete and Ready for Review on this branch.
 3. **input-actions** - It depends on #1 for the held state and on #2 for the stick and trigger bindings. It is the hardest feature, and it unblocks spacegame map-controls (Q1). It is complete and Ready for Review on this branch. control-schemes and binding-remap inherit two notes from its review: CR-4 (the scheme shape for the binds and the duplicate finds) and CR-5 (the internal binding handle), both recorded in its `context.md`.
-4. **control-schemes** - It depends on the typed bindings of #3, because a scheme is a group of bindings by device.
+4. **control-schemes** - It depends on the typed bindings of #3, because a scheme is a group of bindings by device. It is complete and Ready for Review on this branch: it shipped the CR-4 widening (one `Scheme` field, nine scheme overloads, the eleven current signatures unchanged, and the per-scheme duplicate rule). binding-remap inherits four things from it: the int id that resolves to UTF-8 bytes through `SchemeName`, `SchemeName(0)` empty for the default scheme, `SchemeClashes` as the conflict rule inside one scheme, and `UiScheme.Default` (deferred finding CR-8 of its review). CR-5 still leaves `FindBindingIndex` and the read-one-binding hook in binding-remap.
 5. **binding-remap** - It depends on #3 for the binding list and on #4 so a rebind stays inside one scheme. It closes the epic.
 
 **Dependencies between features:**
@@ -84,8 +84,8 @@ The constituent features of this epic, in build order. Each feature is a subfold
 
 ## Master Overview Rollup
 
-- **Rollup status:** In Progress (3/5 features complete, 95/95 tasks done across the three built features)
-- **One-line summary for master:** input-state, gamepad-axes, and input-actions are complete. input-actions turns `UiActionMap` into the typed map: the Core read slot `UiContext.OnInputRead` and `UiInputReadHandler` (called after the drain, before the binding pass), `UiActionType` and `UiGamepadStick`, `AddAction(action, type)`, six new binds (key composite, key axis, stick, gamepad axis, mouse delta, scroll) with build-time type checks, `GamepadSlot` with the gamepad press invoked from the frame read (so a game drops its `PushGamepad` call on an active map), the five queries `WasPressed`, `IsHeld`, `WasReleased`, `ReadAxis`, and `ReadVector`, the clamped-sum and free-sum finish, the Button latch, and the switch rule with no stale flag across a mode change. 41 tasks, 39 new tests (Core 1801, Framework 259), solution 2921 with 0 failed, 20 plants, and a 13-finding review (11 fixed, 2 deferred with notes for the next two features). HelloPanel shows the `Move` vector in a fifth label. spacegame can move its submodule and continue map-controls. control-schemes and binding-remap stay planned. The display-host checks (the `test-linux.sh` smoke PASS, the plant 10 and plant 20 byte measures, and the Move-label demo) await a host with a window.
+- **Rollup status:** In Progress (4/5 features complete, 129/129 tasks done across the four built features)
+- **One-line summary for master:** input-state, gamepad-axes, input-actions, and control-schemes are complete. control-schemes groups the bindings of `UiActionMap` in named schemes: `UiScheme` with the two standard names, the interned id table with `AddScheme` and `SchemeName` (id 0 is the default scheme, and its name is empty), the `Scheme` tag on each binding with nine scheme overloads and the eleven current signatures unchanged, the per-scheme duplicate rule, `ActiveScheme` reporting the device of the last binding that gave a value, the `OnSchemeChanged` slot called once per change at the end of the frame read, and `SetScheme` locking every path (the frame read, the invoke pass, `PushGamepad`, and the press path). 34 tasks, 32 new tests (Core 1801, Framework 291), solution 2953 with 0 failed, 14 plants, and an 8-finding review (7 fixed, 1 deferred to binding-remap). One plant caught a real defect: a scroll with a scale of 0 never reported its device. No Core or Glfw file changed. HelloPanel shows the active scheme in a sixth label, and the spacegame map-controls work stays unblocked. binding-remap is the only feature left, and it inherits the id that reaches UTF-8 bytes, the clash rule of one scheme, `UiScheme.Default`, and the binding handle that CR-5 left there. The display-host checks (the `test-linux.sh` smoke PASS, the plant 4, 10 and 20 byte measures, and the Move and scheme label demos) await a host with a window.
 
 ---
 

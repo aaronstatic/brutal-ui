@@ -32,8 +32,9 @@ namespace BrutalUi.Framework;
 /// </para>
 /// <para>
 /// The type rule: each action has a type of <see cref="UiActionType"/>. A bind needs an action of the type that its
-/// input fills, and a query needs the type that it reads. Thus <see cref="BindKey"/> needs a Button action, and
-/// <see cref="BindKeyVector"/> needs a Vector2 action. <see cref="ReadVector"/> reads a Vector2 action,
+/// input fills, and a query needs the type that it reads. Thus <see cref="BindKey(ReadOnlySpan{byte}, int, UiModifiers)"/>
+/// needs a Button action, and
+/// <see cref="BindKeyVector(ReadOnlySpan{byte}, int, int, int, int)"/> needs a Vector2 action. <see cref="ReadVector"/> reads a Vector2 action,
 /// <see cref="ReadAxis"/> reads an Axis action, and <see cref="WasPressed"/>, <see cref="IsHeld"/>, and
 /// <see cref="WasReleased"/> read a Button action. A bind or a query of the wrong type throws
 /// <see cref="ArgumentException"/> with the parameter name <c>action</c>.
@@ -65,6 +66,37 @@ namespace BrutalUi.Framework;
 /// press in <see cref="UiGamepadState.Pressed"/>, in the order of the bind. A command that deactivates the map or
 /// replaces the read slot stops the invoke pass. <see cref="PushGamepad"/> works on every map, and an active map also
 /// reads the pad in <see cref="UiContext.Update(float)"/>, so a game must not push the same pad into an active map.
+/// </para>
+/// <para>
+/// The group rule: a scheme is one <see cref="int"/> id that resolves to a UTF-8 name. The table holds
+/// <see cref="UiScheme.KeyboardMouse"/> and <see cref="UiScheme.Gamepad"/> from construction, so
+/// <see cref="AddScheme(ReadOnlySpan{byte})"/> gives their id with no add, and a game can add other names. A binding
+/// with the default id 0 belongs to each scheme. <see cref="UiScheme"/> names the standard names, and
+/// <see cref="SchemeName(int)"/> reads the name of any id.
+/// </para>
+/// <para>
+/// The active rule: <see cref="ActiveScheme"/> reports the device of the last binding that gave a value. A key, a
+/// mouse button, a key composite, the pointer delta, and a scroll give KeyboardMouse. A stick, an axis, and a
+/// gamepad button give Gamepad. A stored value of exactly 0 gives no value. The report carries from frame to frame, so
+/// a frame with no input keeps the last report. The report starts at KeyboardMouse at construction and after
+/// <see cref="Activate"/>. A custom scheme name groups bindings only, because the report follows the device, not the
+/// tag of a binding.
+/// </para>
+/// <para>
+/// The change-slot rule: <see cref="OnSchemeChanged"/> is one handler that a game writes with <c>=</c>. The frame read
+/// calls it at the end of <see cref="UiContext.Update(float)"/>, after the finish pass and after the gamepad invoke
+/// pass, and only when the scheme that the map reports changed, so one change gives one call. A locked map reports the
+/// locked id. See <see cref="UiSchemeChangedHandler"/>.
+/// </para>
+/// <para>
+/// The lock rule: <see cref="SetScheme(int)"/> locks the map to one scheme, and <see cref="LockedScheme"/> reads the
+/// lock. A binding of another scheme gives no value on three paths: the binding loop of the frame read, the press path
+/// of <see cref="PressKey"/> and <see cref="PressMouseButton"/>, and the gamepad invoke of the frame read and of
+/// <see cref="PushGamepad"/>. A binding of the default scheme reads under every lock. With no lock, the map reads every
+/// binding, whatever its tag, so the report can still move to another device. <see cref="ActiveScheme"/> reads the
+/// locked id while the lock stands. <see cref="Activate"/> and <see cref="Deactivate"/> keep the lock, because it is a
+/// build setting of the map. <see cref="InvokeAction"/> names an action, not an input, so the lock does not touch it:
+/// the lock already emptied the values of the queries.
 /// </para>
 /// <para>
 /// The slot rule: <see cref="Activate"/> writes two slots: <see cref="UiContext.OnUnhandledInput"/> for the input that
@@ -106,20 +138,35 @@ namespace BrutalUi.Framework;
 /// The build rules: <see cref="AddAction(ReadOnlySpan{byte}, UiActionType)"/> and
 /// <see cref="AddAction(ReadOnlySpan{byte}, ReadOnlySpan{byte})"/> reject an empty name and an action name that the map
 /// holds, and the typed add rejects a type that <see cref="UiActionType"/> does not define. Each bind
-/// rejects an action that the map does not hold, and an input that the map binds already (the same kind, code, and
-/// modifiers). A composite bind compares its codes as a set: two keys of a <see cref="BindKeyAxis"/> bind, or four keys
-/// of a <see cref="BindKeyVector"/> bind, in another order are the same input, so the second bind throws.
-/// <see cref="BindKey"/> rejects a key outside 0 to <see cref="UiKeyState.KeyCount"/> - 1,
-/// <see cref="BindMouseButton"/> rejects a button outside 0 to <see cref="UiPointerButtonState.ButtonCount"/> - 1,
-/// and <see cref="BindGamepadButton"/> rejects <see cref="UiGamepadButtons.None"/> and a value with more than one bit.
-/// <see cref="BindKeyVector"/> rejects a key outside 0 to <see cref="UiKeyState.KeyCount"/> - 1, two keys with the same
-/// code, and four keys that the map binds already. <see cref="BindGamepadStick"/> rejects a stick that
-/// <see cref="UiGamepadStick"/> does not define and a stick that the map binds already.
-/// <see cref="BindGamepadAxis"/> rejects an axis outside 0 to 5, a scale that is not finite, and an axis that the map
-/// binds already. <see cref="BindKeyAxis"/> rejects a key outside 0 to <see cref="UiKeyState.KeyCount"/> - 1, two keys
-/// with the same code, and the same two keys in either order. <see cref="BindMouseDelta"/> and
-/// <see cref="BindScroll"/> reject a scale that is not finite, and one map holds one pointer delta binding and one scroll
-/// binding. The type rule: each bind needs an action of its own type (see
+/// checks in this order: its input arguments, the action name, the action type, the scheme id, then a duplicate. A
+/// bind rejects an action that the map does not hold, and an input that the map binds already in its scheme (the same
+/// kind, code, and modifiers). The duplicate check is per scheme: the default scheme belongs to each scheme, so a
+/// default bind clashes with a tagged bind of the same input, in either order, and two tags that differ are not a
+/// duplicate. A bind rejects a scheme id that <see cref="AddScheme(ReadOnlySpan{byte})"/> did not give and that is not
+/// the default id 0.
+/// A composite bind compares its codes as a set: two keys of a
+/// <see cref="BindKeyAxis(ReadOnlySpan{byte}, int, int)"/> bind, or four keys
+/// of a <see cref="BindKeyVector(ReadOnlySpan{byte}, int, int, int, int)"/> bind, in another order are the same input,
+/// so the second bind throws.
+/// <see cref="BindKey(ReadOnlySpan{byte}, int, UiModifiers)"/> rejects a key outside 0 to
+/// <see cref="UiKeyState.KeyCount"/> - 1,
+/// <see cref="BindMouseButton(ReadOnlySpan{byte}, BrutalUi.Core.PointerButton, UiModifiers)"/> rejects a button outside
+/// 0 to <see cref="UiPointerButtonState.ButtonCount"/> - 1,
+/// and <see cref="BindGamepadButton(ReadOnlySpan{byte}, UiGamepadButtons)"/> rejects <see cref="UiGamepadButtons.None"/>
+/// and a value with more than one bit.
+/// <see cref="BindKeyVector(ReadOnlySpan{byte}, int, int, int, int)"/> rejects a key outside 0 to
+/// <see cref="UiKeyState.KeyCount"/> - 1, two keys with the same
+/// code, and four keys that the map binds already in its scheme.
+/// <see cref="BindGamepadStick(ReadOnlySpan{byte}, UiGamepadStick)"/> rejects a stick that
+/// <see cref="UiGamepadStick"/> does not define and a stick that the map binds already in its scheme.
+/// <see cref="BindGamepadAxis(ReadOnlySpan{byte}, BrutalUi.Core.UiGamepadAxis, float)"/> rejects an axis outside 0 to 5,
+/// a scale that is not finite, and an axis that the map
+/// binds already in its scheme. <see cref="BindKeyAxis(ReadOnlySpan{byte}, int, int)"/> rejects a key outside 0 to
+/// <see cref="UiKeyState.KeyCount"/> - 1, two keys
+/// with the same code, and the same two keys in either order.
+/// <see cref="BindMouseDelta(ReadOnlySpan{byte}, float)"/> and
+/// <see cref="BindScroll(ReadOnlySpan{byte}, float)"/> reject a scale that is not finite, and one map holds one pointer
+/// delta binding and one scroll binding in each scheme. The type rule: each bind needs an action of its own type (see
 /// <see cref="UiActionType"/>), and a bind of the wrong type throws <see cref="ArgumentException"/> with the parameter
 /// name <c>action</c>. A rejected call changes no count.
 /// </para>
@@ -134,7 +181,9 @@ namespace BrutalUi.Framework;
 /// <see cref="UiContext.Update(float)"/>, and the map stays usable. <see cref="PushGamepad"/> stores the buttons
 /// before it calls a command, so a held button does not fire again after an exception. The frame read finishes every
 /// action before its invoke pass, so an exception of a command leaves <see cref="UiContext.Update(float)"/> and the
-/// map keeps the values of the frame.
+/// map keeps the values of the frame. An exception of the handler of <see cref="OnSchemeChanged"/> leaves
+/// <see cref="UiContext.Update(float)"/> before the binding pass, and the map keeps the values and the report of the
+/// frame.
 /// </para>
 /// <para>
 /// The thread rule: the map runs on the UI thread. It uses no lock.
@@ -205,6 +254,7 @@ public sealed partial class UiActionMap
         Commands = info.Commands;
         _onInput = HandleInput;
         _onRead = ReadFrame;
+        SeedSchemes();
     }
 
     /// <summary>Gets the registry that holds the commands of the actions.</summary>
@@ -531,7 +581,9 @@ public sealed partial class UiActionMap
     /// </summary>
     /// <remarks>
     /// <see cref="Activate"/> and <see cref="Deactivate"/> call it (the switch rule). The method writes the entries of
-    /// the existing array in place: it creates no array, and it allocates nothing.
+    /// the existing array in place: it creates no array, and it allocates nothing. The method resets the scheme report
+    /// to the seeded KeyboardMouse id too, so a fresh <see cref="Activate"/> starts the report at KeyboardMouse. It
+    /// leaves the locked scheme alone: the lock is a build setting of the map, not a frame value.
     /// </remarks>
     private void ResetFrame()
     {
@@ -548,6 +600,9 @@ public sealed partial class UiActionMap
             a.Down = false;
             a.Press = false;
         }
+
+        _activeScheme = _keyboardScheme;
+        _reportedScheme = _keyboardScheme;
     }
 
     /// <summary>The kind of an input of a binding.</summary>
@@ -669,6 +724,12 @@ public sealed partial class UiActionMap
 
         /// <summary>The modifier keys of the bind, masked with <see cref="MatchMask"/>.</summary>
         public UiModifiers Modifiers;
+
+        /// <summary>
+        /// The scheme id of the bind. Id 0 is the default scheme, and a binding with it belongs to each scheme. Each
+        /// bind body writes the id that it takes, and the eleven current signatures write 0.
+        /// </summary>
+        public int Scheme;
 
         /// <summary>The scale that the read multiplies into the value of the binding.</summary>
         public float Scale;

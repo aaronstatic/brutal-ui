@@ -10,28 +10,32 @@ public enum UiActionType : byte
     /// A press and a release, with no float value. The map keeps the <c>Pressed</c>, <c>Held</c>, and <c>Released</c>
     /// flags, and a query reads each flag with <see cref="UiActionMap.WasPressed"/>, <see cref="UiActionMap.IsHeld"/>,
     /// and <see cref="UiActionMap.WasReleased"/>.
-    /// <see cref="UiActionMap.BindKey"/>, <see cref="UiActionMap.BindMouseButton"/>, and
-    /// <see cref="UiActionMap.BindGamepadButton"/> need this type.
+    /// <see cref="UiActionMap.BindKey(System.ReadOnlySpan{System.Byte}, int, BrutalUi.Core.UiModifiers)"/>,
+    /// <see cref="UiActionMap.BindMouseButton(System.ReadOnlySpan{System.Byte}, BrutalUi.Core.PointerButton, BrutalUi.Core.UiModifiers)"/>, and
+    /// <see cref="UiActionMap.BindGamepadButton(System.ReadOnlySpan{System.Byte}, BrutalUi.Core.UiGamepadButtons)"/> need this type.
     /// </summary>
     Button = 0,
 
     /// <summary>
     /// One float value. A query reads it with <see cref="UiActionMap.ReadAxis"/>.
-    /// <see cref="UiActionMap.BindKeyAxis"/>, <see cref="UiActionMap.BindGamepadAxis"/>, and
-    /// <see cref="UiActionMap.BindScroll"/> need this type.
+    /// <see cref="UiActionMap.BindKeyAxis(System.ReadOnlySpan{System.Byte}, int, int)"/>,
+    /// <see cref="UiActionMap.BindGamepadAxis(System.ReadOnlySpan{System.Byte}, BrutalUi.Core.UiGamepadAxis, float)"/>, and
+    /// <see cref="UiActionMap.BindScroll(System.ReadOnlySpan{System.Byte}, float)"/> need this type.
     /// </summary>
     Axis = 1,
 
     /// <summary>
     /// Two float values in one <c>float2</c>. A query reads it with <see cref="UiActionMap.ReadVector"/>.
-    /// <see cref="UiActionMap.BindKeyVector"/>, <see cref="UiActionMap.BindGamepadStick"/>, and
-    /// <see cref="UiActionMap.BindMouseDelta"/> need this type.
+    /// <see cref="UiActionMap.BindKeyVector(System.ReadOnlySpan{System.Byte}, int, int, int, int)"/>,
+    /// <see cref="UiActionMap.BindGamepadStick(System.ReadOnlySpan{System.Byte}, BrutalUi.Framework.UiGamepadStick)"/>, and
+    /// <see cref="UiActionMap.BindMouseDelta(System.ReadOnlySpan{System.Byte}, float)"/> need this type.
     /// </summary>
     Vector2 = 2,
 }
 
 /// <summary>
-/// The two sticks of a gamepad. <see cref="UiActionMap.BindGamepadStick"/> binds one stick to a
+/// The two sticks of a gamepad.
+/// <see cref="UiActionMap.BindGamepadStick(System.ReadOnlySpan{System.Byte}, BrutalUi.Framework.UiGamepadStick)"/> binds one stick to a
 /// <see cref="UiActionType.Vector2"/> action.
 /// </summary>
 /// <remarks>

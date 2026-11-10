@@ -10,8 +10,8 @@ namespace BrutalUi.Framework.Tests;
 
 /// <summary>
 /// The allocation gate of the action map (the seventeenth gate). After warm-up, the key path, the mouse path, the
-/// gamepad path, the focus actions, and the typed frame read with the five queries, each through <c>Update</c> and
-/// <c>Draw</c>, must allocate 0 bytes in the Debug build.
+/// gamepad path, the focus actions, the typed frame read with the five queries, and the scheme read with the change
+/// slot, each through <c>Update</c> and <c>Draw</c>, must allocate 0 bytes in the Debug build.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -19,18 +19,24 @@ namespace BrutalUi.Framework.Tests;
 /// 300. The root is not pickable, so a press outside the panel hits no element and reaches the map. The panel is 200 by
 /// 200 and holds three focusable buttons and a <see cref="TextField"/>. The <see cref="CommandRegistry"/> holds 16
 /// counted commands <c>cmd-00</c> to <c>cmd-15</c> and the two focus commands. Each counted command has its own
-/// <c>Counter</c> target and one shared static handler. The <see cref="UiActionMap"/> holds 23 actions: 16 counted
-/// actions <c>act-00</c> to <c>act-15</c>, the two focus actions, and five typed actions <c>Move</c> (Vector2),
-/// <c>Look</c> (Vector2), <c>Zoom</c> (Axis), <c>Throttle</c> (Axis), and <c>Fire</c> (Button with no command). It
-/// holds 28 bindings: 13 key bindings (some with Control or Shift, and also Escape, Space, W, Up, and Down), 3 mouse
-/// button bindings, 5 gamepad button bindings (<c>A</c>, <c>B</c>, <c>DpadUp</c>, <c>DpadDown</c>, and <c>X</c>), one
-/// four-key vector, one two-key axis, one stick, two pad axes, one pointer delta, and one scroll. The map is active
-/// on the context.
+/// <c>Counter</c> target and one shared static handler. The <see cref="UiActionMap"/> holds 26 actions: 16 counted
+/// actions <c>act-00</c> to <c>act-15</c>, the two focus actions, five typed actions <c>Move</c> (Vector2),
+/// <c>Look</c> (Vector2), <c>Zoom</c> (Axis), <c>Throttle</c> (Axis), and <c>Fire</c> (Button with no command), and
+/// three scheme actions <c>Kick</c> (Button with no command), <c>Turn</c> (Vector2), and <c>Aim</c> (Axis). It holds 32
+/// bindings: 13 key bindings (some with Control or Shift, and also Escape, Space, W, Up, and Down), 3 mouse button
+/// bindings, 5 gamepad button bindings (<c>A</c>, <c>B</c>, <c>DpadUp</c>, <c>DpadDown</c>, and <c>X</c>), one four-key
+/// vector, one two-key axis, one stick, two pad axes, one pointer delta, one scroll, one key in the KeyboardMouse
+/// scheme, one gamepad button in the Gamepad scheme, one stick in the Gamepad scheme, and one pad axis in the Gamepad
+/// scheme. The scheme table holds the two seeded standard names. The map is active on the context, and
+/// <see cref="UiActionMap.OnSchemeChanged"/> points at one static handler.
 /// </para>
 /// <para>
 /// The query step drives the typed frame read and the five queries. It writes two pad states of slot 0, pushes W,
 /// Space, a pointer move, and a scroll outside the panel, and adds each query result to a float and an int field of
-/// the scene. The scene holds the events, the two pad states, and the sums as fields.
+/// the scene. The scheme step drives the device track and the change slot. It writes an idle pad with the kick key down,
+/// then the kick key up with the right stick and the <c>Y</c> button live, and adds the active scheme, the length of its
+/// name, and the kick press to an int field of the scene. The scene holds the events, the pad states, and the sums as
+/// fields.
 /// </para>
 /// <para>
 /// The rule: a measured body creates no lambda, no string, no boxed value, no array, and no Assert. The scene builds
@@ -56,6 +62,9 @@ public sealed class ActionMapAllocationTests
     private const int AKey = 65;
     private const int DKey = 68;
 
+    /// <summary>The GLFW code of the kick key: F8. The scene binds no other action to it.</summary>
+    private const int KickKey = 297;
+
     /// <summary>The name of the Vector2 move action of the typed read.</summary>
     private static ReadOnlySpan<byte> MoveAction => "Move"u8;
 
@@ -70,6 +79,21 @@ public sealed class ActionMapAllocationTests
 
     /// <summary>The name of the Button fire action of the typed read.</summary>
     private static ReadOnlySpan<byte> FireAction => "Fire"u8;
+
+    /// <summary>The name of the Button kick action of the scheme read, bound in both standard schemes.</summary>
+    private static ReadOnlySpan<byte> KickAction => "Kick"u8;
+
+    /// <summary>The name of the Vector2 turn action of the scheme read, bound to the right stick.</summary>
+    private static ReadOnlySpan<byte> TurnAction => "Turn"u8;
+
+    /// <summary>The name of the Axis aim action of the scheme read, bound to the left stick X axis.</summary>
+    private static ReadOnlySpan<byte> AimAction => "Aim"u8;
+
+    /// <summary>The handler that counts a scheme change. It sits in a field, so no frame creates a delegate.</summary>
+    private static readonly UiSchemeChangedHandler s_schemeHandler = static (map, scheme) => s_schemeCalls++;
+
+    /// <summary>The number of scheme changes that the handler saw.</summary>
+    private static int s_schemeCalls;
 
     /// <summary>The handler that adds one to the counter target. It sits in a field, so no call creates a delegate.</summary>
     private static readonly CommandHandler s_count = static target => ((Counter)target!).Calls++;
@@ -137,11 +161,26 @@ public sealed class ActionMapAllocationTests
 
         public required UiGamepadState PadUp;
 
+        public required UiGamepadState PadIdle;
+
+        public required UiGamepadState PadRight;
+
+        public required KeyEvent Kick;
+
+        public required KeyEvent KickRelease;
+
+        public required int KeyboardScheme;
+
+        public required int GamepadScheme;
+
         /// <summary>The sum of each vector and axis read by the query step.</summary>
         public float ValueSum;
 
         /// <summary>The sum of each true Button flag read by the query step.</summary>
         public int FlagSum;
+
+        /// <summary>The sum of each active scheme id, name length, and kick press that the scheme step read.</summary>
+        public int SchemeSum;
     }
 
     private static Scene BuildScene()
@@ -188,6 +227,8 @@ public sealed class ActionMapAllocationTests
         panel.Children.Add(field);
 
         UiActionMap map = new(new UiActionMap.CreateInfo { Commands = registry });
+        int kbScheme = map.AddScheme(UiScheme.KeyboardMouse);
+        int gpScheme = map.AddScheme(UiScheme.Gamepad);
         for (int i = 0; i < CommandCount; i++)
         {
             map.AddAction(actions[i], commands[i]);
@@ -230,10 +271,20 @@ public sealed class ActionMapAllocationTests
         map.BindGamepadAxis(ZoomAction, UiGamepadAxis.LeftTrigger, -1f);
         map.BindMouseDelta(LookAction);
         map.BindScroll(ZoomAction);
+        map.AddAction(KickAction, UiActionType.Button);
+        map.AddAction(TurnAction, UiActionType.Vector2);
+        map.AddAction(AimAction, UiActionType.Axis);
+        map.BindKey(KickAction, KickKey, UiModifiers.None, kbScheme);
+        map.BindGamepadButton(KickAction, UiGamepadButtons.Y, gpScheme);
+        map.BindGamepadStick(TurnAction, UiGamepadStick.Right, gpScheme);
+        map.BindGamepadAxis(AimAction, UiGamepadAxis.LeftStickX, 1f, gpScheme);
         map.Activate(context);
+        map.OnSchemeChanged = s_schemeHandler;
 
         UiGamepadState padDown = new(UiGamepadButtons.X | UiGamepadButtons.A, stackalloc float[] { 1f, 0f, 0f, 0f, 0.25f, 0.5f });
         UiGamepadState padUp = new(UiGamepadButtons.None, []);
+        UiGamepadState padIdle = new(UiGamepadButtons.None, stackalloc float[] { 0f, 0f, 0f, 0f, 0f, 0f });
+        UiGamepadState padRight = new(UiGamepadButtons.Y, stackalloc float[] { 0.3f, 0f, 0.6f, -0.2f, 0f, 0f });
 
         float2 outside = new(300f, 250f);
         float2 onButton = new(40f, 12f);
@@ -266,6 +317,12 @@ public sealed class ActionMapAllocationTests
             ScrollOutside = Scroll(outside, new float2(0f, 3f)),
             PadDown = padDown,
             PadUp = padUp,
+            PadIdle = padIdle,
+            PadRight = padRight,
+            Kick = Key(KickKey, UiModifiers.None, false),
+            KickRelease = KeyUp(KickKey),
+            KeyboardScheme = kbScheme,
+            GamepadScheme = gpScheme,
         };
 
         // One frame builds the layout, so the first press hits the right place.
@@ -436,6 +493,41 @@ public sealed class ActionMapAllocationTests
     /// <summary>Gives 1 for <see langword="true"/> and 0 for <see langword="false"/>.</summary>
     private static int Count(bool value) => value ? 1 : 0;
 
+    /// <summary>
+    /// The measured body of the seventh test. Frame 1: no focus, the idle pad, and the kick key down, then
+    /// <c>Update</c>, <see cref="ReadScheme"/>, and <c>Draw</c>. Frame 2: the kick key up and the pad with the
+    /// <c>Y</c> button and the right stick live, then <c>Update</c>, <see cref="ReadScheme"/>, and <c>Draw</c>.
+    /// Frame 1 keeps the KeyboardMouse report, and frame 2 moves it to the Gamepad report, so the change slot runs
+    /// inside the measured body.
+    /// </summary>
+    private static void SchemeStep(Scene scene)
+    {
+        UiContext context = scene.Context;
+        context.ClearFocus();
+
+        context.SetGamepad(0, in scene.PadIdle);
+        context.PushEvent(in scene.Kick);
+        context.Update(0.016f);
+        ReadScheme(scene);
+        context.Draw(scene.Renderer);
+
+        context.PushEvent(in scene.KickRelease);
+        context.SetGamepad(0, in scene.PadRight);
+        context.Update(0.016f);
+        ReadScheme(scene);
+        context.Draw(scene.Renderer);
+    }
+
+    /// <summary>Reads the active scheme, its name, and the scheme values, and adds them to the sum fields of the scene.</summary>
+    private static void ReadScheme(Scene scene)
+    {
+        UiActionMap map = scene.Map;
+        int id = map.ActiveScheme;
+        float2 turn = map.ReadVector(TurnAction);
+        scene.SchemeSum += id + map.SchemeName(id).Length + Count(map.WasPressed(KickAction));
+        scene.ValueSum += turn.X + turn.Y + map.ReadAxis(AimAction);
+    }
+
     private static void RunKeySteps(Scene scene, int steps)
     {
         for (int i = 0; i < steps; i++)
@@ -473,6 +565,14 @@ public sealed class ActionMapAllocationTests
         for (int i = 0; i < steps; i++)
         {
             QueryStep(scene);
+        }
+    }
+
+    private static void RunSchemeSteps(Scene scene, int steps)
+    {
+        for (int i = 0; i < steps; i++)
+        {
+            SchemeStep(scene);
         }
     }
 
@@ -551,6 +651,22 @@ public sealed class ActionMapAllocationTests
         Assert.Equal(0L, after - before);
     }
 
+    /// <summary>The scheme read, the device track, and the change slot allocate nothing after warm-up.</summary>
+    [Fact]
+    public void TheSchemeReadAndTheChangeSlotAllocateNothing()
+    {
+        Scene scene = BuildScene();
+        RunSchemeSteps(scene, WarmUpRounds);
+
+        AllocationGate.ReleaseAllocationContext();
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        RunSchemeSteps(scene, Iterations);
+        long after = GC.GetAllocatedBytesForCurrentThread();
+
+        Assert.Equal(0L, after - before);
+        Assert.True(s_schemeCalls > 0);
+    }
+
     /// <summary>
     /// The measured bodies do real work. The test reads each count and the focus owner before each body runs, runs one
     /// step of each body, and asserts a fixed increment. An empty body cannot pass.
@@ -625,5 +741,23 @@ public sealed class ActionMapAllocationTests
         Assert.Equal(aFrameRead + 1, counters[13].Calls);
         Assert.Equal(500.25, (double)scene.ValueSum - valueBefore, 5);
         Assert.Equal(3, scene.FlagSum - flagBefore);
+
+        // The scheme step: the query step ends on the KeyboardMouse scheme, because its second frame still reads the
+        // held S on the two-key axis, and no pad bind gives a value in that frame. Frame 1 pushes the kick key, so the
+        // report stays on the KeyboardMouse scheme and the change slot runs no time. Frame 2 writes the pad with the
+        // Y button, the right stick, and the left stick X axis, so the report moves to the Gamepad scheme and the slot
+        // runs one time. The scheme sum: frame 1 adds the KeyboardMouse id, the 13 bytes of its name, and one kick
+        // press; frame 2 adds the Gamepad id, the 7 bytes of its name, and one kick press from the Y bind, so the step
+        // adds 15 and 10. The value sum: turn reads the right stick (0.6, 0.2) and aim reads the left stick X axis
+        // (0.3). The three float32 values sum to 1.10000610, so the assert names the measured number.
+        int schemeCallsBefore = s_schemeCalls;
+        int schemeSumBefore = scene.SchemeSum;
+        float valueBeforeScheme = scene.ValueSum;
+
+        SchemeStep(scene);
+
+        Assert.Equal(schemeCallsBefore + 1, s_schemeCalls);
+        Assert.Equal(25, scene.SchemeSum - schemeSumBefore);
+        Assert.Equal(1.10001, (double)scene.ValueSum - valueBeforeScheme, 5);
     }
 }

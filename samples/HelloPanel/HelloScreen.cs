@@ -35,7 +35,7 @@ namespace HelloPanel;
 /// the panel, <c>Click me</c>, the toggle, the slider, the text field, <c>Mode (F1)</c>, and <c>Add</c>. A press on
 /// one of these widgets gives the focus to the widget. A press on the disabled button clears the focus: the button is
 /// focusable but disabled, and the press does not go on to the panel. A press on the scroll view gives the focus to
-/// the panel, the nearest focusable ancestor, because the scroll view is not focusable. The five labels and the image
+/// the panel, the nearest focusable ancestor, because the scroll view is not focusable. The six labels and the image
 /// are not pickable, so a point on them hits the panel. The widget section and its rows are pickable, so a press in a
 /// gap between the widgets gives the focus to the panel, the nearest focusable ancestor. The layout root and the two
 /// slots are not pickable (the layout-root rule and the slot rule), so a point that hits no panel hits no element, and
@@ -87,9 +87,18 @@ namespace HelloPanel;
 /// first frame.
 /// </para>
 /// <para>
+/// The sixth label is the scheme label. It shows the control scheme that <see cref="UiActionMap.ActiveScheme"/>
+/// reports. The frame loop sets its text with <see cref="SchemeText"/> after each draw, from the name that
+/// <see cref="UiActionMap.SchemeName"/> gives back. The report follows the device of the last binding that gave a
+/// value, so a key, a mouse button, a key composite, the pointer delta, and a scroll give
+/// <c>Scheme: Keyboard / Mouse</c>, and a stick, a gamepad axis, and a gamepad button give <c>Scheme: Gamepad</c>.
+/// A value of exactly 0 gives no value, so a stick at rest keeps the last text. The label starts with the longest
+/// scheme text, so its buffer never grows after the first frame.
+/// </para>
+/// <para>
 /// The labels and the widgets use font 0, the default font of the renderer. The sample loads no font, so font 0 is
-/// the ImGui default font. The panel and the five labels use the font atlas texture, so they share one ImGui draw
-/// command. The five labels come before the image. The image binds the checker texture, so it opens a second draw
+/// the ImGui default font. The panel and the six labels use the font atlas texture, so they share one ImGui draw
+/// command. The six labels come before the image. The image binds the checker texture, so it opens a second draw
 /// command. The widget section comes after the image and uses the font atlas texture again, so it opens a third draw
 /// command. The mode row follows the widget section, and its button keeps the same command.
 /// </para>
@@ -99,7 +108,7 @@ namespace HelloPanel;
 /// <c>hello-panel</c>, <c>hello-panel-root</c>, <c>hello-widgets</c>, <c>hello-row</c>, and <c>hello-status</c>. The
 /// sheet also holds the type rule <c>SlotContainer</c> for the two slots. The widget rules use the
 /// type names of the widgets, for example <c>Button</c>. The tree holds no inline value. The rules
-/// <c>.hello-panel &gt; Label</c> and <c>.hello-panel &gt; Image</c> are child rules, so the five labels and the image
+/// <c>.hello-panel &gt; Label</c> and <c>.hello-panel &gt; Image</c> are child rules, so the six labels and the image
 /// must stay direct children of the widget panel. Each status label is a child of a row, so the rule
 /// <c>.hello-row &gt; Label</c> gives its values, and the rule <c>.hello-panel &gt; Label</c> does not apply to it.
 /// </para>
@@ -226,7 +235,7 @@ internal static class HelloScreen
         return new StyleSheetParser().Parse(bytes, SheetFileName).GetSheetOrThrow();
     }
 
-    /// <summary>Builds the widget panel: the five labels, the image, the widget section, and the mode row.</summary>
+    /// <summary>Builds the widget panel: the six labels, the image, the widget section, and the mode row.</summary>
     /// <remarks>
     /// <para>
     /// The factory of <c>hello.widgets</c> calls this method (see <see cref="HelloModes"/>). The panel is a column
@@ -237,15 +246,16 @@ internal static class HelloScreen
     /// </para>
     /// <para>
     /// The panel is focusable. So are <c>Click me</c>, the toggle, the slider, the text field, and
-    /// <paramref name="modeButton"/>. The disabled button and the scroll view take no focus. The five labels and the
+    /// <paramref name="modeButton"/>. The disabled button and the scroll view take no focus. The six labels and the
     /// image are not pickable, so a point on them hits the panel. The gate label starts with the longest text of
     /// <see cref="GateText"/>. The input label comes right after the gate label and starts with the longest text of
     /// <see cref="InputText"/>. The stick label comes right after the input label and starts with the longest text
     /// of <see cref="StickText"/>. The move label comes right after the stick label and starts with the longest
-    /// text of <see cref="MoveText"/>.
+    /// text of <see cref="MoveText"/>. The scheme label comes right after the move label and starts with the longest
+    /// text of <see cref="SchemeText"/>.
     /// </para>
     /// <para>
-    /// The five labels and the image are direct children of the panel, because the rules
+    /// The six labels and the image are direct children of the panel, because the rules
     /// <c>.hello-panel &gt; Label</c> and <c>.hello-panel &gt; Image</c> are child rules. The widget section of
     /// <paramref name="widgets"/> follows the image. Its status labels are children of a row, so the rule
     /// <c>.hello-row &gt; Label</c> styles them. The mode row is the last child. It carries the <c>hello-row</c>
@@ -260,6 +270,7 @@ internal static class HelloScreen
     /// <param name="inputLabel">The input label. Set its text with <see cref="InputText"/>.</param>
     /// <param name="stickLabel">The stick label. Set its text with <see cref="StickText"/>.</param>
     /// <param name="moveLabel">The move label. Set its text with <see cref="MoveText"/>.</param>
+    /// <param name="schemeLabel">The scheme label. Set its text with <see cref="SchemeText"/>.</param>
     /// <param name="widgets">
     /// The widget section, its widgets, its status labels, and its change counts. The smoke run aims its widget events
     /// at the widgets and reads the counts.
@@ -267,7 +278,7 @@ internal static class HelloScreen
     /// <returns>The root element of the widget panel.</returns>
     public static Element BuildWidgetPanel(
         TextureHandle checker, Button modeButton, out Label gateLabel, out Label inputLabel, out Label stickLabel,
-        out Label moveLabel, out HelloWidgets widgets)
+        out Label moveLabel, out Label schemeLabel, out HelloWidgets widgets)
     {
         // The rule .hello-panel > Label gives the color and the size. The label keeps font 0, the default font.
         // A label is not pickable, so the pointer hits the panel behind it.
@@ -289,6 +300,10 @@ internal static class HelloScreen
         moveLabel = new Label(new Label.CreateInfo()) { IsPickable = false };
         moveLabel.SetText(LongestMoveText);
 
+        // The scheme label starts with the longest scheme text, so its buffer holds each scheme text with no growth.
+        schemeLabel = new Label(new Label.CreateInfo()) { IsPickable = false };
+        schemeLabel.SetText(LongestSchemeText);
+
         // The rule .hello-panel > Image gives the top margin. The tint is a value of the image, not of the style.
         Image checkerImage = new(new Image.CreateInfo
         {
@@ -309,7 +324,7 @@ internal static class HelloScreen
         modeRow.Children.Add(modeButton);
 
         // The child rules read the parent, so the labels and the image are direct children of the panel.
-        // The five labels come before the image, so the panel and the five labels share one draw command.
+        // The six labels come before the image, so the panel and the six labels share one draw command.
         // The panel is focusable. So are Click me, the toggle, the slider, the text field, and Mode (F1). The
         // disabled button and the scroll view take no focus.
         Element panel = new() { IsFocusable = true };
@@ -320,6 +335,7 @@ internal static class HelloScreen
         panel.Children.Add(inputLabel);
         panel.Children.Add(stickLabel);
         panel.Children.Add(moveLabel);
+        panel.Children.Add(schemeLabel);
         panel.Children.Add(checkerImage);
         panel.Children.Add(widgets.Section);
         panel.Children.Add(modeRow);
@@ -723,4 +739,67 @@ internal static class HelloScreen
     /// bytes. The move label starts with it, so its buffer never grows after the first frame.
     /// </summary>
     private static ReadOnlySpan<byte> LongestMoveText => "Move: -1.00, -1.00"u8;
+
+    /// <summary>
+    /// Writes the text of the scheme label: the name of the active control scheme of
+    /// <see cref="UiActionMap"/>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The method writes <c>Scheme: &lt;scheme&gt;</c> into <paramref name="scratch"/> and returns the written part.
+    /// It copies <c>Keyboard / Mouse</c> for the <see cref="UiScheme.KeyboardMouse"/> name and <c>Gamepad</c> for the
+    /// <see cref="UiScheme.Gamepad"/> name. For any other name it copies the name bytes. The sample owns these words,
+    /// because a scheme to art map is the game's. A prompt glyph, a sprite, and a font icon live in the game, not in
+    /// the framework.
+    /// </para>
+    /// <para>
+    /// The method compares the bytes of the name, so it needs no string and allocates nothing. The longest text needs
+    /// 24 bytes, so a scratch buffer of 32 bytes holds each standard name. A custom name longer than 24 bytes does not
+    /// fit, and the method throws, like the other formatters here. Pass the result to
+    /// <see cref="Label.SetText(ReadOnlySpan{byte})"/>. Read the name with <see cref="UiActionMap.SchemeName"/> of
+    /// <see cref="UiActionMap.ActiveScheme"/> after <see cref="UiContext.Update(float)"/>.
+    /// </para>
+    /// </remarks>
+    /// <param name="scheme">
+    /// The name bytes of the active scheme. Give the result of <see cref="UiActionMap.SchemeName"/>.
+    /// </param>
+    /// <param name="scratch">The destination buffer. Give it 32 bytes.</param>
+    /// <returns>The part of <paramref name="scratch"/> that holds the text.</returns>
+    /// <exception cref="InvalidOperationException">The text does not fit in <paramref name="scratch"/>.</exception>
+    public static ReadOnlySpan<byte> SchemeText(ReadOnlySpan<byte> scheme, Span<byte> scratch)
+    {
+        // The write pattern of MoveText: one copy for each part, and no allocation.
+        if (!SchemePrefix.TryCopyTo(scratch))
+        {
+            throw new InvalidOperationException("The scheme text does not fit in the scratch buffer.");
+        }
+
+        int length = SchemePrefix.Length;
+        ReadOnlySpan<byte> text = scheme.SequenceEqual(UiScheme.KeyboardMouse)
+            ? KeyboardMouseText
+            : scheme.SequenceEqual(UiScheme.Gamepad)
+                ? GamepadText
+                : scheme;
+        if (!text.TryCopyTo(scratch[length..]))
+        {
+            throw new InvalidOperationException("The scheme text does not fit in the scratch buffer.");
+        }
+
+        return scratch[..(length + text.Length)];
+    }
+
+    /// <summary>The prefix of the scheme text.</summary>
+    private static ReadOnlySpan<byte> SchemePrefix => "Scheme: "u8;
+
+    /// <summary>The display text of the keyboard and mouse scheme name.</summary>
+    private static ReadOnlySpan<byte> KeyboardMouseText => "Keyboard / Mouse"u8;
+
+    /// <summary>The display text of the gamepad scheme name.</summary>
+    private static ReadOnlySpan<byte> GamepadText => "Gamepad"u8;
+
+    /// <summary>
+    /// The longest scheme text: the prefix and the keyboard and mouse text. The text is 24 bytes. The scheme label
+    /// starts with it, so its buffer never grows after the first frame.
+    /// </summary>
+    private static ReadOnlySpan<byte> LongestSchemeText => "Scheme: Keyboard / Mouse"u8;
 }

@@ -35,6 +35,14 @@ namespace HelloPanel;
 /// and the buffer of the number binding starts at 32 bytes too. Thus the label never grows its buffer, and a score
 /// change allocates nothing.
 /// </para>
+/// <para>
+/// The group rule: each bind names its scheme. The constructor takes the two ids of <see cref="UiScheme"/> from
+/// <see cref="UiActionMap.AddScheme(ReadOnlySpan{byte})"/>, and passes one as the last argument of each bind. The key
+/// binds and the W, A, S, and D composite carry the KeyboardMouse id, and the pad button binds and the left stick carry
+/// the Gamepad id. The map holds no lock, so it reads each binding whatever its tag, and the behavior of the sample does
+/// not change. The <c>F1</c> and <c>F2</c> binds of <see cref="HelloModes"/> stay untagged, so the sample shows the
+/// default scheme too: a binding with it belongs to each scheme.
+/// </para>
 /// </remarks>
 internal sealed class HelloState
 {
@@ -63,6 +71,12 @@ internal sealed class HelloState
     /// <summary>The selector of the score label. It returns the score itself.</summary>
     private static readonly Func<int, int> s_scoreText = static s => s;
 
+    /// <summary>The id of the KeyboardMouse scheme. The key binds and the WASD composite carry it.</summary>
+    private readonly int _keyboardScheme;
+
+    /// <summary>The id of the Gamepad scheme. The pad button binds and the left stick carry it.</summary>
+    private readonly int _gamepadScheme;
+
     /// <summary>
     /// Creates the state and builds the store, the commands, the focus commands, the map, and the row.
     /// </summary>
@@ -84,18 +98,20 @@ internal sealed class HelloState
         FocusCommands.Register(commands, context);
 
         Map = new UiActionMap(new UiActionMap.CreateInfo { Commands = commands });
+        _keyboardScheme = Map.AddScheme(UiScheme.KeyboardMouse);
+        _gamepadScheme = Map.AddScheme(UiScheme.Gamepad);
         Map.AddAction(UiActions.Cancel, "hello.reset"u8);
         Map.AddAction(UiActions.NavigateUp, FocusCommands.Previous);
         Map.AddAction(UiActions.NavigateDown, FocusCommands.Next);
-        Map.BindKey(UiActions.Cancel, (int)GlfwKey.Escape);
-        Map.BindGamepadButton(UiActions.Cancel, UiGamepadButtons.B);
-        Map.BindKey(UiActions.NavigateUp, (int)GlfwKey.Up);
-        Map.BindGamepadButton(UiActions.NavigateUp, UiGamepadButtons.DpadUp);
-        Map.BindKey(UiActions.NavigateDown, (int)GlfwKey.Down);
-        Map.BindGamepadButton(UiActions.NavigateDown, UiGamepadButtons.DpadDown);
+        Map.BindKey(UiActions.Cancel, (int)GlfwKey.Escape, UiModifiers.None, _keyboardScheme);
+        Map.BindGamepadButton(UiActions.Cancel, UiGamepadButtons.B, _gamepadScheme);
+        Map.BindKey(UiActions.NavigateUp, (int)GlfwKey.Up, UiModifiers.None, _keyboardScheme);
+        Map.BindGamepadButton(UiActions.NavigateUp, UiGamepadButtons.DpadUp, _gamepadScheme);
+        Map.BindKey(UiActions.NavigateDown, (int)GlfwKey.Down, UiModifiers.None, _keyboardScheme);
+        Map.BindGamepadButton(UiActions.NavigateDown, UiGamepadButtons.DpadDown, _gamepadScheme);
         Map.AddAction(MoveAction, UiActionType.Vector2);
-        Map.BindKeyVector(MoveAction, (int)GlfwKey.W, (int)GlfwKey.A, (int)GlfwKey.S, (int)GlfwKey.D);
-        Map.BindGamepadStick(MoveAction, UiGamepadStick.Left);
+        Map.BindKeyVector(MoveAction, (int)GlfwKey.W, (int)GlfwKey.A, (int)GlfwKey.S, (int)GlfwKey.D, _keyboardScheme);
+        Map.BindGamepadStick(MoveAction, UiGamepadStick.Left, _gamepadScheme);
 
         AddButton = new Button(new Button.CreateInfo { Text = "Add" }).BindCommand(commands, "hello.add"u8);
         Label scoreLabel = new Label(new Label.CreateInfo()) { IsPickable = false }.BindText(Score, s_scoreText);
