@@ -28,11 +28,24 @@ public sealed partial class UiActionMap
     /// unlocked map keeps the body of the input-actions feature: it takes every binding, whatever its tag. See
     /// <see cref="SetScheme(int)"/>.
     /// </para>
+    /// <para>
+    /// The listen rule: an open listen stores the buttons and returns 0, so the push runs no command and queues no edge
+    /// (Q9). The method writes <c>_gamepad</c> before it returns, so an edge that a suppressed frame reads is lost and
+    /// not queued: a button that the player held through the listen fires nothing when the listen closes. The frame
+    /// read of the same frame still runs the device track and <see cref="OnSchemeChanged"/> (the keep-running rule). The
+    /// push allocates nothing.
+    /// </para>
     /// </remarks>
     /// <param name="buttons">The buttons that are down now.</param>
     /// <returns>The count of commands that the registry ran.</returns>
     public int PushGamepad(UiGamepadButtons buttons)
     {
+        if (_rebindOpen)
+        {
+            _gamepad = buttons;
+            return 0;
+        }
+
         UiGamepadButtons pressed = buttons & ~_gamepad;
         _gamepad = buttons;
         if (pressed == UiGamepadButtons.None)
@@ -64,6 +77,12 @@ public sealed partial class UiActionMap
     /// <see langword="false"/>, and the method calls no registry. A command that the registry does not hold calls
     /// <see cref="CommandRegistry.UnknownCommand"/>. The method allocates nothing and throws nothing of its own. An
     /// exception of the command leaves the method.
+    /// <para>
+    /// The listen rule: an open listen returns <see langword="false"/> before the name read, so the call runs no command
+    /// and reads no action (Q9). The values of the five queries keep the state of the last read frame, and a suppressed
+    /// frame emits no release edge, because the frame read runs no finish pass. The device track and
+    /// <see cref="OnSchemeChanged"/> keep running. The call allocates nothing.
+    /// </para>
     /// </remarks>
     /// <param name="action">The UTF-8 name of the action.</param>
     /// <returns>
@@ -72,6 +91,11 @@ public sealed partial class UiActionMap
     /// </returns>
     public bool InvokeAction(ReadOnlySpan<byte> action)
     {
+        if (_rebindOpen)
+        {
+            return false;
+        }
+
         int index = IndexOfAction(action);
         return index >= 0 && Invoke(index);
     }
@@ -90,6 +114,12 @@ public sealed partial class UiActionMap
     /// The lock rule: the method takes the lock of the map, so a binding of another scheme gives no match. With no lock,
     /// each binding can match, whatever its tag. See <see cref="SetScheme(int)"/>.
     /// </para>
+    /// <para>
+    /// The listen rule: an open listen returns <see langword="false"/> as its first step, so the resolve runs no command
+    /// and reads no binding (Q9). The method queues nothing: the press is lost, not kept for a later frame. Each query
+    /// keeps the value and the flags of the last read frame, and a suppressed frame emits no release edge. The device
+    /// track and <see cref="OnSchemeChanged"/> keep running. The call allocates nothing.
+    /// </para>
     /// </remarks>
     /// <param name="key">The GLFW key code.</param>
     /// <param name="modifiers">The modifier keys that are down. Caps Lock and Num Lock do not count.</param>
@@ -99,6 +129,11 @@ public sealed partial class UiActionMap
     /// </returns>
     public bool PressKey(int key, UiModifiers modifiers)
     {
+        if (_rebindOpen)
+        {
+            return false;
+        }
+
         int index = FindAllowed(InputKind.Key, key, modifiers);
         if (index < 0)
         {
@@ -123,6 +158,12 @@ public sealed partial class UiActionMap
     /// The lock rule: the method takes the lock of the map, so a binding of another scheme gives no match. With no lock,
     /// each binding can match, whatever its tag. See <see cref="SetScheme(int)"/>.
     /// </para>
+    /// <para>
+    /// The listen rule: an open listen returns <see langword="false"/> as its first step, so the resolve runs no command
+    /// and reads no binding (Q9). The method queues nothing: the press is lost, not kept for a later frame. Each query
+    /// keeps the value and the flags of the last read frame, and a suppressed frame emits no release edge. The device
+    /// track and <see cref="OnSchemeChanged"/> keep running. The call allocates nothing.
+    /// </para>
     /// </remarks>
     /// <param name="button">The mouse button.</param>
     /// <param name="modifiers">The modifier keys that are down. Caps Lock and Num Lock do not count.</param>
@@ -132,6 +173,11 @@ public sealed partial class UiActionMap
     /// </returns>
     public bool PressMouseButton(PointerButton button, UiModifiers modifiers)
     {
+        if (_rebindOpen)
+        {
+            return false;
+        }
+
         int index = FindAllowed(InputKind.MouseButton, (int)button, modifiers);
         if (index < 0)
         {
@@ -146,6 +192,13 @@ public sealed partial class UiActionMap
     /// The handler keeps the text guard and the repeat rule, then calls <see cref="PressKey"/> or
     /// <see cref="PressMouseButton"/>, so the lock of <see cref="SetScheme(int)"/> applies to this path too: a binding of
     /// another scheme runs no command.
+    /// <para>
+    /// The listen rule: an open listen keeps this body as it is, and the two calls it makes give
+    /// <see langword="false"/>, so the drain runs no command in a listening frame (Q9). The guard of a focused
+    /// <see cref="TextField"/> and the repeat rule still run first. The path queues nothing: a press that the context
+    /// gives the map in a suppressed frame is lost. The device track and <see cref="OnSchemeChanged"/> keep running. The
+    /// path allocates nothing.
+    /// </para>
     /// </remarks>
     /// <param name="type">The type of the input.</param>
     /// <param name="code">The GLFW key code of a key down, or the GLFW mouse button value of a press.</param>
@@ -249,6 +302,19 @@ public sealed partial class UiActionMap
     /// or a scheme change in it takes effect at the next frame.
     /// </para>
     /// <para>
+    /// The listen branch: when a listen is open, the method calls <see cref="RebindScan"/> right after the pair test and
+    /// returns, before the four passes. The scan reads <see cref="UiContext.Input"/>, the raw view, so a rebind works
+    /// while a widget holds focus or a pickable root covers the window (Q1). The frame then writes no value, sums no
+    /// binding, and runs no command (Q9), because the four passes do not run. The return is what makes a commit frame
+    /// safe: the value loop reads the copy of the binding array that the method takes at its top, so the frame that
+    /// lands a new binding must not run that loop, and the press that landed the commit drives nothing. A suppressed
+    /// frame also runs no finish pass, so each action keeps the value and the flags of the last read frame and emits no
+    /// release edge; a key that the player released during the listen gives one release on the first read frame after
+    /// it. The scan ends with the device store and <see cref="ReportSchemeChange"/>, so the device track,
+    /// <see cref="ActiveScheme"/>, and <see cref="OnSchemeChanged"/> keep running in a listening frame. The branch costs
+    /// one bool test and gives 0 bytes.
+    /// </para>
+    /// <para>
     /// The method allocates nothing and throws nothing of its own. An exception of a command of the invoke pass leaves
     /// the method, and the map keeps the values of the frame, because the finish runs before the pass. An exception of
     /// the handler of <see cref="OnSchemeChanged"/> leaves the method the same way, and the map keeps the values and the
@@ -260,6 +326,12 @@ public sealed partial class UiActionMap
     {
         if (context.OnUnhandledInput != _onInput)
         {
+            return;
+        }
+
+        if (_rebindOpen)
+        {
+            RebindScan(context);
             return;
         }
 

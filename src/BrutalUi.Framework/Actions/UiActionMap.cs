@@ -99,6 +99,53 @@ namespace BrutalUi.Framework;
 /// the lock already emptied the values of the queries.
 /// </para>
 /// <para>
+/// The listen rule: <see cref="BeginRebind(ReadOnlySpan{byte}, int)"/> opens a listen for one action in one scheme,
+/// and the frame read scans it in place of its four passes. The first scan frame settles and reads no input. Each later
+/// frame takes one candidate: the first live input of the frame, and a digital candidate needs a fresh press edge. The
+/// scan reads the raw view, so a rebind works while a widget holds focus or a pickable root covers the window.
+/// <see cref="RebindCancelKey"/> (Escape by default) closes the listen first, and the listen consumes that edge.
+/// <see cref="CancelRebind"/> closes the listen with no change. A candidate that does not fit the action type lands no
+/// binding and keeps the listen open, and the map reports it through <see cref="OnRebindResult"/>. The press that lands
+/// a commit is consumed: the player presses the new key a second time to drive the action. <see cref="IsRebinding"/>
+/// reads the state.
+/// </para>
+/// <para>
+/// The rebind group rule: the target of a rebind is the whole action inside one scheme. The new binding carries that
+/// scheme id, and the commit removes every binding of the pair first, then writes the new binding directly at the end of
+/// the array, past the throwing duplicate check of a bind. A conflicting input lands, both bindings stay, and
+/// <see cref="OnRebindConflict"/> names both actions.
+/// </para>
+/// <para>
+/// The conflict rule: the committed input can already belong to another action of the scheme. The map commits anyway,
+/// because the duplicate check of a bind serves a build, and a rebind is a choice of a player. The map then calls
+/// <see cref="OnRebindConflict"/> with the name of the rebound action and the name of the other action. The game decides
+/// what comes next: it can warn the player, or rebind the other action. A clash against a binding of the default scheme
+/// reports in either order, and a binding of two different schemes gives no report.
+/// </para>
+/// <para>
+/// The restore rule: <see cref="Activate"/> copies the bindings of the build on the first activation. That copy is the
+/// only snapshot. <see cref="ResetBindings"/> writes it back with one copy into the existing array, so the restore
+/// allocates nothing. The bindings of the build come back, and a rebind never costs a player a binding of the build.
+/// <see cref="ResetBindings"/> restores bindings only: the actions, the commands, the scheme table, the gamepad slot, and
+/// the scheme lock keep their state. A map that no <see cref="Activate"/> reached gives <see langword="false"/> and
+/// changes nothing. A bind after the first activation is gone after a restore. A restore closes an open listen with no
+/// commit and no slot call, and a restore from a handler or a command takes effect at the next frame.
+/// </para>
+/// <para>
+/// The silence rule: during a listen the map writes no value and runs no command. The five paths hold: the frame read,
+/// <see cref="HandleInput"/>, <see cref="PressKey"/>, <see cref="PressMouseButton"/>, and
+/// <see cref="InvokeAction"/>, and <see cref="PushGamepad"/> stores its buttons and returns 0. Each query keeps the
+/// value and the flags of the last read frame, and a suppressed frame emits no release edge. The device track,
+/// <see cref="ActiveScheme"/>, and <see cref="OnSchemeChanged"/> keep running.
+/// </para>
+/// <para>
+/// The binding text rule: <see cref="WriteBindings"/> writes the version line and one line per binding, and gives
+/// the byte count. A short span gives the needed count and writes no byte. <see cref="ReadBindings"/> parses the
+/// lines, merges each named action and scheme pair, and skips a bad line with a count. Both members run at load
+/// time and may allocate, and the game owns the file. The listen of this feature is the reason the list is worth
+/// storing.
+/// </para>
+/// <para>
 /// The slot rule: <see cref="Activate"/> writes two slots: <see cref="UiContext.OnUnhandledInput"/> for the input that
 /// no element took, and <see cref="UiContext.OnInputRead"/> for the read of each frame. Each context holds one of each
 /// slot, so one map is active on a context (A8). A map is active on one context at most: <see cref="Activate"/> on a
@@ -497,7 +544,9 @@ public sealed partial class UiActionMap
     /// <see cref="Activate"/> wins: when the map is active on another context, the method first clears the two slots of
     /// that context. It clears a slot only when the slot holds the handler of this map. The switch rule: the method
     /// resets each frame value when the map was not active on this context. A second <see cref="Activate"/> on the same
-    /// context keeps each value, so the same map in two modes keeps its values.
+    /// context keeps each value, so the same map in two modes keeps its values. The snapshot rule: the method copies the
+    /// bindings of the build on the first activation, and does nothing on a later one. <see cref="ResetBindings"/>
+    /// restores them.
     /// </remarks>
     /// <param name="context">The context.</param>
     /// <exception cref="ArgumentNullException"><paramref name="context"/> is <see langword="null"/>.</exception>
@@ -522,6 +571,7 @@ public sealed partial class UiActionMap
         context.OnUnhandledInput = _onInput;
         context.OnInputRead = _onRead;
         _context = context;
+        CaptureDefaults();
         if (!wasActive)
         {
             ResetFrame();
@@ -583,7 +633,8 @@ public sealed partial class UiActionMap
     /// <see cref="Activate"/> and <see cref="Deactivate"/> call it (the switch rule). The method writes the entries of
     /// the existing array in place: it creates no array, and it allocates nothing. The method resets the scheme report
     /// to the seeded KeyboardMouse id too, so a fresh <see cref="Activate"/> starts the report at KeyboardMouse. It
-    /// leaves the locked scheme alone: the lock is a build setting of the map, not a frame value.
+    /// leaves the locked scheme alone: the lock is a build setting of the map, not a frame value. The switch rule closes
+    /// an open listen with no commit and no slot call, so a mode change cannot leave a half-open rebind.
     /// </remarks>
     private void ResetFrame()
     {
@@ -601,57 +652,64 @@ public sealed partial class UiActionMap
             a.Press = false;
         }
 
+        _rebindOpen = false;
+        _rebindSettle = 0;
+        _rebindAction = -1;
         _activeScheme = _keyboardScheme;
         _reportedScheme = _keyboardScheme;
     }
 
     /// <summary>The kind of an input of a binding.</summary>
+    /// <remarks>
+    /// Each value is the <c>device</c> number that <see cref="WriteBindings"/> stores in the binding text. The numbers
+    /// are a stored contract, so a member must never move to another number.
+    /// </remarks>
     private enum InputKind : byte
     {
         /// <summary>A key of the keyboard.</summary>
-        Key,
+        Key = 0,
 
         /// <summary>A button of the mouse.</summary>
-        MouseButton,
+        MouseButton = 1,
 
         /// <summary>A button of a gamepad.</summary>
-        GamepadButton,
+        GamepadButton = 2,
 
         /// <summary>
         /// Four keys that fill a Vector2 action: up, left, down, and right in <see cref="InputBinding.Code"/> to
         /// <see cref="InputBinding.Code3"/>.
         /// </summary>
-        KeyVector,
+        KeyVector = 3,
 
         /// <summary>
         /// One stick of a gamepad that fills a Vector2 action: the <see cref="UiGamepadStick"/> value in
         /// <see cref="InputBinding.Code"/>.
         /// </summary>
-        GamepadStick,
+        GamepadStick = 4,
 
         /// <summary>
         /// One axis of a gamepad that fills an Axis action: the <see cref="UiGamepadAxis"/> value in
         /// <see cref="InputBinding.Code"/>, with the scale in <see cref="InputBinding.Scale"/>.
         /// </summary>
-        GamepadAxis,
+        GamepadAxis = 5,
 
         /// <summary>
         /// Two keys that fill an Axis action: the negative key in <see cref="InputBinding.Code"/> and the positive key
         /// in <see cref="InputBinding.Code1"/>.
         /// </summary>
-        KeyAxis,
+        KeyAxis = 6,
 
         /// <summary>
         /// The pointer delta of the frame, scaled, into a Vector2 action. The binding holds no code, and the frame keeps
         /// the value free.
         /// </summary>
-        MouseDelta,
+        MouseDelta = 7,
 
         /// <summary>
         /// The vertical scroll of the frame, scaled, into an Axis action. The binding holds no code, and the frame keeps
         /// the value free.
         /// </summary>
-        Scroll,
+        Scroll = 8,
     }
 
     /// <summary>One action.</summary>

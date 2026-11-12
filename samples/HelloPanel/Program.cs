@@ -614,6 +614,7 @@ internal static class Program
                 modes.StickLabel,
                 modes.MoveLabel,
                 modes.SchemeLabel,
+                modes.RebindLabel,
                 modes.Widgets,
                 state,
                 modes,
@@ -648,7 +649,7 @@ internal static class Program
     /// size from <c>io.DisplaySize</c>, update the tree, read the focus owner, draw the
     /// tree, read
     /// <see cref="UiContext.RoutingGate"/>, and set the text of the gate label, the input label, the stick label, the
-    /// move label, and the scheme label. The input pass of
+    /// move label, the scheme label, and the rebind label. The input pass of
     /// <see cref="UiContext.Update(float)"/> drains the ring before the style pass, so the hover and the focus of this
     /// frame show in this frame. The raw slot holds the poll of this frame before <see
     /// cref="UiContext.Update(float)"/> (A6), so the read slot of the active map reads the new buttons of slot 0 and
@@ -695,7 +696,11 @@ internal static class Program
     /// into the fixed scratch buffer, so the update of the move label allocates nothing. The loop also sets the scheme
     /// label from <see cref="UiActionMap.ActiveScheme"/> of the same map, through
     /// <see cref="UiActionMap.SchemeName"/>. The read gives a span over the stored name bytes, and the write copies
-    /// into the fixed scratch buffer, so the update of the scheme label allocates nothing. A measured frame adds 1 to
+    /// into the fixed scratch buffer, so the update of the scheme label allocates nothing. The loop also sets the
+    /// rebind label from <see cref="UiActionMap.IsRebinding"/> and the last result stored on
+    /// <paramref name="state"/>, with <see cref="HelloScreen.RebindText"/>. The reads copy one
+    /// <see cref="bool"/> and two <see cref="int"/> values, and the write formats into the fixed scratch buffer, so
+    /// the update of the rebind label allocates nothing. A measured frame adds 1 to
     /// the caret count when
     /// <see cref="UiContext.FocusedElement"/> is the text field after <see cref="UiContext.Update(float)"/>. The read
     /// is a reference compare inside the UI region, so the allocation gate measures it, and it allocates nothing. The
@@ -759,6 +764,10 @@ internal static class Program
     /// The scheme label of the screen. The loop sets its text after each draw, from
     /// <see cref="UiActionMap.ActiveScheme"/> of the map of <paramref name="state"/>.
     /// </param>
+    /// <param name="rebindLabel">
+    /// The rebind label of the screen. The loop sets its text after each draw, from
+    /// <see cref="UiActionMap.IsRebinding"/> and the last rebind result of the map of <paramref name="state"/>.
+    /// </param>
     /// <param name="widgets">
     /// The widget section of the screen. The smoke input aims its widget events at the widgets, and the loop reads the
     /// widget counts after the last frame.
@@ -793,6 +802,7 @@ internal static class Program
         Label stickLabel,
         Label moveLabel,
         Label schemeLabel,
+        Label rebindLabel,
         HelloWidgets widgets,
         HelloState state,
         HelloModes modes,
@@ -831,6 +841,10 @@ internal static class Program
         // The scratch buffer of the scheme label. The longest scheme text needs 24 bytes, so the buffer never needs a
         // change of its size. The loop allocates nothing in it.
         byte[] schemeScratch = new byte[32];
+
+        // The scratch buffer of the rebind label. The longest rebind text needs 20 bytes, so the buffer never needs a
+        // change of its size. The loop allocates nothing in it.
+        byte[] rebindScratch = new byte[32];
 
         // The counter value after the last release of the allocation context, or -1 before the first release.
         long releasedBytes = -1;
@@ -928,6 +942,12 @@ internal static class Program
             // The label shows the scheme that the frame read of the active map reported, in the next frame. The reads
             // give the stored name bytes, and the write copies into the fixed scratch buffer, so they allocate nothing.
             schemeLabel.SetText(HelloScreen.SchemeText(state.Map.SchemeName(state.Map.ActiveScheme), schemeScratch));
+
+            // The label shows the listen state of the active map and its last result, in the next frame. The map
+            // closes the listen itself, so the loop calls nothing to end it. The reads copy three stored values,
+            // and the write formats into the fixed scratch buffer, so they allocate nothing.
+            rebindLabel.SetText(HelloScreen.RebindText(
+                state.Map.IsRebinding, state.RebindDone, state.RebindStatus, state.RebindCode, rebindScratch));
             long uiEndBytes = GC.GetAllocatedBytesForCurrentThread();
 
             ImGui.Render();

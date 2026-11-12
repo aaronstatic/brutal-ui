@@ -116,6 +116,11 @@ internal sealed class HelloModes
     /// </summary>
     private Label? _schemeLabel;
 
+    /// <summary>
+    /// The rebind label that the widget factory writes. The constructor copies it into <see cref="RebindLabel"/>.
+    /// </summary>
+    private Label? _rebindLabel;
+
     /// <summary>The widget section that the widget factory writes. The constructor copies it into <see cref="Widgets"/>.</summary>
     private HelloWidgets? _widgets;
 
@@ -135,8 +140,9 @@ internal sealed class HelloModes
     /// <see langword="null"/>.</exception>
     /// <exception cref="InvalidOperationException">
     /// The widget factory left <see cref="GateLabel"/>, <see cref="InputLabel"/>, <see cref="StickLabel"/>,
-    /// <see cref="MoveLabel"/>, <see cref="SchemeLabel"/>, or <see cref="Widgets"/> null. The build rule cannot fail in
-    /// this sample; the check documents the contract of <see cref="HelloScreen.BuildWidgetPanel"/>.
+    /// <see cref="MoveLabel"/>, <see cref="SchemeLabel"/>, <see cref="RebindLabel"/>, or <see cref="Widgets"/> null.
+    /// The build rule cannot fail in this sample; the check documents the contract of
+    /// <see cref="HelloScreen.BuildWidgetPanel"/>.
     /// </exception>
     public HelloModes(UiContext context, HelloState state, TextureHandle checker)
     {
@@ -187,6 +193,8 @@ internal sealed class HelloModes
             ?? throw new InvalidOperationException("The widget factory did not give the move label.");
         SchemeLabel = _schemeLabel
             ?? throw new InvalidOperationException("The widget factory did not give the scheme label.");
+        RebindLabel = _rebindLabel
+            ?? throw new InvalidOperationException("The widget factory did not give the rebind label.");
         Widgets = _widgets ?? throw new InvalidOperationException("The widget factory did not give the widget section.");
         WidgetPanel = widgets.Instance.Root!;
 
@@ -233,6 +241,9 @@ internal sealed class HelloModes
     /// <summary>Gets the scheme label of the widget panel. The frame loop sets its text after each draw.</summary>
     public Label SchemeLabel { get; }
 
+    /// <summary>Gets the rebind label of the widget panel. The frame loop sets its text after each draw.</summary>
+    public Label RebindLabel { get; }
+
     /// <summary>Gets the widget section. The smoke run aims its widget events at the widgets and reads the counts.</summary>
     public HelloWidgets Widgets { get; }
 
@@ -245,13 +256,13 @@ internal sealed class HelloModes
     /// <summary>Gets the count of runs of <c>hello.back</c> where <see cref="ModeHistory.Back"/> returned <see langword="true"/>.</summary>
     public int Backs { get; private set; }
 
-    /// <summary>The factory of <c>hello.widgets</c>. It builds the widget panel and writes six out fields.</summary>
+    /// <summary>The factory of <c>hello.widgets</c>. It builds the widget panel and writes seven out fields.</summary>
     /// <param name="context">The panel context. The factory reads nothing from it.</param>
     /// <returns>The root of the widget panel.</returns>
     private Element CreateWidgetPanel(PanelContext context) =>
         HelloScreen.BuildWidgetPanel(
             _checker, ModeButton, out _gateLabel, out _inputLabel, out _stickLabel, out _moveLabel, out _schemeLabel,
-            out _widgets);
+            out _rebindLabel, out _widgets);
 
     /// <summary>The factory of <c>hello.state</c>.</summary>
     /// <param name="context">The panel context. The factory reads nothing from it.</param>

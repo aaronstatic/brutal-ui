@@ -6,8 +6,9 @@ using BrutalUi.Framework;
 namespace HelloPanel;
 
 /// <summary>
-/// The state row of the sample: one <see cref="Store{T}"/> that drives a label, one command on a button, and one
-/// action on a key. The class also builds the focus commands and the action map of the sample.
+/// The state row of the sample: one <see cref="Store{T}"/> that drives a label, three commands on the buttons of the
+/// row, and the actions on the keys and the gamepad. The class also builds the focus commands and the action map of
+/// the sample.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -20,6 +21,23 @@ namespace HelloPanel;
 /// Down key, and from <c>DpadUp</c> and <c>DpadDown</c>. The action <c>Move</c> is a Vector2 action with no
 /// command. The W, A, S, and D keys and the left stick of gamepad slot 0 fill its value, and the frame loop
 /// shows <see cref="UiActionMap.ReadVector"/> in the move label.
+/// </para>
+/// <para>
+/// The rebind rule: the <c>Rebind (Up)</c> button runs the command <c>hello.rebind</c>. The handler opens a listen
+/// on the action <c>NavigateUp</c> with the KeyboardMouse scheme id. The sample rebinds that key only. The map
+/// closes the listen itself, so the frame loop needs no extra call: it reads <see cref="UiActionMap.IsRebinding"/>
+/// and the last result, which the result slot stores here in <see cref="RebindStatus"/>,
+/// <see cref="RebindCode"/>, and <see cref="RebindDone"/>. The constructor writes the slot one time with a target
+/// delegate, so the frame path allocates nothing. The sample must never rebind <c>Cancel</c> to Escape: the listen
+/// consumes the cancel key.
+/// </para>
+/// <para>
+/// The restore rule: the <c>Restore</c> button runs the command <c>hello.restore</c>, and the handler calls
+/// <see cref="UiActionMap.ResetBindings"/>. It brings the <c>Up</c> key back after a rebind. The map takes the
+/// snapshot on its first <see cref="UiActionMap.Activate(UiContext)"/> call. The
+/// <see cref="UiManager"/> does that call in the mode diff, so the state panel is mounted before the first rebind.
+/// A restore that a command calls takes effect at the next frame. Escape still runs <c>hello.reset</c> in every
+/// frame that is not a listen.
 /// </para>
 /// <para>
 /// The build-time rule: the constructor does all the allocation. It creates the store, the registry, the map, the
@@ -68,6 +86,27 @@ internal sealed class HelloState
         state.Resets++;
     };
 
+    /// <summary>
+    /// The handler of <c>hello.rebind</c>. The target is the state. The handler opens the listen on the
+    /// <c>NavigateUp</c> action in the KeyboardMouse scheme.
+    /// </summary>
+    private static readonly CommandHandler s_rebind = static target =>
+    {
+        HelloState state = (HelloState)target!;
+        state.Map.BeginRebind(UiActions.NavigateUp, state.KeyboardScheme);
+    };
+
+    /// <summary>
+    /// The handler of <c>hello.restore</c>. The target is the state. The handler restores the bindings of the build
+    /// with <see cref="UiActionMap.ResetBindings"/> and closes an open listen. The sample calls it after the first
+    /// activation, so the map holds the snapshot, and the handler reads no return value.
+    /// </summary>
+    private static readonly CommandHandler s_restore = static target =>
+    {
+        HelloState state = (HelloState)target!;
+        state.Map.ResetBindings();
+    };
+
     /// <summary>The selector of the score label. It returns the score itself.</summary>
     private static readonly Func<int, int> s_scoreText = static s => s;
 
@@ -95,10 +134,13 @@ internal sealed class HelloState
         CommandRegistry commands = new();
         commands.Register("hello.add"u8, s_add, this);
         commands.Register("hello.reset"u8, s_reset, this);
+        commands.Register("hello.rebind"u8, s_rebind, this);
+        commands.Register("hello.restore"u8, s_restore, this);
         FocusCommands.Register(commands, context);
 
         Map = new UiActionMap(new UiActionMap.CreateInfo { Commands = commands });
         _keyboardScheme = Map.AddScheme(UiScheme.KeyboardMouse);
+        KeyboardScheme = _keyboardScheme;
         _gamepadScheme = Map.AddScheme(UiScheme.Gamepad);
         Map.AddAction(UiActions.Cancel, "hello.reset"u8);
         Map.AddAction(UiActions.NavigateUp, FocusCommands.Previous);
@@ -112,22 +154,36 @@ internal sealed class HelloState
         Map.AddAction(MoveAction, UiActionType.Vector2);
         Map.BindKeyVector(MoveAction, (int)GlfwKey.W, (int)GlfwKey.A, (int)GlfwKey.S, (int)GlfwKey.D, _keyboardScheme);
         Map.BindGamepadStick(MoveAction, UiGamepadStick.Left, _gamepadScheme);
+        Map.OnRebindResult = OnRebind;
 
         AddButton = new Button(new Button.CreateInfo { Text = "Add" }).BindCommand(commands, "hello.add"u8);
+        RebindButton = new Button(new Button.CreateInfo { Text = "Rebind (Up)" }).BindCommand(
+            commands, "hello.rebind"u8);
+        RestoreButton = new Button(new Button.CreateInfo { Text = "Restore" }).BindCommand(
+            commands, "hello.restore"u8);
         Label scoreLabel = new Label(new Label.CreateInfo()) { IsPickable = false }.BindText(Score, s_scoreText);
 
         Row = new Element();
         Row.Classes.Add(RowClass);
         Row.Children.Add(AddButton);
+        Row.Children.Add(RebindButton);
+        Row.Children.Add(RestoreButton);
         Row.Children.Add(scoreLabel);
     }
 
-    /// <summary>Gets the row: the <c>Add</c> button and the score label. <see cref="HelloScreen.BuildStatePanel"/> puts
-    /// the row in the state panel.</summary>
+    /// <summary>Gets the row: the <c>Add</c> button, the <c>Rebind (Up)</c> button, the <c>Restore</c> button, and the
+    /// score label. <see cref="HelloScreen.BuildStatePanel"/> puts the row in the state panel.</summary>
     public Element Row { get; }
 
     /// <summary>Gets the <c>Add</c> button. A click runs <c>hello.add</c>.</summary>
     public Button AddButton { get; }
+
+    /// <summary>Gets the <c>Rebind (Up)</c> button. A click runs <c>hello.rebind</c> and opens the listen.</summary>
+    public Button RebindButton { get; }
+
+    /// <summary>Gets the <c>Restore</c> button. A click runs <c>hello.restore</c> and brings the <c>Up</c> key
+    /// back.</summary>
+    public Button RestoreButton { get; }
 
     /// <summary>Gets the action map. The first apply of the mode that names the map activates it; the caller does not
     /// call <see cref="UiActionMap.Activate(UiContext)"/> (see <see cref="HelloModes"/>).</summary>
@@ -141,4 +197,42 @@ internal sealed class HelloState
 
     /// <summary>Gets the number of runs of <c>hello.reset</c>.</summary>
     public int Resets { get; private set; }
+
+    /// <summary>Gets the id of the KeyboardMouse scheme. The <c>hello.rebind</c> handler opens the listen with it.</summary>
+    public int KeyboardScheme { get; }
+
+    /// <summary>
+    /// Gets the status of the last rebind result: <see cref="UiActionMap.RebindBound"/>,
+    /// <see cref="UiActionMap.RebindCancelled"/>, or <see cref="UiActionMap.RebindRejected"/>. It is
+    /// <see cref="UiActionMap.RebindBound"/> with <see cref="RebindCode"/> 0 before the first result.
+    /// </summary>
+    public int RebindStatus { get; private set; }
+
+    /// <summary>Gets the code of the last rebind result, or 0 before the first result.</summary>
+    public int RebindCode { get; private set; }
+
+    /// <summary>
+    /// Gets a value that tells if the result slot has stored one result. It is <see langword="false"/> before the
+    /// first result.
+    /// </summary>
+    /// <remarks>
+    /// The rebind label takes its idle text from this flag, not from <see cref="RebindCode"/>. A code alone cannot
+    /// tell an idle map from a mouse-button commit, because a mouse-button capture carries code 0 to 7.
+    /// </remarks>
+    public bool RebindDone { get; private set; }
+
+    /// <summary>
+    /// The handler of <see cref="UiActionMap.OnRebindResult"/>. The map calls it in the frame that closes or
+    /// rejects the listen. The method stores the status, the code, and the done flag for the rebind label.
+    /// </summary>
+    /// <param name="map">The map that ran the listen. The method reads nothing from it.</param>
+    /// <param name="action">The name bytes of the target action. The method reads nothing from them.</param>
+    /// <param name="status">The status of the result.</param>
+    /// <param name="code">The code of the result.</param>
+    private void OnRebind(UiActionMap map, ReadOnlySpan<byte> action, int status, int code)
+    {
+        RebindStatus = status;
+        RebindCode = code;
+        RebindDone = true;
+    }
 }

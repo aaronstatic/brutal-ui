@@ -30,12 +30,14 @@ namespace HelloPanel;
 /// <para>
 /// The screen reacts to the pointer and to Tab. The widget panel is not the only focusable element: five widgets take
 /// the focus too. These are the <c>Click me</c> button, the toggle, the slider, the text field, and the
-/// <c>Mode (F1)</c> button of the mode row. The <c>Add</c> button of the state row takes the focus too. The disabled
+/// <c>Mode (F1)</c> button of the mode row. The <c>Add</c> button, the <c>Rebind (Up)</c> button, and the
+/// <c>Restore</c> button of the state row take the focus too. The disabled
 /// button and the scroll view take no focus. In <c>hello.main</c>, Tab walks the focusable elements in tree order:
-/// the panel, <c>Click me</c>, the toggle, the slider, the text field, <c>Mode (F1)</c>, and <c>Add</c>. A press on
+/// the panel, <c>Click me</c>, the toggle, the slider, the text field, <c>Mode (F1)</c>, <c>Add</c>,
+/// <c>Rebind (Up)</c>, and <c>Restore</c>. A press on
 /// one of these widgets gives the focus to the widget. A press on the disabled button clears the focus: the button is
 /// focusable but disabled, and the press does not go on to the panel. A press on the scroll view gives the focus to
-/// the panel, the nearest focusable ancestor, because the scroll view is not focusable. The six labels and the image
+/// the panel, the nearest focusable ancestor, because the scroll view is not focusable. The seven labels and the image
 /// are not pickable, so a point on them hits the panel. The widget section and its rows are pickable, so a press in a
 /// gap between the widgets gives the focus to the panel, the nearest focusable ancestor. The layout root and the two
 /// slots are not pickable (the layout-root rule and the slot rule), so a point that hits no panel hits no element, and
@@ -54,8 +56,8 @@ namespace HelloPanel;
 /// after the widget section. It is a plain element with the <c>hello-row</c> class, and it holds the
 /// <c>Mode (F1)</c> button of <see cref="HelloModes"/>. A click on the button runs <c>hello.mode</c>, and the manager
 /// applies the other mode at the start of the next update. <see cref="HelloState"/> builds the state row: an
-/// <c>Add</c> button and a score label. <see cref="BuildStatePanel"/> puts that row in the state panel, so the row is
-/// no longer a child of the widget panel.
+/// <c>Add</c> button, a <c>Rebind (Up)</c> button, a <c>Restore</c> button, and a score label.
+/// <see cref="BuildStatePanel"/> puts that row in the state panel, so the row is no longer a child of the widget panel.
 /// </para>
 /// <para>
 /// The second label is the gate label. It shows the two values of <see cref="UiContext.RoutingGate"/>. The frame
@@ -96,9 +98,19 @@ namespace HelloPanel;
 /// scheme text, so its buffer never grows after the first frame.
 /// </para>
 /// <para>
+/// The seventh label is the rebind label. It shows the listen state of <see cref="UiActionMap"/> and the last
+/// rebind result. The frame loop sets its text with <see cref="RebindText"/> after each draw, from
+/// <see cref="UiActionMap.IsRebinding"/> and the result that the slot stores on <see cref="HelloState"/>. A click on
+/// the <c>Rebind (Up)</c> button opens the listen, and the label reads <c>Rebind: press a key</c>. A key press then
+/// closes the listen, and the label reads <c>Rebind: code &lt;n&gt;</c>. Escape during the listen cancels it, and the
+/// label reads <c>Rebind: cancelled</c>. The sample rebinds the <c>NavigateUp</c> key, so a J press moves the focus
+/// up in the next frame. The label starts with the longest rebind text, so its buffer never grows after the first
+/// frame.
+/// </para>
+/// <para>
 /// The labels and the widgets use font 0, the default font of the renderer. The sample loads no font, so font 0 is
-/// the ImGui default font. The panel and the six labels use the font atlas texture, so they share one ImGui draw
-/// command. The six labels come before the image. The image binds the checker texture, so it opens a second draw
+/// the ImGui default font. The panel and the seven labels use the font atlas texture, so they share one ImGui draw
+/// command. The seven labels come before the image. The image binds the checker texture, so it opens a second draw
 /// command. The widget section comes after the image and uses the font atlas texture again, so it opens a third draw
 /// command. The mode row follows the widget section, and its button keeps the same command.
 /// </para>
@@ -108,7 +120,7 @@ namespace HelloPanel;
 /// <c>hello-panel</c>, <c>hello-panel-root</c>, <c>hello-widgets</c>, <c>hello-row</c>, and <c>hello-status</c>. The
 /// sheet also holds the type rule <c>SlotContainer</c> for the two slots. The widget rules use the
 /// type names of the widgets, for example <c>Button</c>. The tree holds no inline value. The rules
-/// <c>.hello-panel &gt; Label</c> and <c>.hello-panel &gt; Image</c> are child rules, so the six labels and the image
+/// <c>.hello-panel &gt; Label</c> and <c>.hello-panel &gt; Image</c> are child rules, so the seven labels and the image
 /// must stay direct children of the widget panel. Each status label is a child of a row, so the rule
 /// <c>.hello-row &gt; Label</c> gives its values, and the rule <c>.hello-panel &gt; Label</c> does not apply to it.
 /// </para>
@@ -235,7 +247,7 @@ internal static class HelloScreen
         return new StyleSheetParser().Parse(bytes, SheetFileName).GetSheetOrThrow();
     }
 
-    /// <summary>Builds the widget panel: the six labels, the image, the widget section, and the mode row.</summary>
+    /// <summary>Builds the widget panel: the seven labels, the image, the widget section, and the mode row.</summary>
     /// <remarks>
     /// <para>
     /// The factory of <c>hello.widgets</c> calls this method (see <see cref="HelloModes"/>). The panel is a column
@@ -246,16 +258,17 @@ internal static class HelloScreen
     /// </para>
     /// <para>
     /// The panel is focusable. So are <c>Click me</c>, the toggle, the slider, the text field, and
-    /// <paramref name="modeButton"/>. The disabled button and the scroll view take no focus. The six labels and the
+    /// <paramref name="modeButton"/>. The disabled button and the scroll view take no focus. The seven labels and the
     /// image are not pickable, so a point on them hits the panel. The gate label starts with the longest text of
     /// <see cref="GateText"/>. The input label comes right after the gate label and starts with the longest text of
     /// <see cref="InputText"/>. The stick label comes right after the input label and starts with the longest text
     /// of <see cref="StickText"/>. The move label comes right after the stick label and starts with the longest
     /// text of <see cref="MoveText"/>. The scheme label comes right after the move label and starts with the longest
-    /// text of <see cref="SchemeText"/>.
+    /// text of <see cref="SchemeText"/>. The rebind label comes right after the scheme label and starts with the
+    /// longest text of <see cref="RebindText"/>.
     /// </para>
     /// <para>
-    /// The six labels and the image are direct children of the panel, because the rules
+    /// The seven labels and the image are direct children of the panel, because the rules
     /// <c>.hello-panel &gt; Label</c> and <c>.hello-panel &gt; Image</c> are child rules. The widget section of
     /// <paramref name="widgets"/> follows the image. Its status labels are children of a row, so the rule
     /// <c>.hello-row &gt; Label</c> styles them. The mode row is the last child. It carries the <c>hello-row</c>
@@ -271,6 +284,7 @@ internal static class HelloScreen
     /// <param name="stickLabel">The stick label. Set its text with <see cref="StickText"/>.</param>
     /// <param name="moveLabel">The move label. Set its text with <see cref="MoveText"/>.</param>
     /// <param name="schemeLabel">The scheme label. Set its text with <see cref="SchemeText"/>.</param>
+    /// <param name="rebindLabel">The rebind label. Set its text with <see cref="RebindText"/>.</param>
     /// <param name="widgets">
     /// The widget section, its widgets, its status labels, and its change counts. The smoke run aims its widget events
     /// at the widgets and reads the counts.
@@ -278,7 +292,7 @@ internal static class HelloScreen
     /// <returns>The root element of the widget panel.</returns>
     public static Element BuildWidgetPanel(
         TextureHandle checker, Button modeButton, out Label gateLabel, out Label inputLabel, out Label stickLabel,
-        out Label moveLabel, out Label schemeLabel, out HelloWidgets widgets)
+        out Label moveLabel, out Label schemeLabel, out Label rebindLabel, out HelloWidgets widgets)
     {
         // The rule .hello-panel > Label gives the color and the size. The label keeps font 0, the default font.
         // A label is not pickable, so the pointer hits the panel behind it.
@@ -304,6 +318,10 @@ internal static class HelloScreen
         schemeLabel = new Label(new Label.CreateInfo()) { IsPickable = false };
         schemeLabel.SetText(LongestSchemeText);
 
+        // The rebind label starts with the longest rebind text, so its buffer holds each rebind text with no growth.
+        rebindLabel = new Label(new Label.CreateInfo()) { IsPickable = false };
+        rebindLabel.SetText(LongestRebindText);
+
         // The rule .hello-panel > Image gives the top margin. The tint is a value of the image, not of the style.
         Image checkerImage = new(new Image.CreateInfo
         {
@@ -324,7 +342,7 @@ internal static class HelloScreen
         modeRow.Children.Add(modeButton);
 
         // The child rules read the parent, so the labels and the image are direct children of the panel.
-        // The six labels come before the image, so the panel and the six labels share one draw command.
+        // The seven labels come before the image, so the panel and the seven labels share one draw command.
         // The panel is focusable. So are Click me, the toggle, the slider, the text field, and Mode (F1). The
         // disabled button and the scroll view take no focus.
         Element panel = new() { IsFocusable = true };
@@ -336,6 +354,7 @@ internal static class HelloScreen
         panel.Children.Add(stickLabel);
         panel.Children.Add(moveLabel);
         panel.Children.Add(schemeLabel);
+        panel.Children.Add(rebindLabel);
         panel.Children.Add(checkerImage);
         panel.Children.Add(widgets.Section);
         panel.Children.Add(modeRow);
@@ -802,4 +821,141 @@ internal static class HelloScreen
     /// starts with it, so its buffer never grows after the first frame.
     /// </summary>
     private static ReadOnlySpan<byte> LongestSchemeText => "Scheme: Keyboard / Mouse"u8;
+
+    /// <summary>
+    /// Writes the text of the rebind label: the listen state of <see cref="UiActionMap"/> and its last result.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The method writes <c>Rebind: &lt;text&gt;</c> into <paramref name="scratch"/> and returns the written part.
+    /// While <paramref name="listening"/> is <see langword="true"/>, it writes <c>press a key</c>. When
+    /// <paramref name="done"/> is <see langword="false"/>, it writes <c>idle</c>: the result slot has stored no
+    /// result yet. When the listen is closed and one result stands, it writes one text per status:
+    /// <c>code &lt;n&gt;</c> for <see cref="UiActionMap.RebindBound"/>, <c>cancelled</c> for
+    /// <see cref="UiActionMap.RebindCancelled"/>, and <c>rejected &lt;n&gt;</c> for
+    /// <see cref="UiActionMap.RebindRejected"/>. The <paramref name="done"/> flag carries the idle test, not the
+    /// code: a mouse-button capture stores a code from 0 to 7. For any other status the method writes
+    /// <c>listening off</c>.
+    /// </para>
+    /// <para>
+    /// <see cref="int.TryFormat(Span{byte}, out int, ReadOnlySpan{char}, IFormatProvider?)"/> writes each code with
+    /// the invariant culture, so the method makes no string and boxes no value. The longest text needs 20 bytes, so
+    /// a scratch buffer of 32 bytes holds each rebind text. Pass the result to
+    /// <see cref="Label.SetText(ReadOnlySpan{byte})"/>. Read <see cref="UiActionMap.IsRebinding"/> after
+    /// <see cref="UiContext.Update(float)"/>, and read the done flag, the status, and the code that the result slot
+    /// stores.
+    /// </para>
+    /// </remarks>
+    /// <param name="listening">The value of <see cref="UiActionMap.IsRebinding"/> of the active map.</param>
+    /// <param name="done">A value that tells if the result slot has stored one result.</param>
+    /// <param name="status">The status of the last result, or <c>0</c> before the first result.</param>
+    /// <param name="code">The code of the last result, or <c>0</c> before the first result.</param>
+    /// <param name="scratch">The destination buffer. Give it 32 bytes.</param>
+    /// <returns>The part of <paramref name="scratch"/> that holds the text.</returns>
+    /// <exception cref="InvalidOperationException">The text does not fit in <paramref name="scratch"/>.</exception>
+    public static ReadOnlySpan<byte> RebindText(bool listening, bool done, int status, int code, Span<byte> scratch)
+    {
+        // The write pattern of SchemeText: one copy or format for each part, and no allocation.
+        if (!RebindPrefix.TryCopyTo(scratch))
+        {
+            throw new InvalidOperationException("The rebind text does not fit in the scratch buffer.");
+        }
+
+        int length = RebindPrefix.Length;
+        if (listening)
+        {
+            if (!RebindListeningText.TryCopyTo(scratch[length..]))
+            {
+                throw new InvalidOperationException("The rebind text does not fit in the scratch buffer.");
+            }
+
+            return scratch[..(length + RebindListeningText.Length)];
+        }
+
+        if (!done)
+        {
+            if (!RebindIdleText.TryCopyTo(scratch[length..]))
+            {
+                throw new InvalidOperationException("The rebind text does not fit in the scratch buffer.");
+            }
+
+            return scratch[..(length + RebindIdleText.Length)];
+        }
+
+        if (status == UiActionMap.RebindCancelled)
+        {
+            if (!RebindCancelledText.TryCopyTo(scratch[length..]))
+            {
+                throw new InvalidOperationException("The rebind text does not fit in the scratch buffer.");
+            }
+
+            return scratch[..(length + RebindCancelledText.Length)];
+        }
+
+        if (status == UiActionMap.RebindRejected)
+        {
+            if (!RebindRejectedText.TryCopyTo(scratch[length..]))
+            {
+                throw new InvalidOperationException("The rebind text does not fit in the scratch buffer.");
+            }
+
+            length += RebindRejectedText.Length;
+            if (!code.TryFormat(scratch[length..], out int written, default, CultureInfo.InvariantCulture))
+            {
+                throw new InvalidOperationException("The rebind text does not fit in the scratch buffer.");
+            }
+
+            return scratch[..(length + written)];
+        }
+
+        if (status == UiActionMap.RebindBound)
+        {
+            if (!RebindCodeText.TryCopyTo(scratch[length..]))
+            {
+                throw new InvalidOperationException("The rebind text does not fit in the scratch buffer.");
+            }
+
+            length += RebindCodeText.Length;
+            if (!code.TryFormat(scratch[length..], out int formatted, default, CultureInfo.InvariantCulture))
+            {
+                throw new InvalidOperationException("The rebind text does not fit in the scratch buffer.");
+            }
+
+            return scratch[..(length + formatted)];
+        }
+
+        if (!RebindOffText.TryCopyTo(scratch[length..]))
+        {
+            throw new InvalidOperationException("The rebind text does not fit in the scratch buffer.");
+        }
+
+        return scratch[..(length + RebindOffText.Length)];
+    }
+
+    /// <summary>The prefix of the rebind text.</summary>
+    private static ReadOnlySpan<byte> RebindPrefix => "Rebind: "u8;
+
+    /// <summary>The rebind text while the listen is open.</summary>
+    private static ReadOnlySpan<byte> RebindListeningText => "press a key"u8;
+
+    /// <summary>The rebind text before the first result.</summary>
+    private static ReadOnlySpan<byte> RebindIdleText => "idle"u8;
+
+    /// <summary>The text before the code of the bound rebind text.</summary>
+    private static ReadOnlySpan<byte> RebindCodeText => "code "u8;
+
+    /// <summary>The rebind text of a cancelled listen.</summary>
+    private static ReadOnlySpan<byte> RebindCancelledText => "cancelled"u8;
+
+    /// <summary>The text before the code of the rejected rebind text.</summary>
+    private static ReadOnlySpan<byte> RebindRejectedText => "rejected "u8;
+
+    /// <summary>The rebind text of a status outside the three result consts.</summary>
+    private static ReadOnlySpan<byte> RebindOffText => "listening off"u8;
+
+    /// <summary>
+    /// The longest rebind text: the prefix, the rejected text, and the biggest key code 348. The text is 20 bytes.
+    /// The rebind label starts with it, so its buffer never grows after the first frame.
+    /// </summary>
+    private static ReadOnlySpan<byte> LongestRebindText => "Rebind: rejected 348"u8;
 }

@@ -72,17 +72,27 @@ public sealed partial class UiActionMap
     /// The map holds <see cref="UiScheme.KeyboardMouse"/> and <see cref="UiScheme.Gamepad"/> in the table from
     /// construction, so a call for one of the two standard names gives its seeded id with no add.
     /// </para>
+    /// <para>
+    /// The reserved-name rule: <c>-</c> is the stored token for scheme 0 in a binding text, so a scheme with that name
+    /// cannot round-trip through a binding text. A call for it throws with the empty-name check.
+    /// </para>
     /// </remarks>
     /// <param name="name">The UTF-8 name of the scheme, for example <see cref="UiScheme.Gamepad"/>.</param>
     /// <returns>The id of the name. Id 0 is the default scheme, and this method never gives it.</returns>
     /// <exception cref="ArgumentException">
-    /// <paramref name="name"/> is empty. The parameter name is <c>name</c>.
+    /// <paramref name="name"/> is empty, or it equals the reserved default-scheme token <c>-</c>. The parameter name is
+    /// <c>name</c>.
     /// </exception>
     public int AddScheme(ReadOnlySpan<byte> name)
     {
         if (name.IsEmpty)
         {
             throw new ArgumentException("The name of a scheme must not be empty.", nameof(name));
+        }
+
+        if (name.SequenceEqual(DefaultSchemeToken))
+        {
+            throw new ArgumentException("A scheme name must not be the reserved default-scheme token.", nameof(name));
         }
 
         int index = IndexOfScheme(name);

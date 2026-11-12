@@ -1,5 +1,6 @@
 using System;
 using System.Globalization;
+using System.Reflection;
 using System.Text;
 using Brutal.Numerics;
 using BrutalUi.Core;
@@ -10,8 +11,9 @@ namespace BrutalUi.Framework.Tests;
 
 /// <summary>
 /// The allocation gate of the action map (the seventeenth gate). After warm-up, the key path, the mouse path, the
-/// gamepad path, the focus actions, the typed frame read with the five queries, and the scheme read with the change
-/// slot, each through <c>Update</c> and <c>Draw</c>, must allocate 0 bytes in the Debug build.
+/// gamepad path, the focus actions, the typed frame read with the five queries, the scheme read with the change slot,
+/// and the live rebind with the conflict report and the restore, each through <c>Update</c> and <c>Draw</c>, must
+/// allocate 0 bytes in the Debug build.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -27,16 +29,24 @@ namespace BrutalUi.Framework.Tests;
 /// bindings, 5 gamepad button bindings (<c>A</c>, <c>B</c>, <c>DpadUp</c>, <c>DpadDown</c>, and <c>X</c>), one four-key
 /// vector, one two-key axis, one stick, two pad axes, one pointer delta, one scroll, one key in the KeyboardMouse
 /// scheme, one gamepad button in the Gamepad scheme, one stick in the Gamepad scheme, and one pad axis in the Gamepad
-/// scheme. The scheme table holds the two seeded standard names. The map is active on the context, and
-/// <see cref="UiActionMap.OnSchemeChanged"/> points at one static handler.
+/// scheme. The scheme table holds the two seeded standard names. The map is active on the
+/// context, and <see cref="UiActionMap.OnSchemeChanged"/>, <see cref="UiActionMap.OnRebindResult"/>, and
+/// <see cref="UiActionMap.OnRebindConflict"/> each point at one static handler. The first <see cref="UiActionMap.Activate"/> grows the binding
+/// array with build-time slack, so its capacity is 110 at the count of 32: one net add fits every action-and-scheme pair
+/// the table can name, and a commit onto a group that holds no binding cannot grow the array in a frame.
 /// </para>
 /// <para>
 /// The query step drives the typed frame read and the five queries. It writes two pad states of slot 0, pushes W,
 /// Space, a pointer move, and a scroll outside the panel, and adds each query result to a float and an int field of
 /// the scene. The scheme step drives the device track and the change slot. It writes an idle pad with the kick key down,
 /// then the kick key up with the right stick and the <c>Y</c> button live, and adds the active scheme, the length of its
-/// name, and the kick press to an int field of the scene. The scene holds the events, the pad states, and the sums as
-/// fields.
+/// name, and the kick press to an int field of the scene. The rebind step drives a live listen, the conflict scan, the
+/// commit, and a restore. It opens the listen on the kick action in the default scheme, whose group holds no binding,
+/// captures the F1 press in the next frame, and calls <see cref="UiActionMap.ResetBindings"/> in the frame after that.
+/// The commit frees no slot, so it appends and the count reaches 33; the slack holds it, so no frame grow runs. The F1
+/// command of
+/// <c>act-03</c> runs no time, because every invoke path is silent in a listening frame. The step adds the binding
+/// count to an int field of the scene. The scene holds the events, the pad states, and the sums as fields.
 /// </para>
 /// <para>
 /// The rule: a measured body creates no lambda, no string, no boxed value, no array, and no Assert. The scene builds
@@ -94,6 +104,18 @@ public sealed class ActionMapAllocationTests
 
     /// <summary>The number of scheme changes that the handler saw.</summary>
     private static int s_schemeCalls;
+
+    /// <summary>The handler that counts a rebind result. It sits in a field, so no frame creates a delegate.</summary>
+    private static readonly UiActionMap.RebindResultHandler s_rebindHandler = static (map, action, status, code) => s_rebindResults++;
+
+    /// <summary>The number of rebind results that the handler saw.</summary>
+    private static int s_rebindResults;
+
+    /// <summary>The handler that counts a rebind conflict. It sits in a field, so no frame creates a delegate.</summary>
+    private static readonly UiActionMap.RebindConflictHandler s_rebindConflictHandler = static (map, action, otherAction) => s_rebindConflicts++;
+
+    /// <summary>The number of rebind conflicts that the handler saw.</summary>
+    private static int s_rebindConflicts;
 
     /// <summary>The handler that adds one to the counter target. It sits in a field, so no call creates a delegate.</summary>
     private static readonly CommandHandler s_count = static target => ((Counter)target!).Calls++;
@@ -165,9 +187,15 @@ public sealed class ActionMapAllocationTests
 
         public required UiGamepadState PadRight;
 
+        public required UiGamepadState PadRest;
+
         public required KeyEvent Kick;
 
         public required KeyEvent KickRelease;
+
+        public required KeyEvent Rebind;
+
+        public required KeyEvent RebindRelease;
 
         public required int KeyboardScheme;
 
@@ -181,6 +209,9 @@ public sealed class ActionMapAllocationTests
 
         /// <summary>The sum of each active scheme id, name length, and kick press that the scheme step read.</summary>
         public int SchemeSum;
+
+        /// <summary>The sum of each binding count that the rebind step read after a commit and a restore.</summary>
+        public int RebindSum;
     }
 
     private static Scene BuildScene()
@@ -280,11 +311,23 @@ public sealed class ActionMapAllocationTests
         map.BindGamepadAxis(AimAction, UiGamepadAxis.LeftStickX, 1f, gpScheme);
         map.Activate(context);
         map.OnSchemeChanged = s_schemeHandler;
+        map.OnRebindResult = s_rebindHandler;
+        map.OnRebindConflict = s_rebindConflictHandler;
+
+        // After the first Activate, CaptureDefaults grew the live array with build-time slack, so the capacity now
+        // covers one net add for every action-and-scheme pair the table can name: 32 + 26 actions * 3 schemes = 110.
+        // The count still holds the 32 bindings of the build. The field read is a build-time check, and the measured
+        // bodies run none. It proves a commit onto a group that holds no binding cannot resize the array in a frame.
+        FieldInfo bindingsField = typeof(UiActionMap).GetField("_bindings", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        Array bindings = (Array)bindingsField.GetValue(map)!;
+        Assert.Equal(32, map.BindingCount);
+        Assert.Equal(110, bindings.Length);
 
         UiGamepadState padDown = new(UiGamepadButtons.X | UiGamepadButtons.A, stackalloc float[] { 1f, 0f, 0f, 0f, 0.25f, 0.5f });
         UiGamepadState padUp = new(UiGamepadButtons.None, []);
         UiGamepadState padIdle = new(UiGamepadButtons.None, stackalloc float[] { 0f, 0f, 0f, 0f, 0f, 0f });
         UiGamepadState padRight = new(UiGamepadButtons.Y, stackalloc float[] { 0.3f, 0f, 0.6f, -0.2f, 0f, 0f });
+        UiGamepadState padRest = new(UiGamepadButtons.None, stackalloc float[] { 0f, 0f, 0f, 0f, 0f, 0f });
 
         float2 outside = new(300f, 250f);
         float2 onButton = new(40f, 12f);
@@ -319,8 +362,11 @@ public sealed class ActionMapAllocationTests
             PadUp = padUp,
             PadIdle = padIdle,
             PadRight = padRight,
+            PadRest = padRest,
             Kick = Key(KickKey, UiModifiers.None, false),
             KickRelease = KeyUp(KickKey),
+            Rebind = Key(F1Key, UiModifiers.None, false),
+            RebindRelease = KeyUp(F1Key),
             KeyboardScheme = kbScheme,
             GamepadScheme = gpScheme,
         };
@@ -528,6 +574,38 @@ public sealed class ActionMapAllocationTests
         scene.ValueSum += turn.X + turn.Y + map.ReadAxis(AimAction);
     }
 
+    /// <summary>
+    /// The measured body of the eighth test. Frame 1: no focus, the idle pad, and <see cref="UiActionMap.BeginRebind"/>
+    /// on the kick action in the default scheme, whose group holds no binding, then <c>Update</c> (the settle frame).
+    /// Frame 2: the F1 down event, then <c>Update</c> (the capture, the conflict scan, and the commit; the F1 command
+    /// does not run, because every invoke path is silent in the listening frame). The commit frees no slot, so it
+    /// appends a binding and raises the count to 33; the build-time slack of <see cref="UiActionMap"/> holds room, so the
+    /// append cannot resize the array in the frame. Frame 3: the F1 release, the rest pad, then <c>Update</c> (a normal
+    /// read on the new binding) and <see cref="UiActionMap.ResetBindings"/>, which restores the 32 build bindings, then
+    /// the step adds the binding count and the closed listen to the rebind sum. <c>Draw</c> closes the step.
+    /// </summary>
+    private static void RebindStep(Scene scene)
+    {
+        UiContext context = scene.Context;
+        UiActionMap map = scene.Map;
+        context.ClearFocus();
+
+        context.SetGamepad(0, in scene.PadIdle);
+        map.BeginRebind(KickAction, UiScheme.Default);
+        context.Update(0.016f);
+
+        context.PushEvent(in scene.Rebind);
+        context.Update(0.016f);
+
+        context.PushEvent(in scene.RebindRelease);
+        context.SetGamepad(0, in scene.PadRest);
+        context.Update(0.016f);
+        map.ResetBindings();
+        scene.RebindSum += map.BindingCount + (map.IsRebinding ? 1 : 0);
+
+        context.Draw(scene.Renderer);
+    }
+
     private static void RunKeySteps(Scene scene, int steps)
     {
         for (int i = 0; i < steps; i++)
@@ -573,6 +651,14 @@ public sealed class ActionMapAllocationTests
         for (int i = 0; i < steps; i++)
         {
             SchemeStep(scene);
+        }
+    }
+
+    private static void RunRebindSteps(Scene scene, int steps)
+    {
+        for (int i = 0; i < steps; i++)
+        {
+            RebindStep(scene);
         }
     }
 
@@ -667,6 +753,23 @@ public sealed class ActionMapAllocationTests
         Assert.True(s_schemeCalls > 0);
     }
 
+    /// <summary>A live rebind, the conflict report, and a restore allocate nothing after warm-up.</summary>
+    [Fact]
+    public void ARebindAndAResetAllocateNothing()
+    {
+        Scene scene = BuildScene();
+        RunRebindSteps(scene, WarmUpRounds);
+
+        AllocationGate.ReleaseAllocationContext();
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        RunRebindSteps(scene, Iterations);
+        long after = GC.GetAllocatedBytesForCurrentThread();
+
+        Assert.Equal(0L, after - before);
+        Assert.True(s_rebindResults > 0);
+        Assert.True(s_rebindConflicts > 0);
+    }
+
     /// <summary>
     /// The measured bodies do real work. The test reads each count and the focus owner before each body runs, runs one
     /// step of each body, and asserts a fixed increment. An empty body cannot pass.
@@ -759,5 +862,26 @@ public sealed class ActionMapAllocationTests
         Assert.Equal(schemeCallsBefore + 1, s_schemeCalls);
         Assert.Equal(25, scene.SchemeSum - schemeSumBefore);
         Assert.Equal(1.10001, (double)scene.ValueSum - valueBeforeScheme, 5);
+
+        // The rebind step: frame 1 opens the listen on the kick action in the default scheme, whose group holds no
+        // binding, and settles. Frame 2 pushes the F1 down event: the capture, the conflict scan, and the commit run.
+        // The F1 command of act-03 runs no time, because the drain path and the frame read are both silent during the
+        // listen. The commit frees no slot, so it appends one binding and the count reaches 33; the build-time slack
+        // holds the append, so the frame path does not grow the array. F1 clashes with the act-03 binding in the default
+        // scheme, so the conflict slot runs one time. Frame 3 pushes the F1 release, reads the new binding, and calls
+        // ResetBindings, which writes back the 32 build bindings.
+        int rebindResultsBefore = s_rebindResults;
+        int rebindConflictsBefore = s_rebindConflicts;
+        int rebindSumBefore = scene.RebindSum;
+        int bindingsBefore = scene.Map.BindingCount;
+        int f1Rebind = counters[3].Calls;
+
+        RebindStep(scene);
+
+        Assert.Equal(rebindResultsBefore + 1, s_rebindResults);
+        Assert.Equal(rebindConflictsBefore + 1, s_rebindConflicts);
+        Assert.Equal(32, scene.RebindSum - rebindSumBefore);
+        Assert.Equal(f1Rebind, counters[3].Calls);
+        Assert.Equal(bindingsBefore, scene.Map.BindingCount);
     }
 }
