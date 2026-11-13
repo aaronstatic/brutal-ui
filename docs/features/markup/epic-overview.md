@@ -1,8 +1,8 @@
 # Markup - Epic Overview
 
 **Epic:** markup
-**Status:** Planned
-**Last Updated:** 2026-11-12 06:47
+**Status:** In Progress (1/6 features complete)
+**Last Updated:** 2026-11-12 10:40
 
 > **This file is the epic marker.** Its presence in `docs/features/markup/` tells every Beast Mode command that this folder is an **epic**, not a plain feature. Keep it present and keep the required sections below filled in. The master `docs/overview.md` tracks this epic as a **single row**. The per-feature detail lives **here**.
 
@@ -22,7 +22,7 @@ The constituent features of this epic, in build order. Each feature is a subfold
 
 | # | Feature | Status | Tasks | Description |
 |---|---------|--------|-------|-------------|
-| 1 | builder-api | Planned | — | The fluent build methods for each built-in element type, and a query that finds an element by name. |
+| 1 | builder-api | Complete | 33/33 (100%) | The fluent build methods for each built-in element type, and a query that finds an element by name. Ready for Review on `feat/markup/builder-api`. |
 | 2 | xml-element-loader | Planned | — | The XML template loader in `BrutalUi.Markup` on `XmlReader`: the type registry, a written table for the built-in types, the attribute hook, the errors with a line and a column, and the tree compare test. |
 | 3 | element-generator | Planned | — | A Roslyn source generator that writes the table rows for the built-in types and for a custom type that a game marks with an attribute. |
 | 4 | binding-attributes | Planned | — | The `command` and `bind-text` attributes in `BrutalUi.Framework`, with a typed selector that the panel code registers for each key. |
@@ -35,7 +35,7 @@ The constituent features of this epic, in build order. Each feature is a subfold
 
 ## Build Order / Dependencies
 
-1. **builder-api** - It comes first because it sets the property surface that the XML attributes follow. It also gives the query by name that the panel code and the tests use.
+1. **builder-api** - It comes first because it sets the property surface that the XML attributes follow. It also gives the query by name that the panel code and the tests use. It is complete and Ready for Review on `feat/markup/builder-api`. xml-element-loader inherits four things from it: the property surface (43 `ElementBuilder` methods, `Command`, `Find`, and `Find<T>`), the 12 value names as the table rows, `tests/BrutalUi.Core.Tests/Shared/TreeCompare.cs` with the link line for `BrutalUi.Markup.Tests`, and the rule that a row for `value` runs after the rows for the range. The builder-api review left one note in the loader requirements: `Capacity` and `ScrollSpeed` exist only in the create info (A6), so they have no builder method, no public setter, and no table row.
 2. **xml-element-loader** - It depends on the property surface of #1. It ships a written table for the built-in types, so the generator does not block the loader.
 3. **element-generator** - It depends on the table shape of #2 and replaces the written table. It is the hardest feature, because it adds a new project and a package layout for an analyzer.
 4. **binding-attributes** - It depends on the attribute hook of #2. It adds the reference from Framework to Markup.
@@ -82,8 +82,8 @@ The constituent features of this epic, in build order. Each feature is a subfold
 
 ## Master Overview Rollup
 
-- **Rollup status:** Planned (0/6 features)
-- **One-line summary for master:** A C# builder API and an XML template loader that build the same element tree, a source generator for the element table, the `command` and `bind-text` attributes, and the panel, layout, and mode records from XML. Closes Phase 3.
+- **Rollup status:** In Progress (1/6 features complete, 33/33 tasks done in feature 1)
+- **One-line summary for master:** builder-api (33/33) is Ready for Review on `feat/markup/builder-api`: 40 new fluent methods on `ElementBuilder` (43 total) for the eight built-in types, `Command` in Framework, and `Find` plus `Find<T>` on `Element` at 0 bytes. 44 new tests, solution 3032 with 0 failed and 3 skipped, 9 plants, and a 6-finding review with all 6 fixed. The loader, the generator, the attributes, the record loader, and the sample follow.
 
 ---
 

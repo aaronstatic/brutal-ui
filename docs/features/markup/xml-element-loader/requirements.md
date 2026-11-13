@@ -27,6 +27,7 @@ This feature adds the XML template loader to `BrutalUi.Markup`. The loader reads
 
 ## Out of Scope
 
+- `Capacity` of `TextField` and `ScrollSpeed` of `ScrollView` exist only in the create info (A6); they have no builder method and no public setter, so they have no table row, and a template attribute for either needs a decision first.
 - The source generator. element-generator replaces the written table.
 - The `command` and `bind-text` attributes. binding-attributes registers them on the hook.
 - The panel, layout, and mode records. definition-loader reads them.

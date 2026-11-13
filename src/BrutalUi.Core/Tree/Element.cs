@@ -23,8 +23,12 @@ namespace BrutalUi.Core;
 /// the input pass and before the style pass. It calls the handler of each binding with a new source version. A subtree
 /// flag lets the pass skip each branch with no binding, so a tree with no binding costs one flag check for each root.
 /// </para>
+/// <para>
+/// <see cref="Find(ReadOnlySpan{byte})"/> and <see cref="Find{T}(ReadOnlySpan{byte})"/> in <c>Element.Find.cs</c> give
+/// the first element with a name.
+/// </para>
 /// </remarks>
-public class Element
+public partial class Element
 {
     private ElementStorage _children;
     private ClassSet _classes;

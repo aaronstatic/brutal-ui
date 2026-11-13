@@ -4,7 +4,7 @@ using BrutalUi.Core;
 namespace BrutalUi.Framework;
 
 /// <summary>
-/// The bind method that connects a <see cref="Button"/> to a command of a <see cref="CommandRegistry"/>.
+/// The bind methods.
 /// </summary>
 /// <remarks>
 /// The method is an extension method because <see cref="Button"/> lives in <c>BrutalUi.Core</c>, and Core cannot name
@@ -53,6 +53,22 @@ public static class CommandBindings
         button.Clicked += target.Run;
         return button;
     }
+
+    /// <summary>
+    /// Binds a button to a command name. <c>Command</c> is the builder name of <see cref="BindCommand"/>.
+    /// </summary>
+    /// <remarks>
+    /// The method calls <see cref="BindCommand"/>. It has the same checks, the same <c>+=</c> rule, and the same one
+    /// allocation at build time. Use it in a fluent chain.
+    /// </remarks>
+    /// <param name="button">The button.</param>
+    /// <param name="registry">The registry that holds the command.</param>
+    /// <param name="name">The UTF-8 name of the command.</param>
+    /// <returns>The button.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="button"/> or <paramref name="registry"/> is
+    /// <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException"><paramref name="name"/> is empty.</exception>
+    public static Button Command(this Button button, CommandRegistry registry, ReadOnlySpan<byte> name) => BindCommand(button, registry, name);
 
     /// <summary>The target of the click delegate: the registry and a copy of the name.</summary>
     private sealed class ButtonCommand

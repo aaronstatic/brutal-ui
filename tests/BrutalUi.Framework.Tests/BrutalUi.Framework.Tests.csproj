@@ -17,6 +17,7 @@
     <Compile Include="../BrutalUi.Core.Tests/Shared/ThousandElementTree.cs" LinkBase="Shared" />
     <Compile Include="../BrutalUi.Core.Tests/Shared/ThousandWidgetTree.cs" LinkBase="Shared" />
     <Compile Include="../BrutalUi.Core.Tests/Shared/TextMeasure.cs" LinkBase="Shared" />
+    <Compile Include="../BrutalUi.Core.Tests/Shared/TreeCompare.cs" LinkBase="Shared" />
   </ItemGroup>
 
 </Project>
