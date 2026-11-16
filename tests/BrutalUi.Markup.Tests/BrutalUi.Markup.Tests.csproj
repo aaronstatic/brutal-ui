@@ -14,6 +14,8 @@
 
   <ItemGroup>
     <Compile Include="../BrutalUi.Core.Tests/Shared/AllocationGate.cs" LinkBase="Shared" />
+    <Compile Include="../BrutalUi.Core.Tests/Shared/TreeCompare.cs" LinkBase="Shared" />
+    <Compile Include="../BrutalUi.Core.Tests/Shared/RecordingRenderer.cs" LinkBase="Shared" />
     <None Include="../../samples/HelloPanel/HelloScreen.css" Link="HelloScreen.css" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 

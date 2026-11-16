@@ -1,4 +1,5 @@
 using System;
+using Brutal.Localization;
 using Brutal.Numerics;
 using Xunit;
 
@@ -138,6 +139,39 @@ public sealed class TreeCompareTests
         two.Clicked += static _ => { };
         two.Clicked += static _ => { };
         AssertOneDifference("Clicked count", WithChild(one), WithChild(two));
+    }
+
+    /// <summary>
+    /// The helper compares <c>LocalizedText</c> by value. Two labels with two <see cref="LString"/> objects of one
+    /// id and one template compare equal. A key difference, a template difference, and one
+    /// <see langword="null"/> each give a message with the path.
+    /// </summary>
+    [Fact]
+    public void ALocalizedTextDifferenceGivesThePath()
+    {
+        LString a = new("tree-compare.localized.a", "t");
+        LString same = new("tree-compare.localized.a", "t");
+        Assert.Null(TreeCompare.FirstDifference(
+            WithChild(new Label(new Label.CreateInfo { LocalizedText = a })),
+            WithChild(new Label(new Label.CreateInfo { LocalizedText = same }))));
+
+        LString b = new("tree-compare.localized.b", "t");
+        AssertOneDifference(
+            "LocalizedText key",
+            WithChild(new Label(new Label.CreateInfo { LocalizedText = a })),
+            WithChild(new Label(new Label.CreateInfo { LocalizedText = b })));
+
+        LString otherTemplate = new("tree-compare.localized.a", "u");
+        otherTemplate.Localize("t");
+        AssertOneDifference(
+            "LocalizedText template",
+            WithChild(new Label(new Label.CreateInfo { LocalizedText = a })),
+            WithChild(new Label(new Label.CreateInfo { LocalizedText = otherTemplate })));
+
+        AssertOneDifference(
+            "LocalizedText",
+            WithChild(new Label(new Label.CreateInfo { LocalizedText = a })),
+            WithChild(new Label(new Label.CreateInfo { Text = "t" })));
     }
 
     /// <summary>Asserts that the first difference of two trees names one member at <c>root/0</c>.</summary>

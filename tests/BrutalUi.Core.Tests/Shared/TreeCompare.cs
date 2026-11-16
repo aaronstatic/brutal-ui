@@ -1,5 +1,6 @@
 using System;
 using System.Text;
+using Brutal.Localization;
 using BrutalUi.Core;
 
 namespace BrutalUi.Core.Tests;
@@ -33,7 +34,9 @@ internal static class TreeCompare
     /// Per element, the helper compares the runtime type, <c>TypeId</c>, <c>Name</c> (ordinal), <c>IsPickable</c>,
     /// <c>IsFocusable</c>, <c>States</c>, the class count and each <c>ClassId</c> in order, the child count, and the
     /// invocation count of the 14 event slots (0 for a <see langword="null"/> slot). Per widget, it compares the
-    /// members that the plan names. It compares delegate invocation counts, not delegate identity.
+    /// members that the plan names. It compares delegate invocation counts, not delegate identity. It compares
+    /// <c>LocalizedText</c> by its id and its template, because a loaded tree and a builder tree make two
+    /// <see cref="LString"/> objects.
     /// </para>
     /// <para>
     /// The helper does not compare <c>Inline</c>, <c>Layout</c>, <c>Style</c>, <c>Dirty</c>, or <c>BindingCount</c>.
@@ -262,14 +265,31 @@ internal static class TreeCompare
         return Diff(path, "Text", Show(Decode(expected)), Show(Decode(actual)));
     }
 
-    private static string? LocalizedDiff(string path, object? expected, object? actual)
+    private static string? LocalizedDiff(string path, LString? expected, LString? actual)
     {
         if (ReferenceEquals(expected, actual))
         {
             return null;
         }
 
-        return Diff(path, "LocalizedText reference", Show(expected is null ? "none" : "set"), Show(actual is null ? "none" : "set"));
+        if (expected is not null && actual is not null)
+        {
+            string expectedId = expected.Id.ToString();
+            string actualId = actual.Id.ToString();
+            if (!string.Equals(expectedId, actualId, StringComparison.Ordinal))
+            {
+                return Diff(path, "LocalizedText key", Show(expectedId), Show(actualId));
+            }
+
+            if (!string.Equals(expected.Template, actual.Template, StringComparison.Ordinal))
+            {
+                return Diff(path, "LocalizedText template", Show(expected.Template), Show(actual.Template));
+            }
+
+            return null;
+        }
+
+        return Diff(path, "LocalizedText", Show(expected is null ? "none" : "set"), Show(actual is null ? "none" : "set"));
     }
 
     private static string? FloatDiff(string path, string member, float expected, float actual)

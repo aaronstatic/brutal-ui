@@ -1185,13 +1185,256 @@ The service registry rules:
 ### XML element format
 
 ```xml
-<ui:Panel class="hud" xmlns:ui="brutal-ui">
+<ui:Element class="hud" xmlns:ui="brutal-ui">
   <ui:Label name="score" class="hud-value" text="0" />
   <ui:Button name="pause" class="hud-button" text="Pause" command="game.pause" />
-</ui:Panel>
+</ui:Element>
 ```
 
-The loader maps element names to registered types and attributes to properties through a generated table, with no reflection in the loaded path. A game registers custom element types by name.
+The loader maps each element name to a registered type, and each attribute to a row of a written table, with no reflection. The element-generator feature replaces the written table later. A game registers custom element types by name. The binding-attributes feature registers `command` on the attribute hook, so the template above needs that handler.
+
+**The loader API.**
+
+```csharp
+namespace BrutalUi.Markup;
+
+public sealed class TemplateLoader
+{
+    public const string Namespace = "brutal-ui";                     // the XML namespace of each element
+
+    public struct CreateInfo
+    {
+        public IReadOnlyDictionary<string, TextureHandle>? Textures;  // null: no texture name is valid. Copied at creation
+    }
+
+    public TemplateLoader();                                         // registers the built-in element types
+    public TemplateLoader(in CreateInfo info);                       // copies the texture map, registers the built-in types
+    public void Register(in ElementTypeInfo info);                   // checks the entry, copies the rows. A fault throws ArgumentException
+    public void AddAttributeHandler(AttributeHandler handler);       // the hook. Handlers run in the order of the add
+    public TemplateLoadResult Load(ReadOnlySpan<byte> utf8, string sourceName = "template");
+    public TemplateLoadResult Load(string text, string sourceName = "template");   // encodes to UTF-8, then loads
+}
+
+public sealed class TemplateLoadResult
+{
+    public Element? Root { get; }                                    // null when Errors holds an error
+    public IReadOnlyList<TemplateError> Errors { get; }              // sorted by line, then column. Empty on success
+    public bool Succeeded { get; }                                   // Root is not null
+    public Element GetRootOrThrow();                                 // InvalidOperationException with one line for each error
+}
+
+public readonly struct TemplateError
+{
+    public TemplateErrorKind Kind { get; }
+    public int Line { get; }                                         // from 1
+    public int Column { get; }                                       // from 1, IXmlLineInfo.LinePosition
+    public string Message { get; }
+    public string SourceName { get; }
+    public override string ToString();                               // "hud.xml(3,59): UnknownAttribute: <message>"
+}
+
+public enum TemplateErrorKind : byte
+{
+    NotWellFormed, UnknownElement, UnknownAttribute, InvalidValue,
+    MissingAttribute, UnknownTexture, UnexpectedText, UnexpectedChild,
+}
+
+public struct ElementTypeInfo
+{
+    public required string Name;                                     // the XML local name, for example "Slider"
+    public required ElementFactory Create;
+    public AttributeRow[]? Rows;                                     // the own rows of the type. null: none
+    public bool IsLeaf;                                              // true: a child element is an UnexpectedChild error
+}
+
+public readonly struct AttributeRow
+{
+    public AttributeRow(string name, AttributeRowKind kind);         // Create or CreateRequired. Set gives ArgumentException
+    public AttributeRow(string name, AttributeSetter setter);        // Set
+    public string Name { get; }
+    public AttributeRowKind Kind { get; }
+    public AttributeSetter? Setter { get; }                          // null for a create row
+}
+
+public enum AttributeRowKind : byte { Set, Create, CreateRequired }
+
+public delegate Element? ElementFactory(ElementCreateArgs args);    // null only after an AddError
+public delegate void AttributeSetter(Element element, AttributeContext context);
+public delegate bool AttributeHandler(Element element, string name, string value, AttributeContext context);  // true: handled
+
+public readonly ref struct AttributeContext
+{
+    public string Name { get; }                                      // the attribute name
+    public string Value { get; }                                     // the attribute value as XmlReader gives it
+    public int Line { get; }
+    public int Column { get; }
+    public string SourceName { get; }
+    public void AddError(TemplateErrorKind kind, string message);    // at the position of the attribute
+    public bool TryReadBool(out bool value);                         // each TryRead adds InvalidValue on a fault
+    public bool TryReadWholeNumber(out int value);                   // 1 or more
+    public bool TryReadNumber(out float value);                      // the invariant culture, no exponent
+    public bool TryReadNumbers(out float2 value);                    // exactly 2 numbers
+    public bool TryReadNumbers(out float4 value);                    // exactly 4 numbers
+    public bool TryReadColor(out Rgba8 value);                       // #rgb, #rrggbb, or #rrggbbaa
+    public bool TryReadTexture(out TextureHandle value);             // UnknownTexture for a name the map does not hold
+}
+
+public readonly ref struct ElementCreateArgs
+{
+    public string ElementName { get; }
+    public int Line { get; }                                         // the position of the element name
+    public int Column { get; }
+    public string SourceName { get; }
+    public bool TryGet(string name, out AttributeContext context);   // a create row of the type only. Another name throws ArgumentException
+    public void AddError(TemplateErrorKind kind, string message);    // at the position of the element
+}
+```
+
+**The written table.** A type holds a row list. The four base rows apply to every type and run first, in this order.
+Then the own rows of the type run in their order. Each row maps one attribute to one builder method or one create-info
+field.
+
+| Row | Kind | Effect | Value form |
+|---|---|---|---|
+| `name` | Set | `Element.Name = value` | text, as is |
+| `class` | Set | `ClassName.Intern` for each name, then `Classes.Add` in order | class list |
+| `pickable` | Set | `IsPickable` | bool |
+| `focusable` | Set | `IsFocusable` | bool |
+
+| Type | Leaf | Factory | Own rows (kind) |
+|---|---|---|---|
+| `Element` | no | `new Element()` | none |
+| `Label` | yes | `new Label(new Label.CreateInfo { Text = text })`, or `LocalizedText` with `text-key` (A4) | `text` (Create), `text-key` (Create) |
+| `Button` | no | `new Button(new Button.CreateInfo { Text = text })`, or `LocalizedText` with `text-key` | `text` (Create), `text-key` (Create) |
+| `Toggle` | no | `new Toggle(default)` | `checked` (Set: `Checked`, bool) |
+| `Slider` | no | `new Slider(new Slider.CreateInfo { Minimum, Maximum, Step })` after the range checks | `min` (Create), `max` (CreateRequired), `step` (Create), `value` (Set: `Value`, number) |
+| `TextField` | no | `new TextField(new TextField.CreateInfo { Capacity, Text })`, then `SetText(LString)` with `text-key` | `capacity` (CreateRequired), `text` (Create), `text-key` (Create) |
+| `ScrollView` | no | `new ScrollView(new ScrollView.CreateInfo { ScrollSpeed })` after the speed check | `scroll-speed` (Create), `scroll-offset` (Set: `ScrollOffset`, 2 numbers) |
+| `Image` | yes | `new Image(new Image.CreateInfo { Texture = default })` | `texture` (Set: `Texture`, texture name), `uv` (Set: `Uv`, 4 numbers), `tint` (Set: `Tint`, color), `scale-mode` (Set: `ScaleMode`, keyword) |
+
+- A missing `text` gives an empty text, as `default(CreateInfo)` does. A missing `min` or `step` gives 0. A missing
+  `scroll-speed` gives 0, so the view uses `ScrollView.DefaultScrollSpeed` (40). A missing `texture` gives the none
+  handle.
+- `max` is required, because `Slider.CreateInfo.Maximum` is required and a range of 0 to 0 has no use. `texture` is
+  optional, because the none handle is valid and panel code can set the texture later.
+- `scroll-offset` writes `ScrollView.ScrollOffset`, as the builder method does. The set clamps with the layout of the
+  last update, so on a new tree the offset stays (0, 0). The builder tree reads the same, so the trees compare equal.
+- The loader runs the factory before the set rows, so the order of the attributes in the source does not change the
+  tree. A `Slider` reads `min`, `max`, and `step` in the factory, and writes `value` after.
+
+**The value forms.**
+
+- **Whitespace.** A typed value (bool, whole number, number, list, color, keyword, texture name) ignores XML
+  whitespace (space, tab, CR, LF) at both ends. `name`, `text`, and `text-key` keep the value as `XmlReader` gives it. XML
+  normalizes a tab or a line break inside an attribute value to a space.
+- **A bool** is `true` or `false`. The compare is case-sensitive. `True`, `1`, and `yes` give `InvalidValue`.
+- **A whole number** (`capacity`) is ASCII digits only, from 1 to `int.MaxValue`. A sign, a point, and 0 give
+  `InvalidValue`. The `TextField` factory rejects a `capacity` above 65536 with `InvalidValue` at `capacity`, before
+  the constructor allocates (review CR-1).
+- **A number** reads with `CultureInfo.InvariantCulture` and an optional sign, digits, and an optional `.digits`. The
+  form has no exponent and no group separator. A number that is not finite after the read gives `InvalidValue`.
+- **A list** (`uv`, `scroll-offset`) holds numbers with XML whitespace between them. `uv` takes 4 numbers
+  (u0, v0, u1, v1). `scroll-offset` takes 2 numbers (x, y). Another count gives `InvalidValue`.
+- **A class list** holds names with XML whitespace between them. An empty value adds no class. A repeated name adds
+  nothing, as `ClassList.Add` does.
+- **A color** is `#` and 3, 6, or 8 hex digits in each case. `#rgb` doubles each digit and sets the alpha to 255.
+  `#rrggbb` sets the alpha to 255. `#rrggbbaa` holds the alpha. These are the rules of the stylesheet color form.
+- **A keyword** (`scale-mode`) is `stretch-to-fill`, `scale-to-fit`, or `scale-and-crop`, through an explicit table
+  with no `Enum.Parse`.
+- **A texture name** reads `CreateInfo.Textures` with an ordinal compare. The loader copies the map at the
+  construction, so a later change of the map changes no load. A `null` map holds no name, so each `texture` value
+  gives `UnknownTexture`.
+- **The range checks.** `min`, `max`, and `step` are each a finite number. `max` below `min` gives `InvalidValue` at
+  `max`. A width `max - min` that is not finite gives `InvalidValue` at `max`. A negative `step` gives `InvalidValue`
+  at `step`. `scroll-speed` below 0 gives `InvalidValue`. The factory checks each case before it calls the
+  constructor, so no `ArgumentOutOfRangeException` leaves `Load`.
+- A required create attribute with no attribute gives `MissingAttribute` at the element name, before the factory
+  runs.
+- **`text-key`** (A4). `text-key="k"` with `text="t"` gives `new LString("k", "t")`. `text-key` with no `text` gives
+  `new LString("k", "")`. An empty `text-key` gives `InvalidValue` at `text-key`, because `LString` rejects an empty
+  id. The factory reads the two attributes and sets one of `Text` or `LocalizedText`, so the create info never holds both.
+
+**The error report.**
+
+- **The continue rule.** The loader records each error and keeps reading, so one text gives one error for each fault.
+  XML that is not well formed stops the read with one `NotWellFormed` error. One error or more gives a null root. The
+  loader sorts the errors by line, then by column, and keeps the source order for two errors at one position.
+- **The position rule.** An element error sits at the first character of the qualified name, after the `<`. An
+  attribute error sits at the first character of the attribute name. A value has no position of its own, so a value
+  error points at the name of its attribute.
+- **The column rule.** The column counts UTF-16 units of the decoded text, as `IXmlLineInfo` gives it. A tab counts 1.
+  A character outside the Basic Multilingual Plane counts 2. This differs from the stylesheet parser, which counts
+  code points.
+- **The namespace rule.** Each element must be in the `brutal-ui` namespace. An unprefixed attribute is an attribute of
+  its element and loads normally. A prefixed attribute is an error, also with the `ui:` prefix, so each template uses
+  one form. The default-namespace form (`xmlns="brutal-ui"` on the root) loads, because the check reads the namespace
+  uniform resource identifier, not the prefix.
+
+| Kind | Cause |
+|---|---|
+| `NotWellFormed` | XML that `XmlReader` rejects: no end tag, a wrong end tag, a control character, a DTD, or an empty text. The read stops. |
+| `UnknownElement` | An element name that no registered type holds, or an element outside the `brutal-ui` namespace. |
+| `UnknownAttribute` | An attribute with no table row and no hook handler that takes it, or a prefixed attribute. |
+| `InvalidValue` | An attribute value with a wrong form, a wrong count, or a value out of range. |
+| `MissingAttribute` | An element with no attribute for one of its required create rows. |
+| `UnknownTexture` | A `texture` name that the map of the loader does not hold. |
+| `UnexpectedText` | Text or a CDATA section between elements. Whitespace there gives no error. |
+| `UnexpectedChild` | A child element inside a type that the table marks as a leaf, for example `Label` or `Image`. |
+
+One error reads, for example:
+`hud.xml(2,14): UnknownAttribute: 'nope' is not an attribute of Label. The attributes of Label are name, class, pickable, focusable, text, text-key.`
+
+**Custom element types.** A game registers its own element type with the same public call that the written table
+uses, after the constructor. The loader copies the `Rows` array, places the four base rows before the own rows, and
+runs them in that order, so a custom type holds `name`, `class`, `pickable`, and `focusable` with no extra work. A
+later change of the array changes nothing.
+
+```csharp
+TemplateLoader loader = new();
+loader.Register(new ElementTypeInfo
+{
+    Name = "Gauge",
+    Create = CreateGauge,
+    Rows =
+    [
+        new AttributeRow("segments", AttributeRowKind.CreateRequired),
+        new AttributeRow("level", static (Element element, AttributeContext context) => SetLevel(element, context)),
+    ],
+});
+
+static Element? CreateGauge(ElementCreateArgs args)
+{
+    return args.TryGet("segments", out AttributeContext context) && context.TryReadWholeNumber(out int segments)
+        ? new Gauge(segments)
+        : null;
+}
+
+static void SetLevel(Element element, AttributeContext context)
+{
+    if (context.TryReadNumber(out float level))
+    {
+        ((Gauge)element).Level = level;
+    }
+}
+```
+
+The template `<ui:Gauge name="g" class="hud" segments="4" level="0.5" />` gives a `Gauge` with the name, the class,
+and both values. The factory reads its create attributes through `ElementCreateArgs.TryGet` before it calls the
+constructor. `TryGet` reads a create row of the type only. Another name throws `ArgumentException`, so a factory
+cannot read a set attribute. A factory that returns `null` adds one error first, through the context or through
+`AddError`; a `null` result with no new error is a bug, and the loader throws `InvalidOperationException`.
+
+`Register` checks the entry before it registers anything. Each fault throws `ArgumentException` with a message that
+names the fault, and registers nothing. The checks: `Name` is a valid XML local name and the name of no registered
+type; `Create` is not `null`; each own row has a valid name; a set row has a setter; no two rows share one name; and
+no own row takes the name of a base row.
+
+**The attribute hook.** An attribute that no row holds goes to the handlers of `AddAttributeHandler`. The loader
+calls the hook after the set rows of the element, so a handler reads the values that the rows wrote. The loader
+calls the attributes in the order of the source, and the handlers in the order of the add. The first handler that
+returns `true` takes the attribute, and the later handlers do not see it. No handler takes it gives
+`UnknownAttribute` with the valid names. A handler reports a fault through `AttributeContext.AddError`; the error
+sits at the position of the attribute. The binding-attributes feature registers `command` and `bind-text` here.
 
 ### Stylesheet format
 
@@ -1465,6 +1708,7 @@ The Vulkan backend binds one render pass at construction. Phase 5 tests a second
 - **Gamepad axes tests.** `GamepadDeadzoneTests` (9 tests) in `BrutalUi.Core.Tests/Input/` pins the two deadzone formulas, the edge rules, the reads `LeftStick`, `RightStick`, and `Axis(UiGamepadAxis)`, and the enum order. `GlfwUiInputGamepadPollTests` (8 tests) in `BrutalUi.Glfw.Tests` pins the axis buffer and the GLFW axis constants, the order of the conversion, the conversion with the two deadzones, the range of the two settings, and the disposed poll. `ADisposedPollAllocatesNothing`, `TheConversionAllocatesNothing`, and the measure of `TheNullPlatformPollWritesSixteenAbsentSlots` are 0-byte tests, not a numbered gate. The null-platform test starts GLFW on the null platform, so it covers an absent slot on a host with no display. It runs on the author host, and it skips with a message when the platform is not supported or the init fails. Nine plants guard the code. Plants 1 to 3 guard the Core rules. Plant 1 returned the raw stick after the deadzone, and failed `TheStickRescalesTheLengthAndKeepsTheDirection` and `AStickAtFullTiltReadsLengthOne`. Plant 2 skipped the trigger map, and failed `ATriggerMapsTheGlfwRangeToZeroToOne` and `ATriggerAppliesTheLinearDeadzoneAtTheLowEnd`. Plant 3 read axes 0 and 1 in `RightStick`, and failed `TheStateReadsTheSticksAndTheNamedAxes`. Plants 4 to 8 guard the poll and the conversion. Plant 4 planted an allocation in `PollGamepads`, and failed `ADisposedPollAllocatesNothing` and the null-platform test with 2400 bytes each. Plant 5 added an early return for the disposed case, and failed `ADisposedAdapterWritesDisconnectedSlots`. Plant 6 swapped the two triggers in the conversion, and failed `TheConversionMapsEachGlfwAxis`, `TheConversionAppliesTheDeadzoneSettings`, and `TheConversionAllocatesNothing`. Plant 7 planted an allocation in `ApplyStick`, and failed `TheConversionAllocatesNothing` with 4800 bytes. Plant 8 removed the range check of the `StickDeadzone` setter, and failed `TheDeadzoneSettingsCheckTheRange`. Plant 9 plants an allocation in `HelloScreen.StickText` and guards the sample check of 0 bytes. Its build gives `0 Error(s)` here. The smoke run on a host with a window must report 2808 bytes and exit code 1. The sandbox X11 block leaves that measure to a person. Each code plant gave exit code 2, and `cmp` found each restored file equal to its copy.
 - **Scheme tests.** `ActiveSchemeTests` (9 tests), `SchemeGroupTests` (8 tests), `SchemeChangedSlotTests` (7 tests), and `SchemeLockTests` (7 tests) in `tests/BrutalUi.Framework.Tests/Actions/` guard section 9, item 14, and add 32 tests. `ActiveSchemeTests` checks the report of the seed at construction and after `Activate`, the six keyboard kinds, the three gamepad kinds, the exact-zero rule of a stored gamepad value, the last binding that gave a value, the dead value with the gate, the held re-assert, and the carry across frames, and a scale that multiplies the value and not the device test. `SchemeGroupTests` checks the intern rule, the two standard names in the table, `SchemeName` with its id check, the empty name, one input in two schemes, the clash of the default scheme in both directions, the per-scheme set rule of a composite, and the eleven current signatures in the default scheme. `SchemeChangedSlotTests` checks the place after the read, one call per change, no call without a change, one handler written with `=` with both parameters, a change inside the handler that lands on the next frame, and the report after `Activate` on a locked map, and an exception of the handler that leaves `Update` and keeps the report of the frame. `SchemeLockTests` checks the id check with the kept lock, the frame read, the Button flags, the press path, the gamepad invoke with `PushGamepad`, a default binding under every lock, and the report of the locked scheme, and one release for a held binding of another scheme when a lock stands. The seventeenth gate grew with them: `ActionMapAllocationTests` (7 tests) adds `SchemeStep`, which drives one keyboard frame and one gamepad frame over `Kick`, `Turn`, and `Aim`, reads `ActiveScheme`, `SchemeName`, and `WasPressed`, and calls the change slot inside the measure. `TheSchemeReadAndTheChangeSlotAllocateNothing` asserts 0 bytes over 100 rounds, and `TheMeasuredBodyDoesRealWork` fixes the increments of that step: the handler runs one time, `SchemeSum` grows by 25, and `ValueSum` grows by 1.1. Fourteen plants guard the feature. Plant 1 wrote the keyboard device in the stick case, and plant 2 reset the device local to the seed; each failed its report tests. Plant 3 wrote a device in the composite case whatever the sum; the effective form of that plant, a write of the gamepad device, failed the dead-value rule. Plants 5 to 7 guard the scheme tag: `Find` without the scheme test, a clash rule of equality only, and a map-wide composite compare. Plants 8 and 9 guard the slot: a call in every frame, and a call before the binding loop. Plants 10 to 12 guard the lock: no filter in the binding loop, no lock on the press path, and no filter on the gamepad invoke and `PushGamepad`. Plant 13 put an allocation after `ReportSchemeChange()` and failed `TheSchemeReadAndTheChangeSlotAllocateNothing` with 4800 bytes, and 10 tests failed in that run, because each gate that calls `Update` reads the frame path. Plant 14 read the scaled value in the device test of a scroll, and failed `APassivePointerReadsSetTheKeyboardScheme` with one test: a scroll with a scale of 0 gave no device. Each plant gave a non-zero exit with `0 Error(s)`, and `cmp` found each restored file equal to its copy. HelloPanel shows the active scheme in a sixth label, and plant 4 puts an allocation in `HelloScreen.SchemeText`; a host with a window measures its bytes.
 - **Remap tests.** `RebindListenTests` (10 tests), `RebindCaptureTests` (8 tests), `RebindConflictTests` (4 tests), `RebindResetTests` (4 tests), `BindingTextWriterTests` (4 tests), and `BindingsRoundTripTests` (4 tests) in `tests/BrutalUi.Framework.Tests/Actions/` guard section 9, items 15 and 16, and add 34 tests. `RebindListenTests` checks the scheme check with the kept state, the give-false rule for an unknown action name, one fresh key commit after the settle frame with the consumed press, the silence on all five paths with the values that hold and no release edge, the Escape cancel ahead of the map's own `Cancel` bind, `RebindCancelKey` with its range check, the raw-view capture that the routing gate empties, a second `BeginRebind`, and the close on `Activate` and `Deactivate`, and the device track in a suppressed frame. `RebindCaptureTests` checks each of the seven shapes with its fields, the modifier mask, the lowest set bit of `pad.Pressed`, the exact-zero rule, the stick before the axis in the order, the pointer-delta threshold on both sides, the Y-only scroll, one candidate per frame in the `InputKind` order, and the mismatch reject that stays open and reports. `RebindConflictTests` checks the commit that keeps both with both names, the clash against a default binding in either order, two tags that give no report, and one handler written with `=` with the throw case. `RebindResetTests` checks the restore after a rebind, the snapshot of the first `Activate` with the bind-after-activate loss and no snapshot before an activation, the scope of a restore, and a restore that ends a listen with no commit. `BindingTextWriterTests` checks the version line with one line per binding, the needed count with nothing written, the omit-the-default rule with the `-` token, and the nine `device` numbers. `BindingsRoundTripTests` checks all nine shapes written from one map and read into a second, then driven through `UiContext.Update(float)` with hand-made events and `SetGamepad`, so the round trip is proven by behavior and not by a per-binding read (A10). It checks the merge per action and scheme pair with the rest kept, the fourteen bad-line cases with the two composite repeats, and the unknown-version rule. The seventeenth gate grew with them: `ActionMapAllocationTests` (8 tests) adds `RebindStep` and `ARebindAndAResetAllocateNothing`. The step drives a settle frame, a capture frame with the conflict scan and the commit, a normal read frame, and a restore, then adds `BindingCount` and the listen flag to `RebindSum`. The gate asserts 0 bytes over 2 warm-up rounds and 100 rounds, and `BuildScene` asserts 32 bindings at capacity 32, so a commit that removes one binding and appends one cannot grow the array. `TheMeasuredBodyDoesRealWork` ends with that step and fixes its increments: one result call, one conflict call, `RebindSum` grown by 32, no run of the command of the captured key, and the same `BindingCount` before and after. Four new rules stand on a plant as well as on a test: the raw-view read of the scan (plant 1), the suppressed frame with its four passes skipped (plant 2), the commit that keeps both instead of throwing (plant 9), and the 0-byte cost of the scan and the commit (plants 17 and 18). Eighteen plants guard this feature, and each gave a non-zero exit with `0 Error(s)`, with each restored file equal under `cmp`. Plants 17 and 18 failed only the new gate, at 4800 bytes and 2400 bytes, because only the rebind step opens a listen. The run reads the Framework total 326, `BrutalUi.Core.Tests` 1801, and the solution 2988 with 0 failed and 3 skipped. The twelve existing Framework Actions classes pass with no edit, and `UiActionMap.Bindings.cs` keeps an empty diff. HelloPanel rebinds the `Up` key through a button and restores the build, and a host with a window runs that check (see `docs/features/input/binding-remap/context.md`).
+- **A twenty-first allocation gate.** `LoadedTreeAllocationTests` (2 tests) in `tests/BrutalUi.Markup.Tests/Template/` loads one XML template with a root and six panels (55 elements): each panel holds one label, button, toggle, slider, text field, and image with the texture `icon` from the map, plus one scroll view with one label child. The test sets the inline fill of each panel after the load, so each frame holds a rect call. Each step toggles the hover state of one panel, writes the value of one slider, sets the text of one label from one of two constants, then runs `Update(0.016f)` and `Draw` into a `RecordingRenderer`. `ALoadedTreeAllocatesNothingInUpdateAndDraw` warms up with 16 steps, releases the allocation context, measures 100 steps, and asserts 0 bytes: the 0-byte rule of a loaded tree (section 11). `TheMeasuredStepsDoRealWork` checks the step count 116, and that the last frame holds a text call, an image call with the texture id 7, and a rect call, so an empty body cannot pass. Plant 5 put `GC.KeepAlive(new object());` as the first line of `Image.PaintContent` and gave exit code 2 with 0 `error CS` lines: this gate failed with 21616 bytes, and the two older image gates `ElementAllocationTests.UpdateAndDrawAllocateNothingAfterWarmUp` and `ImGuiRendererAllocationTests.LabelUpdateAndDrawAllocateNothingAfterWarmUp` failed with it. After the restore, `cmp` found no difference and `git diff --stat -- src/BrutalUi.Core` gave no output.
 - **Sample projects** as the integration test, built in CI. The HelloPanel smoke run (`--frames 120`) prints 7 lines: `HelloPanel: 120 frames rendered.`, `HelloPanel: last frame: draw commands <D>, vertices <V>.`, `HelloPanel: bytes after warm-up: Update and Draw 0, frame <F>, in 117 frames.`, `HelloPanel: gate: pointer over UI in 58 frames, keyboard focus in UI in 117 frames, of 117 measured frames.`, `HelloPanel: widgets: clicks 119, flips 119, values 119, scrolls 118, edits 182, submits 121.`, `HelloPanel: state: adds <A>, resets 30, versions <A+30>.`, and `HelloPanel: modes: switches 60, backs 59, main frames 59, detail frames 58.` A person re-measures line 2 and line 6 on a host with a window; the counts are pending. The `Mode (F1)` row adds one button to the widget panel. The fill, the border, and the text of that button add vertices, so the old counts of 7 draw commands and 1172 vertices are the pre-modes sample. The mode switch unmounts the state panel in every other frame. The `Add` click then lands only in a frame that starts in `hello.main`, because the unmounted panel is not in the tree at the drain. So `adds` lands near 60 and `versions` lands near 90, not the pre-modes 119 and 149. `resets` stays 30, because the Escape key reaches the map in both modes. The state row of state-and-commands/action-map (the `Add` button and the score label) changed line 2 from `vertices 1100` to the pre-modes `vertices 1172` and kept `draw commands 7`. The vertex count was 128 before the input demo. The gate label adds 160 vertices, and the widget section adds 812 more (288 to 1100 in total), with 5 more draw commands, because the view and the field clip their content. The last frame is odd, so the text of the field is empty in it. In each frame, the run pushes a synthetic input into the ring, so the gate counts show the input pass at work. The order of the push is: the button click, the toggle click, the click on the `Add` button of the state row, the slider click (25 % in an even frame and 75 % in an odd frame), the scroll at the center of the view ((0, -1) in an even frame and (0, 1) in an odd frame), the Tab down and up, the Escape key down and up with no target (in each frame with `frameIndex % 4 == 3`), the char `a` (even frame) or the Backspace (odd frame) and the Enter with the field as the caller target, the press and the release at the center of the field with no target, and the pointer move last. No focus change comes after the field press, so the field holds the focus at the caret pass. The presses also give the focus, so the keyboard count of line 4 does not prove the Tab. The Tab moves the focus from the slider to the field, and a Tab after the field press would move the focus to the panel. `FocusAllocationTests` and the queue case of `ThousandElementAllocationTests` guard the Tab. The first measured frame (frame 3) adds a burst after the Tab. The burst holds 32 chars of `W`, one Enter, and 32 Backspace keys, each with the field as the caller target. The field drops the 32nd char, so the text has 32 bytes. The text label then shows 38 bytes and the submit label 43 bytes. These are the longest texts of the two text labels, and both are longer than the start buffer of a label. The field is empty again at the end of the frame. The move comes last, so it decides the gate of line 4. The move is over the panel in the even frames and off the panel in the odd frames. The run exits with code 1 when it measured 2 frames or more and a gate count is 0. It then writes `HelloPanel: the synthetic input did not reach the UI.` to standard error. It also exits with code 1 when each measured frame reads the pointer over the UI, because the odd frames move off the panel. It then writes `HelloPanel: the pointer read over the UI in each measured frame. The off-panel frames did not reach the game.` to standard error. It also exits with code 1 when one of the 6 widget counts of line 5 is 0 in a run of 2 measured frames or more. It also exits with code 1 when the field never holds the focus after `Update` in a measured frame (the caret check). Line 5 does not show the caret count. In both cases it writes `HelloPanel: the synthetic input did not reach each widget.` to standard error. The run is also a gate. It exits with code 1 and writes `HelloPanel: Update and Draw allocated <B> bytes after warm-up. The limit is 0 bytes.` to standard error when the UI region (the smoke input, `ViewportSize`, `Update`, `Draw`, the gate read, and the four label updates) allocates after 3 warm-up frames. `PollGamepads` runs after `Glfw.PollEvents` and outside the UI region, so an allocation of the BRUTAL binding cannot fail the gate. input-actions adds the fifth label of the widget panel: the move label shows `Move: <x>, <y>` from `ReadVector` on the `Move` action (W, A, S, D and the left stick of slot 0). The UI region no longer pushes the gamepad, because the frame read of the active map reads the pad of slot 0 inside `Update` (section 9, item 13). Plant 20 puts `GC.KeepAlive(new object());` as the first line of `HelloScreen.MoveText`; a host with a window measures its bytes on line 3. The frame number is a report only. In a measured frame in which the thread allocated since the last release, the sample releases the allocation context before the UI region and outside it, for the same cause as the test gates. The sample loads `HelloScreen.css` before the window opens. A bad sheet gives exit code 1 and the error lines on standard error, with no GPU. Five plants guard the widget script. Plant A puts `GC.KeepAlive(new object());` as the first line of `HelloWidgets.OnClicked`. The smoke run then exits with code 1 and writes `HelloPanel: Update and Draw allocated 2808 bytes after warm-up. The limit is 0 bytes.` (117 measured frames times 24 bytes). Plant C does the same in `HelloWidgets.OnTextChanged` and gives the same 2808 bytes. Plant B removes the click of the button from `PushSmokeInput`. The run then exits with code 1 and writes `HelloPanel: the synthetic input did not reach each widget.`, and line 5 shows `clicks 0`. Plant M03 removes the `WriteText` call for the text label from the constructor of `HelloWidgets`, so the label does not hold the longest text before the measure. The run exits with code 1 and writes `HelloPanel: Update and Draw allocated 88 bytes after warm-up. The limit is 0 bytes.` Plant M09 moves the Tab after the pointer move (the order of the plan). The run exits with code 1 and writes `HelloPanel: the synthetic input did not reach each widget.` because the field never holds the focus after `Update`. Line 2 then reads `draw commands 5, vertices 1096`, and lines 3 to 5 do not change. After each restore, `cmp` found no difference. The state row adds line 6 and one more check. The run exits with code 1 when it measured 2 frames or more and `adds`, `resets`, or `versions` is 0. It then writes `HelloPanel: the synthetic input did not reach the state row.` to standard error. The store starts at version 1, so `versions` is the version minus 1. In the pre-modes 120-frame run, `versions` 149 equaled `adds` 119 plus `resets` 30, because each add and each reset changes the score. The rule holds with the modes too, but a person re-measures both counts. The Escape key arrives with the text field in focus, so line 6 proves live that a focused text field passes a non-text key to the action map. Two plants guard the state row. Plant A removes the Escape push from `PushSmokeInput`. The run exits with code 1, line 6 reads `adds <A>, resets 0, versions <A>`, where `<A>` is the re-measured `adds` count, and standard error holds the state row message. The widget check and the input check still pass. Plant B puts `GC.KeepAlive(new object());` as the first line of `UiActionMap.PressKey`. The run exits with code 1 and writes `HelloPanel: Update and Draw allocated 720 bytes after warm-up. The limit is 0 bytes.` (30 resets times 24 bytes). After each restore, `cmp` found no difference. `scripts/test-linux.sh` reads the exit code only, so the script has no change. panel-sample adds the two modes and line 7. `HelloModes` registers the panels `hello.widgets`, `hello.state`, and `hello.info`, the layout `hello.layout` with the slots `top` and `bottom`, and the modes `hello.main` and `hello.detail`. `hello.main` names the widget panel in `top` and the state row panel in `bottom`. `hello.detail` names the info panel in place of the state row panel. The command `hello.mode` toggles the mode, and the command `hello.back` calls `ModeHistory.Back`. F1 runs `hello.mode`, and F2 runs `hello.back`. The `Mode (F1)` button runs `hello.mode` too. The smoke run presses F1 in each even measured frame and F2 in each odd measured frame, also in the warm-up frames. Each measured frame then runs one diff. The run caches the `Add` point after each `hello.main` frame, because `ViewportCenter` needs an element in the tree, and pushes the `Add` click at the cached point. The mode check exits with code 1 and writes `HelloPanel: the synthetic input did not reach the mode switch.` when one of the four counts of line 7 is 0. With `--frames 120`, the parity gives `switches 60, backs 59, main frames 59, detail frames 58`. The F2 of frame 0 meets an empty history, so it gives no back step. A person reads the seven lines on a host with a window, because this headless host reports `GLFW init failed: PlatformUnavailable` before any line. Two plants guard the check. Plant 1 removes the line `modes.Backs++;`. The expected result is line 7 with `backs 0`, the mode-check line, and exit code 1. Plant 2 puts `GC.KeepAlive(new object());` as the first line of `s_mode`. The expected result is line 3 with bytes above 0 and exit code 1. Both plants built with `0 Error(s)` on this host and stopped at the window step, so a person runs both plants on a host with a window. Each plant restored with `cmp` equal.
 
 Run the benchmarks and the facts report from the repository root:
