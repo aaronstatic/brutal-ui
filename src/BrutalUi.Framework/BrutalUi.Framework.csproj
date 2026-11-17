@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../BrutalUi.Core/BrutalUi.Core.csproj" />
+    <ProjectReference Include="../BrutalUi.Markup/BrutalUi.Markup.csproj" />
   </ItemGroup>
 
 </Project>

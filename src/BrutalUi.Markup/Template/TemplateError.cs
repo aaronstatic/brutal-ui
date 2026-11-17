@@ -37,6 +37,12 @@ public enum TemplateErrorKind : byte
 
     /// <summary>A child element inside a type that the table marks as a leaf, for example <c>Label</c> or <c>Image</c>.</summary>
     UnexpectedChild,
+
+    /// <summary>A key of a binding attribute that the attached bindings do not register.</summary>
+    UnknownBinding,
+
+    /// <summary>A key whose selector does not fit the binding attribute or the element type.</summary>
+    BindingTypeMismatch,
 }
 
 /// <summary>
@@ -145,6 +151,8 @@ public readonly struct TemplateError
             TemplateErrorKind.UnknownTexture => "UnknownTexture",
             TemplateErrorKind.UnexpectedText => "UnexpectedText",
             TemplateErrorKind.UnexpectedChild => "UnexpectedChild",
+            TemplateErrorKind.UnknownBinding => "UnknownBinding",
+            TemplateErrorKind.BindingTypeMismatch => "BindingTypeMismatch",
             _ => ((byte)kind).ToString(CultureInfo.InvariantCulture),
         };
     }
