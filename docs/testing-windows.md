@@ -2,7 +2,7 @@
 
 ## 1. Purpose
 
-This runbook shows how to build, test, and smoke-run brutal-ui on a Windows machine with a GPU. One script does the full path. It runs the build, the unit tests, and the Vulkan loader check. Then it runs the `HelloPanel` sample in a visible window.
+This runbook shows how to build, test, and smoke-run brutal-ui on a Windows machine with a GPU. One script does the full path. It runs the build, the unit tests, the pack, and the package test. Then it runs the Vulkan loader check. Finally it runs the `HelloPanel` sample in a visible window.
 
 ## 2. One-time setup
 
@@ -120,13 +120,13 @@ After the report, the author checks the items "Phase 2 Windows" and "CR-1 Window
 
 | Case | Standard output | Standard error | Exit code |
 |------|-----------------|----------------|-----------|
-| Success | One line: `test-windows: PASS build, test, smoke (<FRAMES> frames) in <S> s`, or `(indefinite)` when `BRUTAL_UI_FRAMES` is 0 | Nothing | 0 |
+| Success | One line: `test-windows: PASS build, test, pack, package, smoke (<FRAMES> frames) in <S> s`, or `(indefinite)` when `BRUTAL_UI_FRAMES` is 0 | Nothing | 0 |
 | A step fails | Nothing | `test-windows: FAIL at <step> (exit <rc>)`, then the last 30 lines of `artifacts\test-windows\<step>.log`, then `test-windows: full log: artifacts\test-windows\<step>.log` | `<rc>` of the step |
 | A smoke time-out | Nothing | The header adds `, timed out after <SMOKE_TIMEOUT> s` | 124 |
 | A check fails (`preflight`, `loader`) | Nothing | `test-windows: FAIL at <step>: <problem>`, then `test-windows: fix: <command>` | 1 |
 | `Ctrl+C` in the build, test, or smoke step | Nothing | `test-windows: FAIL at <step>: interrupted` | 130 |
 
-The exit code of `build` or `test` is the exit code of `dotnet`. `HelloPanel` exits with 1 for a runtime failure and with 2 for a usage error. The exit code 130 means that `Ctrl+C` stopped the build, test, or smoke step. A Windows run has not yet confirmed the value. Record the real `$LASTEXITCODE` after `Ctrl+C` in the report block.
+The exit code of the `build`, `test`, `pack`, `package-restore`, or `package` step is the exit code of `dotnet`. `HelloPanel` exits with 1 for a runtime failure and with 2 for a usage error. The exit code 130 means that `Ctrl+C` stopped the build, test, or smoke step. A Windows run has not yet confirmed the value. Record the real `$LASTEXITCODE` after `Ctrl+C` in the report block.
 
 Each step writes its full log to the folder `artifacts\test-windows\`. The file name is `<step>.log`. The `preflight` and `loader` steps have no log. The script deletes the folder at the start of each run. Git ignores the folder.
 
@@ -135,8 +135,11 @@ The steps run in this order. The first failure stops the run.
 1. `preflight` checks the tools, the two variables, and the operating system.
 2. `build` runs `dotnet build brutal-ui.sln`.
 3. `test` runs `dotnet test --solution brutal-ui.sln`.
-4. `loader` checks that `vulkan-1.dll` exists in the system folder.
-5. `smoke` runs `dotnet run --project samples/HelloPanel/HelloPanel.csproj --no-build -- --frames "<FRAMES>"`, with a time limit.
+4. `pack` runs `dotnet pack brutal-ui.sln --no-build --configuration Debug`. It writes the packages to `artifacts\packages\`.
+5. `package-restore` deletes `artifacts\package-test`, then runs `dotnet restore tests\BrutalUi.PackageTest\BrutalUi.PackageTest.csproj --force`. The restore reads the `BrutalUi.*` packages from `artifacts\packages\`, and the `Ahwoo.*` packages from nuget.org.
+6. `package` runs `dotnet build-server shutdown`, then `dotnet run --project tests\BrutalUi.PackageTest\BrutalUi.PackageTest.csproj --no-restore`. The run prints `package-test: PASS Gauge level 0.5` in `package.log`. The shutdown stops the compiler server, so the run never reuses a stale compilation of the package test.
+7. `loader` checks that `vulkan-1.dll` exists in the system folder.
+8. `smoke` runs `dotnet run --project samples/HelloPanel/HelloPanel.csproj --no-build -- --frames "<FRAMES>"`, with a time limit.
 
 ## 7. Settings
 
@@ -171,6 +174,9 @@ Read the header line first. It names the step. Then read the tail of the log, an
 | `FAIL at preflight: artifacts\test-windows is in use` | The `fix:` line | Close each `HelloPanel` window. Run `dotnet build-server shutdown`. Run the script again. |
 | `FAIL at build (exit <rc>)` | The `error` lines with a `CS` code in the tail | Fix the C# error. Run the script again. |
 | `FAIL at test (exit <rc>)` | The failed test names in the tail | Fix the test or the code. Read `artifacts\test-windows\test.log` for the full list. |
+| `FAIL at pack (exit <rc>)` | The `error` lines in the tail | Fix the project that cannot pack. Run the script again. |
+| `FAIL at package-restore (exit <rc>)` | The `NU` error lines in the tail | Run `dotnet pack brutal-ui.sln --no-build --configuration Debug`, so `artifacts\packages\` holds the package it names. Check the network for the `Ahwoo.*` packages. |
+| `FAIL at package (exit <rc>)` | The `error CS` lines or the `package-test: FAIL` line in `artifacts\test-windows\package.log` | The generator did not run inside the package. Check that `analyzers/dotnet/cs/BrutalUi.Generators.dll` exists inside `artifacts\packages\BrutalUi.Markup.0.1.0-alpha.nupkg`. |
 | `FAIL at loader: the Vulkan loader vulkan-1.dll does not exist in ...` | The `fix:` line | Install or update the GPU driver. The driver installs `vulkan-1.dll`. |
 | `FAIL at smoke (exit 124), timed out after <N> s` | The end of `artifacts\test-windows\smoke.log` | Find the frame where the run stops. Raise `BRUTAL_UI_SMOKE_TIMEOUT` only when the run is slow and not stuck. |
 | `FAIL at smoke (exit 2)` | The `Usage:` line in the log | Set `BRUTAL_UI_FRAMES` to 0, or to a whole number above 0. |

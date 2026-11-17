@@ -109,6 +109,52 @@ internal static class TemplateValues
         return true;
     }
 
+    /// <summary>Reads an integer: an optional sign, then ASCII digits, in the <see cref="int"/> range.</summary>
+    /// <remarks>
+    /// The form accepts <c>0</c> and a negative value, which <see cref="TryParseWholeNumber"/> does not. A bare sign,
+    /// a point, an exponent, and a letter each give a fault, and so does a value outside the range.
+    /// </remarks>
+    /// <param name="text">The value without XML whitespace at both ends.</param>
+    /// <param name="value">The value, or 0 on a fault.</param>
+    /// <returns><see langword="true"/> when the text is an integer.</returns>
+    internal static bool TryParseInteger(ReadOnlySpan<char> text, out int value)
+    {
+        value = 0;
+
+        if (text.IsEmpty)
+        {
+            return false;
+        }
+
+        bool negative = text[0] == '-';
+        int index = negative || text[0] == '+' ? 1 : 0;
+        if (index == text.Length)
+        {
+            return false;
+        }
+
+        // The smallest int has one more digit than the largest one, so a negative value takes one more unit.
+        long limit = negative ? (long)int.MaxValue + 1 : int.MaxValue;
+        long total = 0;
+        for (; index < text.Length; index++)
+        {
+            char character = text[index];
+            if (character is < '0' or > '9')
+            {
+                return false;
+            }
+
+            total = total * 10 + (character - '0');
+            if (total > limit)
+            {
+                return false;
+            }
+        }
+
+        value = negative ? (int)-total : (int)total;
+        return true;
+    }
+
     /// <summary>The largest <c>capacity</c> that the <c>TextField</c> factory accepts, in bytes.</summary>
     /// <remarks>
     /// A real single-line field takes far fewer bytes. The number stays under the CLR array limit, so the field

@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The generator tests run the generator in memory. No Roslyn testing package (Decision 13). -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" />
+    <!-- The harness compiles sample source with CSharpGeneratorDriver. -->
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- A normal reference: the harness runs TemplateElementGenerator in process (InternalsVisibleTo). -->
+    <ProjectReference Include="../../src/BrutalUi.Generators/BrutalUi.Generators.csproj" />
+    <!-- The samples compile against the real Markup and Core assemblies. -->
+    <ProjectReference Include="../../src/BrutalUi.Markup/BrutalUi.Markup.csproj" />
+  </ItemGroup>
+
+</Project>

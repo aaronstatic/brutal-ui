@@ -65,6 +65,12 @@ public sealed class TemplateLoader
     }
 
     /// <summary>Creates a loader with the given settings, and registers the built-in element types.</summary>
+    /// <remarks>
+    /// The constructor calls the generated <c>RegisterBrutalUiMarkupElements</c> method. The source generator writes
+    /// that method from the declarations of <see cref="BuiltInElements"/>, with no reflection. A game adds its own
+    /// types after the constructor, with the public <see cref="Register"/> call, or with the register call that the
+    /// generator writes for the game assembly.
+    /// </remarks>
     /// <param name="info">The settings. The loader keeps a copy of the values that it uses.</param>
     public TemplateLoader(in CreateInfo info)
     {
@@ -77,7 +83,7 @@ public sealed class TemplateLoader
             }
         }
 
-        BuiltInElements.RegisterAll(this);
+        this.RegisterBrutalUiMarkupElements();
     }
 
     /// <summary>Registers one element type.</summary>
@@ -145,7 +151,7 @@ public sealed class TemplateLoader
                     nameof(info));
             }
 
-            foreach (AttributeRow baseRow in BuiltInElements.BaseRows)
+            foreach (AttributeRow baseRow in BaseRows.All)
             {
                 if (string.Equals(baseRow.Name, row.Name, StringComparison.Ordinal))
                 {
@@ -176,7 +182,7 @@ public sealed class TemplateLoader
                 nameof(info));
         }
 
-        _types.Add(info.Name, new RegisteredType(in info, BuiltInElements.BaseRows));
+        _types.Add(info.Name, new RegisteredType(in info, BaseRows.All));
         _typeNames = BuildTypeNames();
     }
 

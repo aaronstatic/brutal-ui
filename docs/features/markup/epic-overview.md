@@ -1,8 +1,8 @@
 # Markup - Epic Overview
 
 **Epic:** markup
-**Status:** In Progress (2/6 features complete)
-**Last Updated:** 2026-11-13 08:42
+**Status:** In Progress (3/6 features complete)
+**Last Updated:** 2026-11-17 00:25
 
 > **This file is the epic marker.** Its presence in `docs/features/markup/` tells every Beast Mode command that this folder is an **epic**, not a plain feature. Keep it present and keep the required sections below filled in. The master `docs/overview.md` tracks this epic as a **single row**. The per-feature detail lives **here**.
 
@@ -24,7 +24,7 @@ The constituent features of this epic, in build order. Each feature is a subfold
 |---|---------|--------|-------|-------------|
 | 1 | builder-api | Complete | 33/33 (100%) | The fluent build methods for each built-in element type, and a query that finds an element by name. Ready for Review on `feat/markup/builder-api`. |
 | 2 | xml-element-loader | Complete | 38/38 (100%) | The XML template loader in `BrutalUi.Markup` on `XmlReader`: the type registry, a written table for the built-in types, the attribute hook, the errors with a line and a column, and the tree compare test. Ready for Review on `feat/markup/xml-element-loader`. |
-| 3 | element-generator | Planned | — | A Roslyn source generator that writes the table rows for the built-in types and for a custom type that a game marks with an attribute. |
+| 3 | element-generator | Complete | 46/46 (100%) | A Roslyn source generator that writes the table rows for the built-in types and for a custom type that a game marks with an attribute. Ready for Review on `feat/markup/element-generator`. |
 | 4 | binding-attributes | Planned | — | The `command` and `bind-text` attributes in `BrutalUi.Framework`, with a typed selector that the panel code registers for each key. |
 | 5 | definition-loader | Planned | — | The panel, layout, and mode records from XML, registered through `UiManager.Register`. |
 | 6 | markup-sample | Planned | — | A HelloPanel panel from an XML template with a store binding and a command, the smoke line, and the allocation gate for a loaded tree. |
@@ -37,7 +37,7 @@ The constituent features of this epic, in build order. Each feature is a subfold
 
 1. **builder-api** - It comes first because it sets the property surface that the XML attributes follow. It also gives the query by name that the panel code and the tests use. It is complete and Ready for Review on `feat/markup/builder-api`. xml-element-loader inherits four things from it: the property surface (43 `ElementBuilder` methods, `Command`, `Find`, and `Find<T>`), the 12 value names as the table rows, `tests/BrutalUi.Core.Tests/Shared/TreeCompare.cs` with the link line for `BrutalUi.Markup.Tests`, and the rule that a row for `value` runs after the rows for the range. The builder-api review left one note in the loader requirements: `Capacity` and `ScrollSpeed` exist only in the create info (A6), so they have no builder method, no public setter, and no table row.
 2. **xml-element-loader** - It depends on the property surface of #1. It ships a written table for the built-in types, so the generator does not block the loader. It is complete and Ready for Review on `feat/markup/xml-element-loader`. element-generator inherits from it: the `AttributeRow` kinds and the shape of the rows to generate (plan Notes item 10: `text` and `text-key` are create rows, `min`, `max`, `step`, `capacity`, and `scroll-speed` are create rows too, and the base rows keep the A2 names), the public `Register` with the full checks, the single replaceable file `BuiltInElements.cs` (the `capacity` ceiling `TemplateValues.MaxTextCapacity`, review CR-1, lives in the `TextField` factory and must survive the replacement), the hook contract for binding-attributes (`AddAttributeHandler`, `AttributeContext.AddError`, `TemplateError`), and the `TemplateError.ToString` form for markup-sample.
-3. **element-generator** - It depends on the table shape of #2 and replaces the written table. It is the hardest feature, because it adds a new project and a package layout for an analyzer.
+3. **element-generator** - It depends on the table shape of #2 and replaces the written table. It is the hardest feature, because it adds a new project and a package layout for an analyzer. It is complete and Ready for Review on `feat/markup/element-generator`. binding-attributes inherits from it: the hook contract is unchanged (`AddAttributeHandler`, `AttributeHandler`, `AttributeContext.AddError`, `TemplateError`), and `AttributeContext.cs` carries additions only (`TryReadInteger`, `TryReadKeyword`). markup-sample inherits: a game type marks its class with `[TemplateElement("Name")]` (plus `[TemplateFactory]`/`[TemplateCreateRow]` when it needs create rows), adds the analyzer `ProjectReference` line to its csproj (Notes item 8 — the analyzer does not flow through a project reference), calls the generated `loader.RegisterHelloPanelElements()`, and a bad marked type stops the build with one `BRUTALUI000N` error at the code at fault. The built-in rows now come from the generator through eight `[TemplateElement(..., Target = typeof(...))]` declarations in `BuiltInElements.cs`; the `capacity` ceiling stays in the `TextField` factory.
 4. **binding-attributes** - It depends on the attribute hook of #2. It adds the reference from Framework to Markup.
 5. **definition-loader** - It depends on #2 for the reader and on #4 for a template with bindings.
 6. **markup-sample** - It depends on #1 to #5 and closes the epic and Phase 3.
@@ -82,8 +82,8 @@ The constituent features of this epic, in build order. Each feature is a subfold
 
 ## Master Overview Rollup
 
-- **Rollup status:** In Progress (2/6 features complete, 71/71 tasks done in features 1 and 2)
-- **One-line summary for master:** builder-api (33/33) and xml-element-loader (38/38) are Ready for Review. xml-element-loader ships `TemplateLoader` on `XmlReader` in `BrutalUi.Markup`: the per-loader type registry with full `Register` checks, the written table for the eight built-in types with four base rows (one replaceable file for the generator), the attribute hook for binding-attributes, the `TryRead*` value forms, `texture` maps, the `text-key` join, `TemplateError` with 8 kinds at a line and a UTF-16 column with the continue-and-sort rule, and the loaded tree proven equal to the builder tree under `TreeCompare` at 0 bytes in `Update` and `Draw`. 60 new tests (Markup +59, Core +1), solution 3092 with 0 failed and 3 skipped, 14 plants, and a 6-finding review with all 6 fixed. The loader, the generator, the attributes, the record loader, and the sample follow.
+- **Rollup status:** In Progress (3/6 features complete, 117/117 tasks done in features 1 to 3)
+- **One-line summary for master:** builder-api (33/33), xml-element-loader (38/38), and element-generator (46/46) are Ready for Review. element-generator ships `BrutalUi.Generators`, an incremental Roslyn source generator that rides inside the `BrutalUi.Markup` package as an analyzer: `[TemplateElement]` with `[TemplateFactory]`, `[TemplateCreateRow]`, `[TemplateRowName]`, and `[TemplateIgnore]` give a game type its table rows and one generated `Register<Id>Elements` call at build time, the eight built-in types now flow through the same path (their set rows generated, factories and create rows written, `RegisterAll` gone), six `BRUTALUI000N` error diagnostics stop a bad marked type at its source, `TryReadInteger` and `TryReadKeyword` join the public reads, and the package test in `scripts/test-linux.sh` and `scripts/test-windows.ps1` proves the pack layout. 51 new tests (Markup 24 + 5 review pins, Generators 16 + 6 review pins), solution 3143 with 0 failed and 3 skipped, 13 plants plus 3 review plants, a 5-finding review with all 5 fixed, and zero loader tests edited — the written table was replaced under the 59 green tests of xml-element-loader. binding-attributes, definition-loader, and markup-sample follow.
 
 ---
 

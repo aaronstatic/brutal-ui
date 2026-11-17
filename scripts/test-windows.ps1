@@ -4,17 +4,24 @@
 
 .DESCRIPTION
     Purpose:
-      Prove the full path on a Windows machine. The script runs the build and
-      the unit tests. Then it runs the HelloPanel sample on the GPU in a
-      visible window until you close it, or for a number of frames.
+      Prove the full path on a Windows machine. The script runs the build, the
+      unit tests, the pack, and the package test. Then it runs the HelloPanel
+      sample on the GPU in a visible window until you close it, or for a
+      number of frames.
 
     Steps (the first failure stops the run):
       1. preflight - check the tools, the two variables, and the operating
                      system, then reset the log folder
       2. build     - dotnet build brutal-ui.sln
       3. test      - dotnet test --solution brutal-ui.sln
-      4. loader    - check that vulkan-1.dll exists in the system folder
-      5. smoke     - run HelloPanel until you close the window, or for a
+      4. pack      - dotnet pack brutal-ui.sln --no-build --configuration Debug
+      5. package-restore - delete artifacts\package-test, then dotnet restore
+                     tests\BrutalUi.PackageTest\BrutalUi.PackageTest.csproj --force
+      6. package   - dotnet build-server shutdown, then dotnet run of the same
+                     project, with no restore. It prints
+                     package-test: PASS Gauge level 0.5
+      7. loader    - check that vulkan-1.dll exists in the system folder
+      8. smoke     - run HelloPanel until you close the window, or for a
                      number of frames with a time limit
 
     Preflight checks (in this order):
@@ -40,12 +47,14 @@
 
     Exit codes:
       0      all steps passed
-      1      a preflight check or the loader step failed, HelloPanel failed
-             at run time, or the script stopped on an error
+      1      a preflight check or the loader step failed, the package test
+             reported package-test: FAIL, HelloPanel failed at run time, or the
+             script stopped on an error
       2      HelloPanel reported a usage error
       124    the smoke step timed out
       130    Ctrl+C stopped a step
-      other  the exit code of dotnet build or dotnet test
+      other  the exit code of the build, test, pack, package-restore, or
+             package step
 
     Environment variables:
       BRUTAL_UI_FRAMES          number of frames for the smoke run (default 0).
@@ -277,6 +286,23 @@ try {
 
     Invoke-Step test 'dotnet test --solution brutal-ui.sln'
 
+    Invoke-Step pack 'dotnet pack brutal-ui.sln --no-build --configuration Debug'
+
+    # The package test restores the packed BrutalUi packages into its own
+    # folder under artifacts\package-test, so delete that folder first. Each
+    # run then reads the new package.
+    if (Test-Path -LiteralPath 'artifacts\package-test') {
+        Remove-Item -LiteralPath 'artifacts\package-test' -Recurse -Force
+    }
+
+    Invoke-Step package-restore 'dotnet restore tests\BrutalUi.PackageTest\BrutalUi.PackageTest.csproj --force'
+
+    # VBCSCompiler can keep the analyzer set of an earlier compile and skip the
+    # re-compile of the package test, so shut the build servers down first.
+    # The parentheses keep both commands inside one cmd.exe group, so the log
+    # redirect of Invoke-Step covers both.
+    Invoke-Step package '(dotnet build-server shutdown && dotnet run --project tests\BrutalUi.PackageTest\BrutalUi.PackageTest.csproj --no-restore)'
+
     # Step loader. Brutal.Vulkan loads the Vulkan loader as vulkan-1 on
     # Windows. The GPU driver installs vulkan-1.dll in the system folder. See
     # docs/features/dev-ops/solution-skeleton/context.md, section "Native
@@ -299,7 +325,7 @@ try {
     }
 
     $framesText = if ($frames -eq '0') { 'indefinite' } else { "$frames frames" }
-    [Console]::Out.WriteLine("test-windows: PASS build, test, smoke ($framesText) in $([math]::Floor($sw.Elapsed.TotalSeconds)) s")
+    [Console]::Out.WriteLine("test-windows: PASS build, test, pack, package, smoke ($framesText) in $([math]::Floor($sw.Elapsed.TotalSeconds)) s")
     $scriptDone = $true
 }
 finally {

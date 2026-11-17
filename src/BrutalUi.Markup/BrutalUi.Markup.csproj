@@ -13,4 +13,14 @@
     <ProjectReference Include="../BrutalUi.Core/BrutalUi.Core.csproj" />
   </ItemGroup>
 
+  <!-- The generator runs on the declarations of Markup, and the pack puts it in analyzers/dotnet/cs. -->
+  <ItemGroup>
+    <ProjectReference Include="../BrutalUi.Generators/BrutalUi.Generators.csproj"
+                      OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="../BrutalUi.Generators/bin/$(Configuration)/netstandard2.0/BrutalUi.Generators.dll"
+          Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+  </ItemGroup>
+
 </Project>

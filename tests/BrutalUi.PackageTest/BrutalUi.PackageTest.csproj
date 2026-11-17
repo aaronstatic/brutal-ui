@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The package test lives outside the solution. It consumes BrutalUi.Markup only through the
+       packed package, so the solution build and the solution tests never see this project. -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <!-- A private restore folder: a new pack of the same version never meets a stale copy. -->
+    <RestorePackagesPath>$(MSBuildThisFileDirectory)../../artifacts/package-test/packages/</RestorePackagesPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Central package management stays on. The root Directory.Build.props gives $(Version), 0.1.0-alpha. -->
+    <PackageReference Include="BrutalUi.Markup" VersionOverride="$(Version)" />
+  </ItemGroup>
+
+</Project>

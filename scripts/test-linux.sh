@@ -3,18 +3,24 @@
 #
 # Purpose:
 #   Prove the full path on a headless machine. The script runs the build, the
-#   unit tests, and the GPU driver check. Then it runs the HelloPanel sample on
-#   the NVIDIA GPU, inside Xvfb.
+#   unit tests, the pack, and the package test. Then it runs the GPU driver
+#   check. Finally it runs the HelloPanel sample on the NVIDIA GPU, inside Xvfb.
 #
 # Steps (the first failure stops the run):
 #   0. preflight - check that dotnet, xvfb-run, and timeout exist, that dotnet
 #                  is version 10, and that BRUTAL_UI_SMOKE_TIMEOUT is valid
 #   1. build     - dotnet build brutal-ui.sln
 #   2. test      - dotnet test --solution brutal-ui.sln
-#   3. gpu       - scripts/check-gpu.sh (after the tests, so a driver problem
+#   3. pack      - dotnet pack brutal-ui.sln --no-build --configuration Debug
+#   4. package-restore - delete artifacts/package-test, then dotnet restore
+#                  tests/BrutalUi.PackageTest/BrutalUi.PackageTest.csproj --force
+#   5. package   - dotnet build-server shutdown, then dotnet run of the same
+#                  project, with no restore. It prints
+#                  package-test: PASS Gauge level 0.5
+#   6. gpu       - scripts/check-gpu.sh (after the tests, so a driver problem
 #                  does not hide the unit test result)
-#   4. loader    - check that libvulkan.so exists next to the libvulkan.so.1 of ldconfig
-#   5. smoke     - run HelloPanel for a number of frames inside xvfb-run
+#   7. loader    - check that libvulkan.so exists next to the libvulkan.so.1 of ldconfig
+#   8. smoke     - run HelloPanel for a number of frames inside xvfb-run
 #
 # Output:
 #   Success: one line on standard output, and nothing on standard error.
@@ -24,13 +30,15 @@
 #
 # Exit codes:
 #   0     all steps passed
-#   1     a check failed (preflight, gpu, loader), or HelloPanel failed at run time
+#   1     a check failed (preflight, gpu, loader), the package test reported
+#         package-test: FAIL, or HelloPanel failed at run time
 #   2     HelloPanel reported a usage error
 #   124   the smoke step timed out
 #   137   the smoke step timed out and timeout had to kill it
 #   130   SIGINT (Ctrl+C) stopped the smoke step
 #   143   SIGTERM stopped the smoke step
-#   other the exit code of dotnet build or dotnet test
+#   other the exit code of the build, test, pack, package-restore, or package
+#         step
 #
 # Environment variables:
 #   BRUTAL_UI_FRAMES          number of frames for the smoke run (default 120)
@@ -147,6 +155,19 @@ run_step build dotnet build brutal-ui.sln
 
 run_step test dotnet test --solution brutal-ui.sln
 
+run_step pack dotnet pack brutal-ui.sln --no-build --configuration Debug
+
+# The package test restores the packed BrutalUi packages into its own folder
+# under artifacts/package-test, so delete that folder first. Each run then
+# reads the new package.
+rm -rf -- artifacts/package-test
+
+run_step package-restore dotnet restore tests/BrutalUi.PackageTest/BrutalUi.PackageTest.csproj --force
+
+# VBCSCompiler can keep the analyzer set of an earlier compile and skip the
+# re-compile of the package test, so shut the build servers down first.
+run_step package bash -c 'dotnet build-server shutdown && dotnet run --project tests/BrutalUi.PackageTest/BrutalUi.PackageTest.csproj --no-restore'
+
 # The GPU check runs after the tests, so a driver problem does not hide the
 # unit test result.
 run_step gpu scripts/check-gpu.sh
@@ -190,4 +211,4 @@ run_step smoke \
     timeout --kill-after=10 "$SMOKE_TIMEOUT" \
     xvfb-run -a dotnet run --project samples/HelloPanel/HelloPanel.csproj --no-build -- --frames "$FRAMES"
 
-printf 'test-linux: PASS build, test, gpu, smoke (%s frames) in %s s\n' "$FRAMES" "$SECONDS"
+printf 'test-linux: PASS build, test, pack, package, gpu, smoke (%s frames) in %s s\n' "$FRAMES" "$SECONDS"

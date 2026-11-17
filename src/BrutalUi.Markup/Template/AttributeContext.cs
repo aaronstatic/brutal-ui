@@ -1,4 +1,5 @@
 using System;
+using System.Text;
 using Brutal.Numerics;
 using BrutalUi.Core;
 
@@ -97,6 +98,83 @@ public readonly ref struct AttributeContext
         value = 0;
         AddError(TemplateErrorKind.InvalidValue, $"'{Value}' is not a whole number. Write digits from 1, for example '8'.");
         return false;
+    }
+
+    /// <summary>Reads the value as an integer.</summary>
+    /// <remarks>
+    /// An integer holds an optional <c>+</c> or <c>-</c> sign, then one or more ASCII digits, and it stays in the
+    /// <see cref="int"/> range. It differs from <see cref="TryReadWholeNumber"/> in that it takes 0 and a negative
+    /// value. The value ignores XML whitespace at both ends. A fault adds
+    /// <see cref="TemplateErrorKind.InvalidValue"/> and gives 0. The read allocates nothing on a success.
+    /// </remarks>
+    /// <param name="value">The value on a success, or 0 on a fault.</param>
+    /// <returns><see langword="true"/> when the value is an integer.</returns>
+    public bool TryReadInteger(out int value)
+    {
+        if (TemplateValues.TryParseInteger(TemplateValues.Trim(Value), out value))
+        {
+            return true;
+        }
+
+        value = 0;
+        AddError(
+            TemplateErrorKind.InvalidValue,
+            $"'{Value}' is not an integer. Write digits with an optional sign, for example '-3'.");
+        return false;
+    }
+
+    /// <summary>Reads the value as one keyword from a list, and gives the index of the keyword.</summary>
+    /// <remarks>
+    /// <para>
+    /// The read trims XML whitespace from both ends of the value and compares it with each keyword, ordinal, in the
+    /// order of the list. It stops at the first match, so a repeated keyword in the list gives its first index. The
+    /// read allocates nothing on a success.
+    /// </para>
+    /// <para>
+    /// A fault adds <see cref="TemplateErrorKind.InvalidValue"/> with the keywords in the message, and gives -1. The
+    /// generated code for an enum property passes the kebab-case name of each member, in the order of the
+    /// declarations, and writes the value from the index in a <c>switch</c>.
+    /// </para>
+    /// </remarks>
+    /// <param name="keywords">The accepted keywords, in order. An empty list matches nothing.</param>
+    /// <param name="index">The index of the keyword in <paramref name="keywords"/> on a success, or -1 on a fault.</param>
+    /// <returns><see langword="true"/> when the value is one of the keywords.</returns>
+    public bool TryReadKeyword(ReadOnlySpan<string> keywords, out int index)
+    {
+        ReadOnlySpan<char> text = TemplateValues.Trim(Value);
+        for (int i = 0; i < keywords.Length; i++)
+        {
+            if (text.Equals(keywords[i], StringComparison.Ordinal))
+            {
+                index = i;
+                return true;
+            }
+        }
+
+        index = -1;
+        AddError(
+            TemplateErrorKind.InvalidValue,
+            $"'{Value}' is not a value of {Name}. Write {JoinKeywords(keywords)}.");
+        return false;
+    }
+
+    /// <summary>Joins the keywords of a fault message with quotes: <c>'a', 'b', or 'c'</c>.</summary>
+    /// <param name="keywords">The accepted keywords, in order.</param>
+    /// <returns>The joined list. An empty list gives an empty text.</returns>
+    private static string JoinKeywords(ReadOnlySpan<string> keywords)
+    {
+        StringBuilder text = new(keywords.Length * 8);
+        for (int i = 0; i < keywords.Length; i++)
+        {
+            if (i > 0)
+            {
+                text.Append(i == keywords.Length - 1 ? ", or " : ", ");
+            }
+
+            text.Append('\'').Append(keywords[i]).Append('\'');
+        }
+
+        return text.ToString();
     }
 
     /// <summary>Reads the value as a number.</summary>

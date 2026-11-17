@@ -93,6 +93,7 @@ brutal-ui/
 │   ├── BrutalUi.Glfw/          # GlfwUiInput: GLFW window events to UiContext.PushEvent
 │   ├── BrutalUi.Framework/     # stores, panels, modes, windows, commands, events
 │   ├── BrutalUi.Markup/        # XML loader, stylesheet parser
+│   ├── BrutalUi.Generators/    # source generator of the element table (analyzer, netstandard2.0)
 │   └── BrutalUi.Debugger/      # state, composition, and event inspector window
 ├── samples/
 │   ├── HelloPanel/             # Phase 1: a static screen. Phase 2: each widget of the epic. Phase 3: one store, one command, one action
@@ -103,6 +104,8 @@ brutal-ui/
 │   ├── BrutalUi.Glfw.Tests/
 │   ├── BrutalUi.Framework.Tests/
 │   ├── BrutalUi.Markup.Tests/
+│   ├── BrutalUi.Generators.Tests/
+│   ├── BrutalUi.PackageTest/   # outside the solution: the package-path check
 │   └── BrutalUi.Benchmarks/
 └── docs/
     ├── feasibility.md
@@ -123,7 +126,9 @@ brutal-ui/
 
 **`src/BrutalUi.Markup/`** holds the XML element loader and the stylesheet parser. It references Core only.
 
-**`tests/`** holds xUnit tests for each package and a BenchmarkDotNet project with the allocation guard. `BrutalUi.ImGui.Tests` runs the ImGui renderer headless: it creates an ImGui context with no window and no GPU, and it reads the background draw list.
+**`src/BrutalUi.Generators/`** holds the incremental source generator that writes the element table. It targets `netstandard2.0`, because the compiler loads only `netstandard2.0` analyzers. `dotnet pack` puts its dll in `analyzers/dotnet/cs` of the Markup package. It is not a package, and it adds no run-time reference.
+
+**`tests/`** holds xUnit tests for each package and a BenchmarkDotNet project with the allocation guard. `BrutalUi.PackageTest` stands outside the solution: it consumes the packed Markup package and checks the generator path of a real game. `BrutalUi.ImGui.Tests` runs the ImGui renderer headless: it creates an ImGui context with no window and no GPU, and it reads the background draw list.
 
 ---
 
@@ -1191,7 +1196,7 @@ The service registry rules:
 </ui:Element>
 ```
 
-The loader maps each element name to a registered type, and each attribute to a row of a written table, with no reflection. The element-generator feature replaces the written table later. A game registers custom element types by name. The binding-attributes feature registers `command` on the attribute hook, so the template above needs that handler.
+The loader maps each element name to a registered type, and each attribute to a row of the element table. The generator writes the rows of the built-in types and of each marked game type, with no reflection. A game registers custom element types by name. The binding-attributes feature registers `command` on the attribute hook, so the template above needs that handler.
 
 **The loader API.**
 
@@ -1290,7 +1295,7 @@ public readonly ref struct ElementCreateArgs
 }
 ```
 
-**The written table.** A type holds a row list. The four base rows apply to every type and run first, in this order.
+**The element table.** A type holds a row list. `BuiltInElements` declares each built-in type with its factory and its create rows, and the generator writes the set rows from the properties. The four base rows apply to every type and run first, in this order.
 Then the own rows of the type run in their order. Each row maps one attribute to one builder method or one create-info
 field.
 
@@ -1384,7 +1389,7 @@ field.
 One error reads, for example:
 `hud.xml(2,14): UnknownAttribute: 'nope' is not an attribute of Label. The attributes of Label are name, class, pickable, focusable, text, text-key.`
 
-**Custom element types.** A game registers its own element type with the same public call that the written table
+**Custom element types.** A game registers its own element type with the same public call that the element table
 uses, after the constructor. The loader copies the `Rows` array, places the four base rows before the own rows, and
 runs them in that order, so a custom type holds `name`, `class`, `pickable`, and `focusable` with no extra work. A
 later change of the array changes nothing.
@@ -1428,6 +1433,92 @@ cannot read a set attribute. A factory that returns `null` adds one error first,
 names the fault, and registers nothing. The checks: `Name` is a valid XML local name and the name of no registered
 type; `Create` is not `null`; each own row has a valid name; a set row has a setter; no two rows share one name; and
 no own row takes the name of a base row.
+
+**Generated element types.** The `BrutalUi.Generators` analyzer inside the `BrutalUi.Markup` package reads each
+class marked with `[TemplateElement]` at build time. It writes one register method for the assembly, with one
+`Register` call per marked type, at no run-time cost and with no reflection. A game type with a `required`
+property and no factory fails with `CS9035` in the generated code, and `BRUTALUI0001` does not detect it. Mark
+such a type with a `[TemplateFactory]`.
+
+```csharp
+[TemplateElement("Gauge")]
+internal sealed class Gauge : Element
+{
+    [TemplateFactory]
+    [TemplateCreateRow("segments", IsRequired = true)]
+    internal static Gauge Create(ElementCreateArgs args)
+    {
+        return args.TryGet("segments", out AttributeContext context)
+            && context.TryReadWholeNumber(out int segments)
+            ? new Gauge(segments)
+            : null;
+    }
+
+    public int Offset { get; set; }          // the row 'offset', an integer
+    public GaugeStyle Style { get; set; }    // the row 'style', a kebab keyword
+    [TemplateRowName("lvl")]
+    public float Level { get; set; }         // the row 'lvl', a number
+    [TemplateIgnore]
+    public float Hidden { get; set; }        // no row
+}
+
+TemplateLoader loader = new();
+loader.RegisterMyGameElements();
+```
+
+The generated class is `internal static class <Id>TemplateElements` in the namespace `BrutalUi.Markup`, with the
+one method `Register<Id>Elements(this TemplateLoader loader)`. The id comes from the assembly name: `My-Game.UI`
+gives `MyGameUI`. A game file needs `using BrutalUi.Markup;` for `TemplateLoader`, so the call needs no other
+`using`.
+
+**The rules.** The attribute has two forms. In the game form, the marked class is the element type, and it
+derives from `Element`. In the declaration form, the marked class is `static`, and `Target = typeof(...)` names
+the element type. Use the declaration form for a type that the game does not own. A `[TemplateFactory]` method
+makes the element. The method is `static`, takes one `ElementCreateArgs`, and returns `Element` or a derived
+type. `[TemplateCreateRow]` sits only on the factory, and the create rows follow the order of the attributes.
+An `IsRequired = true` row makes the attribute necessary for the element. With no factory, the generator calls
+the constructor with no parameters of the target type. The target type is not abstract. The generator walks the
+properties of the target type and each base type, and stops before `Element`. `Name`, `IsPickable`, `IsFocusable`,
+and `States` give no row, because the four base rows stay written code. A property gives a row when it is
+`public`, with a `public` set accessor that is not `init`, of a supported type, and with no `[TemplateIgnore]`.
+`[TemplateRowName]` replaces the row name. These property types give a row.
+
+| Property type | The generated read | Value form |
+|---|---|---|
+| `string` | `context.Value` | text, as is |
+| `float` | `TryReadNumber` | number |
+| `int` | `TryReadInteger` | integer |
+| `bool` | `TryReadBool` | bool |
+| an enum | `TryReadKeyword`, then a `switch` | kebab-case keyword |
+| `float2` | `TryReadNumbers` | 2 numbers |
+| `float4` | `TryReadNumbers` | 4 numbers |
+| `Rgba8` | `TryReadColor` | color |
+| `TextureHandle` | `TryReadTexture` | texture name |
+
+A row name is the kebab-case form of the property name. A hyphen goes before an upper-case letter that follows a
+lower-case letter or a digit, and before an upper-case letter that follows an upper-case letter and comes before a
+lower-case letter. `ScrollOffset` gives `scroll-offset`, and `MaxHP` gives `max-hp`. An enum keyword follows the
+same rule: `RoundDial` gives
+`round-dial`. The create rows come first, in attribute order. The set rows follow: the rows of the base type
+nearest to `Element` come first, then each type down to the target, each in declaration order. The manual
+`Register` call stays public. A game can still write its table by hand.
+
+**The diagnostics.** Each diagnostic has the category `BrutalUi.Markup` and the severity `Error`. A type with an
+error gets no generated code. The other types of the assembly keep their code, so the register call still compiles.
+
+| Id | Cause | Location | Message |
+|---|---|---|---|
+| `BRUTALUI0001` | No factory, and no usable constructor with no parameters (also an abstract target) | the class name | `'{0}' has no usable constructor and no factory. Add a public constructor with no parameters, or mark a static method with [TemplateFactory].` |
+| `BRUTALUI0002` | Two marked classes of one compilation share one XML name (ordinal) | the name argument of each attribute | `The XML name '{0}' is on more than one element type: {1}. Give each type its own name.` |
+| `BRUTALUI0003` | `[TemplateRowName]` on a property that gives no row (A5) | the attribute | `[TemplateRowName] is on '{0}', but '{0}' gives no row. Use a public settable property of a supported type, or remove the attribute.` |
+| `BRUTALUI0004` | A factory that breaks a rule of The rules, two factories, or `[TemplateCreateRow]` on a method with no `[TemplateFactory]` | the method name | `'{0}' is not a valid factory: {1}. Write 'static Element? Create(ElementCreateArgs args)' with internal or public access.` |
+| `BRUTALUI0005` | A row name that is not a valid XML local name, that two rows share, or that a base row takes (`name`, `class`, `pickable`, `focusable`) | the property or the create-row attribute | `The row name '{0}' of '{1}' is not valid: {2}. Give each row a valid XML name that no other row and no base row takes.` |
+| `BRUTALUI0006` | A marked class that breaks a rule of The element type, or an XML name that is not valid | the class name | `'{0}' is not a valid element type: {1}.` |
+
+`{1}` and `{2}` of 0004, 0005, and 0006 name the broken rule in one short clause, for example `it is not static`.
+The XML name check uses `XmlConvert.IsStartNCNameChar` and `XmlConvert.IsNCNameChar`, which `netstandard2.0` holds.
+A clash with a built-in name, for example a game type `Label`, is a run-time `ArgumentException` of `Register`, as
+today.
 
 **The attribute hook.** An attribute that no row holds goes to the handlers of `AddAttributeHandler`. The loader
 calls the hook after the set rows of the element, so a handler reads the values that the rows wrote. The loader
@@ -1709,6 +1800,7 @@ The Vulkan backend binds one render pass at construction. Phase 5 tests a second
 - **Scheme tests.** `ActiveSchemeTests` (9 tests), `SchemeGroupTests` (8 tests), `SchemeChangedSlotTests` (7 tests), and `SchemeLockTests` (7 tests) in `tests/BrutalUi.Framework.Tests/Actions/` guard section 9, item 14, and add 32 tests. `ActiveSchemeTests` checks the report of the seed at construction and after `Activate`, the six keyboard kinds, the three gamepad kinds, the exact-zero rule of a stored gamepad value, the last binding that gave a value, the dead value with the gate, the held re-assert, and the carry across frames, and a scale that multiplies the value and not the device test. `SchemeGroupTests` checks the intern rule, the two standard names in the table, `SchemeName` with its id check, the empty name, one input in two schemes, the clash of the default scheme in both directions, the per-scheme set rule of a composite, and the eleven current signatures in the default scheme. `SchemeChangedSlotTests` checks the place after the read, one call per change, no call without a change, one handler written with `=` with both parameters, a change inside the handler that lands on the next frame, and the report after `Activate` on a locked map, and an exception of the handler that leaves `Update` and keeps the report of the frame. `SchemeLockTests` checks the id check with the kept lock, the frame read, the Button flags, the press path, the gamepad invoke with `PushGamepad`, a default binding under every lock, and the report of the locked scheme, and one release for a held binding of another scheme when a lock stands. The seventeenth gate grew with them: `ActionMapAllocationTests` (7 tests) adds `SchemeStep`, which drives one keyboard frame and one gamepad frame over `Kick`, `Turn`, and `Aim`, reads `ActiveScheme`, `SchemeName`, and `WasPressed`, and calls the change slot inside the measure. `TheSchemeReadAndTheChangeSlotAllocateNothing` asserts 0 bytes over 100 rounds, and `TheMeasuredBodyDoesRealWork` fixes the increments of that step: the handler runs one time, `SchemeSum` grows by 25, and `ValueSum` grows by 1.1. Fourteen plants guard the feature. Plant 1 wrote the keyboard device in the stick case, and plant 2 reset the device local to the seed; each failed its report tests. Plant 3 wrote a device in the composite case whatever the sum; the effective form of that plant, a write of the gamepad device, failed the dead-value rule. Plants 5 to 7 guard the scheme tag: `Find` without the scheme test, a clash rule of equality only, and a map-wide composite compare. Plants 8 and 9 guard the slot: a call in every frame, and a call before the binding loop. Plants 10 to 12 guard the lock: no filter in the binding loop, no lock on the press path, and no filter on the gamepad invoke and `PushGamepad`. Plant 13 put an allocation after `ReportSchemeChange()` and failed `TheSchemeReadAndTheChangeSlotAllocateNothing` with 4800 bytes, and 10 tests failed in that run, because each gate that calls `Update` reads the frame path. Plant 14 read the scaled value in the device test of a scroll, and failed `APassivePointerReadsSetTheKeyboardScheme` with one test: a scroll with a scale of 0 gave no device. Each plant gave a non-zero exit with `0 Error(s)`, and `cmp` found each restored file equal to its copy. HelloPanel shows the active scheme in a sixth label, and plant 4 puts an allocation in `HelloScreen.SchemeText`; a host with a window measures its bytes.
 - **Remap tests.** `RebindListenTests` (10 tests), `RebindCaptureTests` (8 tests), `RebindConflictTests` (4 tests), `RebindResetTests` (4 tests), `BindingTextWriterTests` (4 tests), and `BindingsRoundTripTests` (4 tests) in `tests/BrutalUi.Framework.Tests/Actions/` guard section 9, items 15 and 16, and add 34 tests. `RebindListenTests` checks the scheme check with the kept state, the give-false rule for an unknown action name, one fresh key commit after the settle frame with the consumed press, the silence on all five paths with the values that hold and no release edge, the Escape cancel ahead of the map's own `Cancel` bind, `RebindCancelKey` with its range check, the raw-view capture that the routing gate empties, a second `BeginRebind`, and the close on `Activate` and `Deactivate`, and the device track in a suppressed frame. `RebindCaptureTests` checks each of the seven shapes with its fields, the modifier mask, the lowest set bit of `pad.Pressed`, the exact-zero rule, the stick before the axis in the order, the pointer-delta threshold on both sides, the Y-only scroll, one candidate per frame in the `InputKind` order, and the mismatch reject that stays open and reports. `RebindConflictTests` checks the commit that keeps both with both names, the clash against a default binding in either order, two tags that give no report, and one handler written with `=` with the throw case. `RebindResetTests` checks the restore after a rebind, the snapshot of the first `Activate` with the bind-after-activate loss and no snapshot before an activation, the scope of a restore, and a restore that ends a listen with no commit. `BindingTextWriterTests` checks the version line with one line per binding, the needed count with nothing written, the omit-the-default rule with the `-` token, and the nine `device` numbers. `BindingsRoundTripTests` checks all nine shapes written from one map and read into a second, then driven through `UiContext.Update(float)` with hand-made events and `SetGamepad`, so the round trip is proven by behavior and not by a per-binding read (A10). It checks the merge per action and scheme pair with the rest kept, the fourteen bad-line cases with the two composite repeats, and the unknown-version rule. The seventeenth gate grew with them: `ActionMapAllocationTests` (8 tests) adds `RebindStep` and `ARebindAndAResetAllocateNothing`. The step drives a settle frame, a capture frame with the conflict scan and the commit, a normal read frame, and a restore, then adds `BindingCount` and the listen flag to `RebindSum`. The gate asserts 0 bytes over 2 warm-up rounds and 100 rounds, and `BuildScene` asserts 32 bindings at capacity 32, so a commit that removes one binding and appends one cannot grow the array. `TheMeasuredBodyDoesRealWork` ends with that step and fixes its increments: one result call, one conflict call, `RebindSum` grown by 32, no run of the command of the captured key, and the same `BindingCount` before and after. Four new rules stand on a plant as well as on a test: the raw-view read of the scan (plant 1), the suppressed frame with its four passes skipped (plant 2), the commit that keeps both instead of throwing (plant 9), and the 0-byte cost of the scan and the commit (plants 17 and 18). Eighteen plants guard this feature, and each gave a non-zero exit with `0 Error(s)`, with each restored file equal under `cmp`. Plants 17 and 18 failed only the new gate, at 4800 bytes and 2400 bytes, because only the rebind step opens a listen. The run reads the Framework total 326, `BrutalUi.Core.Tests` 1801, and the solution 2988 with 0 failed and 3 skipped. The twelve existing Framework Actions classes pass with no edit, and `UiActionMap.Bindings.cs` keeps an empty diff. HelloPanel rebinds the `Up` key through a button and restores the build, and a host with a window runs that check (see `docs/features/input/binding-remap/context.md`).
 - **A twenty-first allocation gate.** `LoadedTreeAllocationTests` (2 tests) in `tests/BrutalUi.Markup.Tests/Template/` loads one XML template with a root and six panels (55 elements): each panel holds one label, button, toggle, slider, text field, and image with the texture `icon` from the map, plus one scroll view with one label child. The test sets the inline fill of each panel after the load, so each frame holds a rect call. Each step toggles the hover state of one panel, writes the value of one slider, sets the text of one label from one of two constants, then runs `Update(0.016f)` and `Draw` into a `RecordingRenderer`. `ALoadedTreeAllocatesNothingInUpdateAndDraw` warms up with 16 steps, releases the allocation context, measures 100 steps, and asserts 0 bytes: the 0-byte rule of a loaded tree (section 11). `TheMeasuredStepsDoRealWork` checks the step count 116, and that the last frame holds a text call, an image call with the texture id 7, and a rect call, so an empty body cannot pass. Plant 5 put `GC.KeepAlive(new object());` as the first line of `Image.PaintContent` and gave exit code 2 with 0 `error CS` lines: this gate failed with 21616 bytes, and the two older image gates `ElementAllocationTests.UpdateAndDrawAllocateNothingAfterWarmUp` and `ImGuiRendererAllocationTests.LabelUpdateAndDrawAllocateNothingAfterWarmUp` failed with it. After the restore, `cmp` found no difference and `git diff --stat -- src/BrutalUi.Core` gave no output.
+- **Package test** in `tests/BrutalUi.PackageTest/`, outside the solution. `dotnet pack` writes the packages to `artifacts/packages`. The project restores `BrutalUi.Markup` from that folder with its own `nuget.config`, and into its own package folder under `artifacts/package-test`. It marks a `Gauge` type with `[TemplateElement]`, calls the generated `RegisterBrutalUiPackageTestElements`, loads `<ui:Gauge level="0.5" />` through the `u8` span overload, prints `package-test: PASS Gauge level 0.5`, and returns 0. Any other level, or any load error, prints `package-test: FAIL ...` to standard error and returns 1. Both test scripts run the path: the `pack`, `package-restore`, and `package` steps of `scripts/test-linux.sh` and `scripts/test-windows.ps1`. The `package` step shuts the build servers down first, because a warm `VBCSCompiler` can keep an old analyzer set and skip the re-compile.
 - **Sample projects** as the integration test, built in CI. The HelloPanel smoke run (`--frames 120`) prints 7 lines: `HelloPanel: 120 frames rendered.`, `HelloPanel: last frame: draw commands <D>, vertices <V>.`, `HelloPanel: bytes after warm-up: Update and Draw 0, frame <F>, in 117 frames.`, `HelloPanel: gate: pointer over UI in 58 frames, keyboard focus in UI in 117 frames, of 117 measured frames.`, `HelloPanel: widgets: clicks 119, flips 119, values 119, scrolls 118, edits 182, submits 121.`, `HelloPanel: state: adds <A>, resets 30, versions <A+30>.`, and `HelloPanel: modes: switches 60, backs 59, main frames 59, detail frames 58.` A person re-measures line 2 and line 6 on a host with a window; the counts are pending. The `Mode (F1)` row adds one button to the widget panel. The fill, the border, and the text of that button add vertices, so the old counts of 7 draw commands and 1172 vertices are the pre-modes sample. The mode switch unmounts the state panel in every other frame. The `Add` click then lands only in a frame that starts in `hello.main`, because the unmounted panel is not in the tree at the drain. So `adds` lands near 60 and `versions` lands near 90, not the pre-modes 119 and 149. `resets` stays 30, because the Escape key reaches the map in both modes. The state row of state-and-commands/action-map (the `Add` button and the score label) changed line 2 from `vertices 1100` to the pre-modes `vertices 1172` and kept `draw commands 7`. The vertex count was 128 before the input demo. The gate label adds 160 vertices, and the widget section adds 812 more (288 to 1100 in total), with 5 more draw commands, because the view and the field clip their content. The last frame is odd, so the text of the field is empty in it. In each frame, the run pushes a synthetic input into the ring, so the gate counts show the input pass at work. The order of the push is: the button click, the toggle click, the click on the `Add` button of the state row, the slider click (25 % in an even frame and 75 % in an odd frame), the scroll at the center of the view ((0, -1) in an even frame and (0, 1) in an odd frame), the Tab down and up, the Escape key down and up with no target (in each frame with `frameIndex % 4 == 3`), the char `a` (even frame) or the Backspace (odd frame) and the Enter with the field as the caller target, the press and the release at the center of the field with no target, and the pointer move last. No focus change comes after the field press, so the field holds the focus at the caret pass. The presses also give the focus, so the keyboard count of line 4 does not prove the Tab. The Tab moves the focus from the slider to the field, and a Tab after the field press would move the focus to the panel. `FocusAllocationTests` and the queue case of `ThousandElementAllocationTests` guard the Tab. The first measured frame (frame 3) adds a burst after the Tab. The burst holds 32 chars of `W`, one Enter, and 32 Backspace keys, each with the field as the caller target. The field drops the 32nd char, so the text has 32 bytes. The text label then shows 38 bytes and the submit label 43 bytes. These are the longest texts of the two text labels, and both are longer than the start buffer of a label. The field is empty again at the end of the frame. The move comes last, so it decides the gate of line 4. The move is over the panel in the even frames and off the panel in the odd frames. The run exits with code 1 when it measured 2 frames or more and a gate count is 0. It then writes `HelloPanel: the synthetic input did not reach the UI.` to standard error. It also exits with code 1 when each measured frame reads the pointer over the UI, because the odd frames move off the panel. It then writes `HelloPanel: the pointer read over the UI in each measured frame. The off-panel frames did not reach the game.` to standard error. It also exits with code 1 when one of the 6 widget counts of line 5 is 0 in a run of 2 measured frames or more. It also exits with code 1 when the field never holds the focus after `Update` in a measured frame (the caret check). Line 5 does not show the caret count. In both cases it writes `HelloPanel: the synthetic input did not reach each widget.` to standard error. The run is also a gate. It exits with code 1 and writes `HelloPanel: Update and Draw allocated <B> bytes after warm-up. The limit is 0 bytes.` to standard error when the UI region (the smoke input, `ViewportSize`, `Update`, `Draw`, the gate read, and the four label updates) allocates after 3 warm-up frames. `PollGamepads` runs after `Glfw.PollEvents` and outside the UI region, so an allocation of the BRUTAL binding cannot fail the gate. input-actions adds the fifth label of the widget panel: the move label shows `Move: <x>, <y>` from `ReadVector` on the `Move` action (W, A, S, D and the left stick of slot 0). The UI region no longer pushes the gamepad, because the frame read of the active map reads the pad of slot 0 inside `Update` (section 9, item 13). Plant 20 puts `GC.KeepAlive(new object());` as the first line of `HelloScreen.MoveText`; a host with a window measures its bytes on line 3. The frame number is a report only. In a measured frame in which the thread allocated since the last release, the sample releases the allocation context before the UI region and outside it, for the same cause as the test gates. The sample loads `HelloScreen.css` before the window opens. A bad sheet gives exit code 1 and the error lines on standard error, with no GPU. Five plants guard the widget script. Plant A puts `GC.KeepAlive(new object());` as the first line of `HelloWidgets.OnClicked`. The smoke run then exits with code 1 and writes `HelloPanel: Update and Draw allocated 2808 bytes after warm-up. The limit is 0 bytes.` (117 measured frames times 24 bytes). Plant C does the same in `HelloWidgets.OnTextChanged` and gives the same 2808 bytes. Plant B removes the click of the button from `PushSmokeInput`. The run then exits with code 1 and writes `HelloPanel: the synthetic input did not reach each widget.`, and line 5 shows `clicks 0`. Plant M03 removes the `WriteText` call for the text label from the constructor of `HelloWidgets`, so the label does not hold the longest text before the measure. The run exits with code 1 and writes `HelloPanel: Update and Draw allocated 88 bytes after warm-up. The limit is 0 bytes.` Plant M09 moves the Tab after the pointer move (the order of the plan). The run exits with code 1 and writes `HelloPanel: the synthetic input did not reach each widget.` because the field never holds the focus after `Update`. Line 2 then reads `draw commands 5, vertices 1096`, and lines 3 to 5 do not change. After each restore, `cmp` found no difference. The state row adds line 6 and one more check. The run exits with code 1 when it measured 2 frames or more and `adds`, `resets`, or `versions` is 0. It then writes `HelloPanel: the synthetic input did not reach the state row.` to standard error. The store starts at version 1, so `versions` is the version minus 1. In the pre-modes 120-frame run, `versions` 149 equaled `adds` 119 plus `resets` 30, because each add and each reset changes the score. The rule holds with the modes too, but a person re-measures both counts. The Escape key arrives with the text field in focus, so line 6 proves live that a focused text field passes a non-text key to the action map. Two plants guard the state row. Plant A removes the Escape push from `PushSmokeInput`. The run exits with code 1, line 6 reads `adds <A>, resets 0, versions <A>`, where `<A>` is the re-measured `adds` count, and standard error holds the state row message. The widget check and the input check still pass. Plant B puts `GC.KeepAlive(new object());` as the first line of `UiActionMap.PressKey`. The run exits with code 1 and writes `HelloPanel: Update and Draw allocated 720 bytes after warm-up. The limit is 0 bytes.` (30 resets times 24 bytes). After each restore, `cmp` found no difference. `scripts/test-linux.sh` reads the exit code only, so the script has no change. panel-sample adds the two modes and line 7. `HelloModes` registers the panels `hello.widgets`, `hello.state`, and `hello.info`, the layout `hello.layout` with the slots `top` and `bottom`, and the modes `hello.main` and `hello.detail`. `hello.main` names the widget panel in `top` and the state row panel in `bottom`. `hello.detail` names the info panel in place of the state row panel. The command `hello.mode` toggles the mode, and the command `hello.back` calls `ModeHistory.Back`. F1 runs `hello.mode`, and F2 runs `hello.back`. The `Mode (F1)` button runs `hello.mode` too. The smoke run presses F1 in each even measured frame and F2 in each odd measured frame, also in the warm-up frames. Each measured frame then runs one diff. The run caches the `Add` point after each `hello.main` frame, because `ViewportCenter` needs an element in the tree, and pushes the `Add` click at the cached point. The mode check exits with code 1 and writes `HelloPanel: the synthetic input did not reach the mode switch.` when one of the four counts of line 7 is 0. With `--frames 120`, the parity gives `switches 60, backs 59, main frames 59, detail frames 58`. The F2 of frame 0 meets an empty history, so it gives no back step. A person reads the seven lines on a host with a window, because this headless host reports `GLFW init failed: PlatformUnavailable` before any line. Two plants guard the check. Plant 1 removes the line `modes.Backs++;`. The expected result is line 7 with `backs 0`, the mode-check line, and exit code 1. Plant 2 puts `GC.KeepAlive(new object());` as the first line of `s_mode`. The expected result is line 3 with bytes above 0 and exit code 1. Both plants built with `0 Error(s)` on this host and stopped at the window step, so a person runs both plants on a host with a window. Each plant restored with `cmp` equal.
 
 Run the benchmarks and the facts report from the repository root:
