@@ -2,7 +2,7 @@
 
 **This file is the single source of truth for the handoff from a delegator command to an implementation subagent.** The installer writes it to **`.beast-mode/phase-handoff.md`**. It holds the task group split, the one agent at a time rule, the stop rule, the phase brief format, the brief path, the code review grouping, the subagent prompt shape, the delegator rules, and the verification brief. It also holds the post-phase step, the slice, and the inbox. A delegator command names this file through a small "Phase handoff" pointer block (see the bottom of this file). The rules live here and **only** here — a command never duplicates them.
 
-> **Who reads this file:** the parent context of `/proceed`, `/proceed-advanced`, and `/autorun-feature`. In an epic run, the `feature-orchestrator` agent runs `/autorun-feature`, so that agent is the parent. A phase subagent never reads it. A phase subagent receives the brief and the pasted tool rules instead.
+> **Who reads this file:** the parent context of `/proceed`, `/proceed-advanced`, and `/autorun-feature`. In an epic run, the `feature-orchestrator` agent runs `/autorun-feature`, so that agent is the parent. A phase subagent never reads it. A phase subagent receives the brief and the pasted tool rules instead. In `/orca-feature` and `/orca-epic`, the phase worker (the agent tab of a phase) is the parent, and it reads this file.
 >
 > **Who reads section 11:** `/plan-feature` reads section 11, and it pastes the section into the prompt of the `solution-architect` agent. In the called mode of `/autorun-feature`, the parent does the same for the draft of the next plan. The `solution-architect` agent reads section 11 only when its prompt holds no Slice rules block.
 >
@@ -230,7 +230,7 @@ The inbox is one file per feature. It records each item that reaches a run at an
    ```
 
    The kind is `bug`, `note`, `change small`, `change medium`, or `change large`. The time is the write time. To mark a line done, tick its box and append the outcome. At part 5 of section 10, the parent can correct a wrong kind on an open line.
-3. **Write.** A user message can reach a run at any point. The message is an item when it reports a fault, asks for a change, or gives guidance. A run is `/proceed`, `/proceed-advanced`, `/autorun-feature`, or `/autorun-epic`, from its first step to its last step.
+3. **Write.** A user message can reach a run at any point. The message is an item when it reports a fault, asks for a change, or gives guidance. A run is `/proceed`, `/proceed-advanced`, `/autorun-feature`, `/autorun-epic`, `/orca-feature`, or `/orca-epic`, from its first step to its last step.
 
    The parent writes one open line for each item, and it answers `Noted, handled after this phase.` The kind is `bug` for a fault, `note` for guidance, and `change` with its level for a change. The parent never stops or interrupts a running agent for an item. A question gets a short answer and no line. A request to stop the run is not an item. Stop the run after the current agent returns.
 

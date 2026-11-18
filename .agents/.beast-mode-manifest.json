@@ -1,9 +1,9 @@
 {
   "schema": 1,
-  "beastModeVersion": "6.1.1",
+  "beastModeVersion": "6.2.0",
   "harness": "dsh",
   "harnessRoot": ".agents",
-  "generated": "2026-11-07T18:24:37.142Z",
+  "generated": "2026-11-18T16:10:07.049Z",
   "files": [
     {
       "destination": ".agents/skills/audit-feature/SKILL.md",
@@ -66,9 +66,27 @@
       "owned": true
     },
     {
+      "destination": ".agents/skills/orca-epic/SKILL.md",
+      "source": "templates/skills/orca-epic/SKILL.md",
+      "sha256": "48290d58132d831172b18181f6fdef724863276a81c1920e0c528fcc23c97e51",
+      "owned": true
+    },
+    {
+      "destination": ".agents/skills/orca-feature/SKILL.md",
+      "source": "templates/skills/orca-feature/SKILL.md",
+      "sha256": "4f25d243531b24318da889283b941e932a05f8532ad22b486792d71ff04509ef",
+      "owned": true
+    },
+    {
+      "destination": ".agents/skills/orca-setup/SKILL.md",
+      "source": "templates/skills/orca-setup/SKILL.md",
+      "sha256": "60a29545feecafdefb623c8cb8fcabd851c43779c05c4b35a173f7bc388a1fe7",
+      "owned": true
+    },
+    {
       "destination": ".agents/skills/plan-epic/SKILL.md",
       "source": "templates/skills/plan-epic/SKILL.md",
-      "sha256": "90a676500158f2174ecdff51987bfae9b6827ddd2bb6549a735565fd2711676c",
+      "sha256": "04a45ab6c86861b14e5608ac633485389f53fa24c47cf909386d6cdb72ed34e3",
       "owned": true
     },
     {
@@ -158,7 +176,7 @@
     {
       "destination": ".agents/skills/update-epic/SKILL.md",
       "source": "templates/skills/update-epic/SKILL.md",
-      "sha256": "86aae2086bacb3481dfc92ac6b0090ae26bd783f85524cc71e7b6b17dc6c0f60",
+      "sha256": "fdcf923bd731881fc66cb8a650e3293b1b0dbbdde41d54834657e7b9a33aa124",
       "owned": true
     },
     {
@@ -188,92 +206,92 @@
     {
       "destination": ".beast-mode/templates/context.md",
       "source": "templates/dev-docs/context.md",
-      "owned": false,
-      "reason": "the file already existed at install time"
+      "sha256": "3dd6f68f46c29f8510b800e4bc452fc6be5dcc7095a953ec77b039f30f53dc32",
+      "owned": true
     },
     {
       "destination": ".beast-mode/templates/epic-overview.md",
       "source": "templates/dev-docs/epic-overview.md",
-      "owned": false,
-      "reason": "the file already existed at install time"
+      "sha256": "7cb23fff44134e65493a453b28f3880a66a7b28c77a3eb80600fbc2fb94d601f",
+      "owned": true
     },
     {
       "destination": ".beast-mode/templates/epic-requirements.md",
       "source": "templates/dev-docs/epic-requirements.md",
-      "owned": false,
-      "reason": "the file already existed at install time"
+      "sha256": "64e3ca70bebd123cf73c9cae8cbca7308dd31475aa25d7725a0b45ac18239602",
+      "owned": true
     },
     {
       "destination": ".beast-mode/templates/human-testing.md",
       "source": "templates/dev-docs/human-testing.md",
-      "owned": false,
-      "reason": "the file already existed at install time"
+      "sha256": "b02b92a4e2deda6f0a5924f7dbceec02415ed419296055c33c312743e544fb7b",
+      "owned": true
     },
     {
       "destination": ".beast-mode/templates/implementation.md",
       "source": "templates/dev-docs/implementation.md",
-      "owned": false,
-      "reason": "the file already existed at install time"
+      "sha256": "ad2d59da4ebe7e0edeaac0149b65ee4c61828504a138790dcead9d8d00a2ed4d",
+      "owned": true
     },
     {
       "destination": ".beast-mode/templates/inbox.md",
       "source": "templates/dev-docs/inbox.md",
-      "owned": false,
-      "reason": "the file already existed at install time"
+      "sha256": "d98784176d5f3af73fcb10bce5e7a94cdf1f48aa5720cb6c488fd8766684b289",
+      "owned": true
     },
     {
       "destination": ".beast-mode/templates/tasks.md",
       "source": "templates/dev-docs/tasks.md",
-      "owned": false,
-      "reason": "the file already existed at install time"
+      "sha256": "59394e74b8459910e5d3600727f840fb36bf9d9ce4a794306e821f4d0b495f93",
+      "owned": true
     },
     {
       "destination": ".beast-mode/agent-structure-example.md",
       "source": "templates/formats/agent-structure-example.md",
-      "owned": false,
-      "reason": "the file already existed at install time"
+      "sha256": "210f79cbb6e1f644d8d13d146608eec29313120a0a57108e0e1b64f5a8429db9",
+      "owned": true
     },
     {
       "destination": ".beast-mode/epic-resolution.md",
       "source": "templates/formats/epic-resolution.md",
-      "owned": false,
-      "reason": "the file already existed at install time"
+      "sha256": "3334d7d5288e0126ece8cfcc8c51521e78ae735603e45db3d3900e10e2fa02f4",
+      "owned": true
     },
     {
       "destination": ".beast-mode/interview.md",
       "source": "templates/formats/interview.md",
-      "owned": false,
-      "reason": "the file already existed at install time"
+      "sha256": "8ddb1e6a1cfa62f3cf56c5c831cb53b65c2dc038e32958a600441ee3cb9fab93",
+      "owned": true
     },
     {
       "destination": ".beast-mode/mission-statement-template.md",
       "source": "templates/formats/mission-statement-template.md",
-      "owned": false,
-      "reason": "the file already existed at install time"
+      "sha256": "134e9cc29ba5307b70a8fdc8c77b1c272bade9461f29023997a65136ee340537",
+      "owned": true
     },
     {
       "destination": ".beast-mode/phase-handoff.md",
       "source": "templates/formats/phase-handoff.md",
-      "owned": false,
-      "reason": "the file already existed at install time"
+      "sha256": "0a8d5ff15386986eb999b8a4635890f55953808951ce88f1252cb0163a1d4e3d",
+      "owned": true
     },
     {
       "destination": ".beast-mode/skill-structure-example.md",
       "source": "templates/formats/skill-structure-example.md",
-      "owned": false,
-      "reason": "the file already existed at install time"
+      "sha256": "6f5c04ee4234a48ea3ecac7f6be32359b98a55b8c40fbeb67264505ba7729b9d",
+      "owned": true
     },
     {
       "destination": ".beast-mode/technical-design-template.md",
       "source": "templates/formats/technical-design-template.md",
-      "owned": false,
-      "reason": "the file already existed at install time"
+      "sha256": "1d8bce65d4617f9249089854d37668ad8ad5a1f483c9680b4ac4cb57694b445f",
+      "owned": true
     },
     {
       "destination": ".beast-mode/tool-rules.md",
       "source": "templates/formats/tool-rules.md",
-      "owned": false,
-      "reason": "the file already existed at install time"
+      "sha256": "d5b9c3b32040bf7254d4a3009ff28197890b165dd0ea22a4014b3048361b7611",
+      "owned": true
     }
   ]
 }

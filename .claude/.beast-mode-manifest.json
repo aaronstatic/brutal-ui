@@ -1,9 +1,9 @@
 {
   "schema": 1,
-  "beastModeVersion": "6.1.1",
+  "beastModeVersion": "6.2.0",
   "harness": "claude",
   "harnessRoot": ".claude",
-  "generated": "2026-10-21T06:48:14.587Z",
+  "generated": "2026-11-18T16:10:07.034Z",
   "files": [
     {
       "destination": ".claude/skills/audit-feature/SKILL.md",
@@ -66,9 +66,27 @@
       "owned": true
     },
     {
+      "destination": ".claude/skills/orca-epic/SKILL.md",
+      "source": "templates/skills/orca-epic/SKILL.md",
+      "sha256": "63afe18e3c790e86b9495fe11e5201a3882db81012928982a51af1dc53663121",
+      "owned": true
+    },
+    {
+      "destination": ".claude/skills/orca-feature/SKILL.md",
+      "source": "templates/skills/orca-feature/SKILL.md",
+      "sha256": "e2494c6a4fb4c8dc6908ebbdf66e801ff43ac01a4b0e4678e5e3f96335164ea8",
+      "owned": true
+    },
+    {
+      "destination": ".claude/skills/orca-setup/SKILL.md",
+      "source": "templates/skills/orca-setup/SKILL.md",
+      "sha256": "60a29545feecafdefb623c8cb8fcabd851c43779c05c4b35a173f7bc388a1fe7",
+      "owned": true
+    },
+    {
       "destination": ".claude/skills/plan-epic/SKILL.md",
       "source": "templates/skills/plan-epic/SKILL.md",
-      "sha256": "f92fa8c13800f7d715b40977656a49304dd3e270b132359e2c472d8f7eccb6b3",
+      "sha256": "93ff1c22b7785afb88d0cbcf301c9662e79b0d6443e698da76da6c400fcd6a63",
       "owned": true
     },
     {
@@ -158,7 +176,7 @@
     {
       "destination": ".claude/skills/update-epic/SKILL.md",
       "source": "templates/skills/update-epic/SKILL.md",
-      "sha256": "e9d3da1307c4ac60b853b78dcfe55d17dd1f648506acf96b372cc5253b4f6247",
+      "sha256": "ef6e67f5b1b1ae2f33854cb615dfcb5b9f71539ac8ecc1deb49148e5fd6fc4f4",
       "owned": true
     },
     {
@@ -194,7 +212,7 @@
     {
       "destination": ".beast-mode/templates/epic-overview.md",
       "source": "templates/dev-docs/epic-overview.md",
-      "sha256": "79d431c81e458e4a6c121a592a07efad7980018e46be473bde129edcf65daaa0",
+      "sha256": "7cb23fff44134e65493a453b28f3880a66a7b28c77a3eb80600fbc2fb94d601f",
       "owned": true
     },
     {
@@ -236,7 +254,7 @@
     {
       "destination": ".beast-mode/epic-resolution.md",
       "source": "templates/formats/epic-resolution.md",
-      "sha256": "d20bdc31a1b328ceae6b09af1cdeaba8fff9a8bb871157b6ecfd5729916178e4",
+      "sha256": "3334d7d5288e0126ece8cfcc8c51521e78ae735603e45db3d3900e10e2fa02f4",
       "owned": true
     },
     {
@@ -254,7 +272,7 @@
     {
       "destination": ".beast-mode/phase-handoff.md",
       "source": "templates/formats/phase-handoff.md",
-      "sha256": "c2d02e4acbae10a40eaa2b0a36b77893cd2136a45316f79fab4686ac4512d6f0",
+      "sha256": "0a8d5ff15386986eb999b8a4635890f55953808951ce88f1252cb0163a1d4e3d",
       "owned": true
     },
     {

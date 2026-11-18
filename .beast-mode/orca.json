@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "agents": {
+    "dsh": {
+      "command": "dsh-personal"
+    }
+  },
+  "orchestration": {
+    "stages": {
+      "plan": "claude",
+      "implement": "dsh",
+      "verify": "dsh",
+      "review": "claude",
+      "docs": "dsh"
+    },
+    "commit": "phase",
+    "concurrent": true,
+    "steps": []
+  }
+}

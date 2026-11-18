@@ -183,6 +183,9 @@ Keep the block identical across commands except for one trailing clause naming w
 | `update-epic` | the target is an epic; refresh its `epic-overview.md` rollup and the epic's single row in the master overview. |
 | `create-epic`, `plan-epic` | the target is the epic itself; if a target that is already an epic is passed to `/create-epic`, error clearly instead of nesting. |
 | `autorun-epic` | the target is an epic; run its child features one at a time, in the build order of epic-overview.md. |
+| `orca-feature` | and resolve `<epic>/<feature>` for a feature inside an epic, and pass the nested `<epic>/<feature>` path to the step script; a bare epic name → ask which child feature to run, or run `/orca-epic <epic>` for the whole epic. |
+| `orca-epic` | the target is an epic, a folder that holds `epic-overview.md`. Pass the bare epic name to the step script. The script builds the child features in the Build Order of `epic-overview.md`. It builds the features of one Build Order item side by side when the `concurrent` setting of `.beast-mode/orca.json` allows it. A plain feature or an `<epic>/<feature>` reference → stop with a pointer to `/orca-feature`. |
+| `orca-setup` | takes no argument; it writes `.beast-mode/orca.json` only and reads no feature path. It needs no epic-reference resolution. |
 | `fix-bug` | and resolve the bug's `linkedFeature` (not `$ARGUMENTS`, which is the bug ID) to its `<epic>/<feature>` path, loading epic context, when the linked feature lives inside an epic. |
 | `fix-feature` | and resolve `$ARGUMENTS` and each bug's `linkedFeature`; additionally, if `$ARGUMENTS` is a bare epic name, fix open bugs across all of the epic's child features. |
 | `audit-feature` | and resolve `<epic>/<feature>` (loading epic context) when the target is a feature inside an epic; descend into epic folders during the cross-feature scan; a bare epic name → ask which child feature to audit. |

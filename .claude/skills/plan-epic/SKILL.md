@@ -94,7 +94,7 @@ With the draft feature set, decide the build order and record **why**:
 - Which features can be built in parallel (no dependency between them)?
 - What external dependencies or integrations must exist before certain features can start?
 
-Produce an ordered list (1, 2, 3, …) with a one-sentence rationale per feature explaining its position. Where features can be built in parallel, note that explicitly.
+Produce an ordered list (1, 2, 3, …) with a one-sentence rationale per feature explaining its position. Where features can be built in parallel, put them into one numbered item, with each feature name in bold, for example `2. **ux** and **api** (parallel, both need base)`. Bold only the features of that item, never a feature that the item only needs.
 
 **If re-running on an existing epic:** review the current `epic-overview.md` build order — keep, adjust, or extend it based on what has changed.
 
@@ -119,7 +119,7 @@ Fill in:
 - **Status:** `Planned` (for a new epic); keep the existing status on re-run.
 - **Purpose:** 1–2 paragraphs describing what this epic covers and why these features belong together (from the scoping conversation).
 - **Features table:** one row per agreed feature, in build order (build order = row order). Status = `Planned` for new features. Task counts = `—` (not yet started). One-line description per feature.
-- **Build Order / Dependencies:** the ordered list from Step 4, with rationale. Note any parallel-build pairs and any external dependencies.
+- **Build Order / Dependencies:** the ordered list from Step 4, with rationale. Put the features that build in parallel into one numbered item, each name in bold. Note any external dependencies.
 - **Integration & Architecture:** high-level notes on how the features compose and how the epic integrates with the rest of the project. Keep this proportional to what emerged in scoping — a placeholder is fine if architecture was not discussed.
 - **Tech Debt / Findings:** leave empty (populated by `/review-epic`).
 - **Master Overview Rollup:** rollup status = `Planned (0/<N> features)`; one-line master summary = the epic's elevator-pitch sentence for `docs/overview.md`.

@@ -166,6 +166,7 @@ If any child feature **does not have a row** in the Features table (e.g. a newly
 If the session surfaced a dependency change or a reordering of features:
 
 - Update the numbered list in the Build Order / Dependencies section with targeted `Edit`s.
+- Keep each parallel group in one numbered item, with each feature name of the group in bold. Bold no other feature in that item.
 - If nothing changed, leave this section untouched.
 
 #### 4c. Update Integration & Architecture notes (if changed)
