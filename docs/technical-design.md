@@ -1141,6 +1141,7 @@ The service registry rules:
 ### Panel definitions
 
 - `PanelDefinition`, `LayoutDefinition`, and `ModeDefinition` are sealed records. `ModePanel` is a readonly struct. Each record copies its UTF-8 names to a `byte[]` at build time (Q4), and each name property returns a span over the copy.
+- `DefinitionLoader` (section 11) reads the three records from XML. A loaded record is the same as a C# record: the same type, the same name copies, and the same factory shape.
 - Each record checks its input at build time (A5). An empty name throws `ArgumentException`. A `null` factory throws `ArgumentNullException`. `ModeDefinition` also rejects an empty entry and a panel that the list names two times.
 - The records keep the generated equality. It compares the name copies by reference, so two records from two constructor calls are not equal. Compare the names with `SequenceEqual`. `ToString` writes the names as text, for a debugger and a log only.
 - A mode groups its panels by slot (A4). The slot order is the order of the first entry. The panel order is the order of the list. A panel is in one slot at most.
@@ -1181,6 +1182,7 @@ The service registry rules:
 - The frame rule: the hit test of the same `Update` reads the layout rects of the previous frame. The style pass and the layout pass of the same `Update` lay out the new tree before `Draw`. The stale rules of Core clear the hover, the active state, and the focus of a leaving panel's subtree, and drop its running tweens with no write.
 - The thread rule: the manager and the history run on the UI thread and use no locks.
 - The 0-byte rule: `Register` allocates at build time. After warm-up, `SetMode`, the diff, a frame with no target, and a back step allocate 0 bytes.
+- The loaded record rule: a loaded record gives the same diff as a C# record. `DefinitionParityTests` guards it.
 
 `BeforeUpdateTests`, `UiManagerTests`, `ModeDiffTests`, `LayoutSwapTests`, `ModeActionMapTests`, `ModeHistoryTests`, and `UiManagerRegisterTests` guard the rules (section 14).
 
@@ -1631,6 +1633,139 @@ command name allocate at load time; a loaded tree then allocates nothing in `Upd
 does. `TemplateParityTests` guards the parity of a loaded tree with the same tree built in C# after 10 store versions
 and after a click, and `TemplateBindingAllocationTests` guards the cost at 0 bytes (section 14).
 
+### Definition format
+
+`BrutalUi.Framework` reads a definitions text into the three records of section 10. One `DefinitionLoader` serves one
+`TemplateLoader`, and the constructor registers the `SlotContainer` element type on it (section 10, Slot containers).
+A game adds each template text by name before the load.
+
+```xml
+<ui:Definitions xmlns:ui="brutal-ui">
+  <ui:Panel name="hud" slot="top" template="hud.panel" />
+  <ui:Layout name="game" template="game.layout" />
+  <ui:Mode name="play" layout="game">
+    <ui:Slot name="top">
+      <ui:PanelRef name="hud" />
+    </ui:Slot>
+  </ui:Mode>
+</ui:Definitions>
+```
+
+The two template texts that the demo adds:
+
+```xml
+<ui:Element name="hud" xmlns:ui="brutal-ui">
+  <ui:Label name="score" text="0" />
+</ui:Element>
+```
+
+```xml
+<ui:Element pickable="false" xmlns:ui="brutal-ui">
+  <ui:SlotContainer slot="top" />
+</ui:Element>
+```
+
+```csharp
+TemplateLoader templates = new();
+DefinitionLoader definitions = new(templates);       // registers the SlotContainer element type
+definitions.AddTemplate("hud.panel", panelText);     // copies the UTF-8 text
+definitions.AddTemplate("game.layout", layoutText);
+
+DefinitionLoadResult result = definitions.Load(definitionsText);
+result.RegisterTo(ui);                               // panels, then layouts, then modes
+ui.SetMode("play"u8);                                // the next Update mounts hud in the slot top
+```
+
+`Load` reads the text in two passes and throws nothing for the text. The read pass walks the text with an
+`XmlReader` and records each entry with the position of each value. The resolve pass checks the names and builds the
+records. The walk keeps reading after each error, so one load gives each error, and `Errors` sorts by line, then
+column. A result with one error or more holds no record, and `RegisterTo` throws `InvalidOperationException` with one
+error line for each error.
+
+**The element table.** Each element has one place and one set of attributes.
+
+| Element | Parent | Attributes | Record |
+|---|---|---|---|
+| `Definitions` | none (the root) | none | the result |
+| `Panel` | `Definitions` | `name`, `slot`, `template` (all required) | `PanelDefinition(name, slot, factory)` |
+| `Layout` | `Definitions` | `name`, `template` (both required) | `LayoutDefinition(name, factory)` |
+| `Mode` | `Definitions` | `name`, `layout` (both required), `actions` (optional) | `ModeDefinition(name, layout, placements, map)` |
+| `Slot` | `Mode` | `name` (required) | a group of placements |
+| `PanelRef` | `Slot` or `Mode` | `name` (required) | one `ModePanel`. A direct child of `Mode` takes the `DefaultSlot` of the panel (Q5) |
+| `SlotContainer` | a layout template | `slot` (required) | `new SlotContainer(slot)`, a leaf |
+
+The entry order makes no difference. A `Mode` can come before its `Panel` and its `Layout`. The placements of a mode
+keep the order of the text, and `ModeDefinition` groups them by slot in the order of the first entry of each slot.
+
+The `actions` value names one map that the game added with `AddActionMap`. A mode with no `actions` attribute gets no
+map. A `PanelRef` directly under `Mode` names no slot and takes the `DefaultSlot` of its panel (Q5).
+
+**Parity.** A loaded record holds the same data as the same record built in C#, and a set of loaded records gives the
+same mode diff as the same set in C#. `DefinitionParityTests` guards the rule, and `ModeDiffAllocationTests` measures
+the toggle cycle on loaded records at 0 bytes after warm-up.
+
+**The factories.** A panel factory captures the template loader, the template text copy, and the template name. Each
+call runs `templates.Load(text, templateName).GetRootOrThrow()`, so each call gives a new, detached root. The
+controller calls the factory one time, at the first mount. A fault of the template throws `InvalidOperationException`
+at that call, and the error rule of `UiManager` applies: the target stays, and the next `Update` runs the diff again.
+A layout factory is the same, and `UiManager.Register(LayoutDefinition)` calls it one time. The template name is the
+source name of each `TemplateError`, so an error line reads `hud.panel(3,5): UnknownBinding: <message>`. The factory
+ignores its `PanelContext`, because the attached `TemplateBindings` gives the commands and the stores.
+
+**Definition errors.** `Errors` holds `DefinitionError` structs: the kind, the line, the column, the message, and the
+source name. `ToString` gives the line `<source>(<line>,<column>): <kind>: <message>`. The kind is one member of
+`DefinitionErrorKind`:
+
+```csharp
+public enum DefinitionErrorKind : byte
+{
+    NotWellFormed, UnknownElement, UnknownAttribute, MissingAttribute, InvalidValue, UnexpectedText,
+    UnknownTemplate, UnknownActionMap, UnknownLayout, UnknownPanel, DuplicateName, UnknownSlot, TemplateFault,
+}
+```
+
+| Kind | Cause |
+|---|---|
+| `NotWellFormed` | `XmlReader` rejects the text: a missing or wrong end tag, a control character, a DTD, or a text with no root element. The read pass stops and gives one error of this kind. |
+| `UnknownElement` | An element name that the format does not hold at this place, or a name outside the `brutal-ui` namespace. |
+| `UnknownAttribute` | An attribute that the element does not hold. A prefixed attribute gives this kind, also with the `ui` prefix. |
+| `MissingAttribute` | An element with no attribute for one of its required names: `name`, `slot`, `template`, or `layout`. |
+| `InvalidValue` | An attribute value that is empty where the format needs a name. |
+| `UnexpectedText` | Text or a CDATA section between definition elements. Whitespace there gives no error. |
+| `UnknownTemplate` | A `template` value that names no template added with `AddTemplate`. |
+| `UnknownActionMap` | An `actions` value that names no map added with `AddActionMap`. |
+| `UnknownLayout` | A `layout` value that names no `Layout` entry of the same text. |
+| `UnknownPanel` | A `PanelRef` value that names no `Panel` entry of the same text. |
+| `DuplicateName` | Two entries of one text share one name, a layout template holds two slots of one name, or one mode places one panel two times. |
+| `UnknownSlot` | The slot of a placement that the mode layout does not hold. |
+| `TemplateFault` | The check load of a layout template failed. The message holds one line for each `TemplateError`. |
+
+**The position rule.** An error at an element points at the first character of the element name. An error at a value
+points at the first character of its attribute name; a value has no position of its own. `MissingAttribute`,
+`UnknownElement`, `TemplateFault`, and the duplicate slot of a template sit at the element. Each other kind sits at
+its attribute. The line and the column start at 1, and the column counts UTF-16 units, as `TemplateError` does.
+
+**The follow-on rule.** One fault gives one error. An entry with a name stays in its name table, also when another
+value of the entry has a fault; such an entry is faulty. A reference to a faulty entry gives no error. A mode on a
+faulty layout skips the slot check, and a placement with no panel record skips the slot check. So a `Panel` with no
+`template` gives one `MissingAttribute`, and a `Mode` that names it gives nothing more.
+
+**The check of each layout (Q3, A5).** The resolve pass check-loads each layout that is not faulty, also a layout
+that no mode names, one time per layout. The pass walks the built tree in pre-order for each `SlotContainer` without
+entering a slot, drops the tree, and keeps the slot names. A failed template load gives `TemplateFault` at the
+`Layout` element, with each `TemplateError.ToString` line in the message. Two slots of one name give `DuplicateName`
+at the element, because `UiManager.Register(LayoutDefinition)` throws for them. A fault of an unused layout therefore
+lands at load time, and a successful result holds no factory that throws inside `RegisterTo`.
+
+**The rules of the object.** A game makes one `DefinitionLoader` for each `TemplateLoader`: the constructor registers
+the `SlotContainer` type, and a second constructor on one loader throws `ArgumentException` from
+`TemplateLoader.Register`. An empty name throws `ArgumentException`, and a second `AddTemplate` or `AddActionMap`
+call for one name throws `ArgumentException` before the add, so the throw leaves the table unchanged; `AddTemplate`
+copies the text. An add after a load is valid: the next load reads the tables again, and an add call and a load call
+must not run at the same time. The load checks duplicate names inside one text only (A6). A name that the manager
+holds makes its `Register` call throw `ArgumentException` inside `RegisterTo`, and the call is not atomic: the
+records before the throw stay registered.
+
 ### Stylesheet format
 
 The `BrutalUi.Markup` package reads a stylesheet text into a `StyleSheet`. The sheet is the same type that `StyleSheet.Builder` makes (section 7). The format is a small part of CSS. `samples/HelloPanel/HelloScreen.css` is a full example.
@@ -1896,7 +2031,7 @@ The Vulkan backend binds one render pass at construction. Phase 5 tests a second
 - **Panel tests.** `PanelRecordTests` (14 tests) and `PanelControllerTests` (10 tests) in `tests/BrutalUi.Framework.Tests/Panels/` guard the panel data model and the controller. `EnsureRootAndTheReadsAllocateNothingAfterTheBuild` is a 0-byte test, not a numbered gate. It builds a controller, a layout, and a mode with three entries in two slots before the measure. It then runs 100 iterations after 2 warm-up rounds of a warm `EnsureRoot`, `IsBuilt`, `Instance.Root`, each name length, and each getter of the mode, and it measures 0 bytes in Debug. Two plants guard the controller. A planted `GC.KeepAlive(new object());` as the first line of `EnsureRoot` gave exit code 2 and failed the 0-byte test only (2400 bytes, 100 calls of 24 bytes). Removal of the early `return` of the warm path gave exit code 2 and failed `EnsureRootBuildsTheRootOneTime`, `TheRootStaysTheSameAfterADetach`, and the 0-byte test. After each restore, `cmp` found no difference.
 - **Slot tests.** `SlotContainerTests` (10 tests), `SlotLookupTests` (8 tests), and `SlotContainerTreeTests` (5 tests) in `tests/BrutalUi.Framework.Tests/Panels/` guard the slot container. `SlotContainerTests` checks the copy of the name, the empty-name check, the type name, the index of each mount, the move with no join, the keep rule of `Unmount`, the `false` result, the two parent throws, and the null, index, context-root, and cycle checks. `SlotLookupTests` checks `Find`: the hit, the root itself, the missing name, `SlotName` against `Element.Name`, the first slot in tree order, no walk into a slot, and the null root. `SlotContainerTreeTests` puts a slot in a real `UiContext` and checks the style by type name, by class, and by name, the order of the mounted roots in the layout pass, the style of a panel that moves to another slot, and a binding that keeps its value across an unmount and applies the new value after the mount. `MountUnmountAndFindAllocateNothingAfterWarmUp` in `SlotLookupTests` is a 0-byte test, not a numbered gate. It runs 100 iterations after 2 warm-up rounds of mounts, unmounts, child counts, and lookups, and it measures 0 bytes in Debug. Plants guard the code. In task 1.4, the removal of the `throw` of the parent rule gave exit code 2 and failed `AMountOfARootThatAnotherSlotHoldsThrows` and `AMountOfARootWithAnotherParentThrows`. `Children.Add(root)` in place of `Children.Insert(index, root)` gave exit code 2 and failed 3 tests: `MountPutsEachRootAtItsIndex`, `UnmountDetachesTheRootAndKeepsItsState`, and `TheMountRejectsANullRootABadIndexAContextRootAndACycle`. In task 2.4, a planted `GC.KeepAlive(new object());` as the first line of `Find` gave exit code 2 and failed the 0-byte test only (7200 bytes, 300 calls of 24 bytes). The same line as the first line of `Mount` gave exit code 2 and failed the 0-byte test only (16800 bytes, 700 calls of 24 bytes). The removal of the early `return` of the slot branch of the walk gave exit code 2 and failed `FindDoesNotEnterTheChildrenOfASlot` only. After each restore, `cmp` found no difference. The review added three more plants. R1 gave the same message to the two parent cases, and it failed `AMountOfARootThatAnotherSlotHoldsThrows`, because the test now checks the message. R2 made a slot that does not match walk its children, and it failed `FindChecksTheRootItself` and `FindDoesNotEnterTheChildrenOfASlot`. R4 removed the two index checks of the held branch of `Mount`, and it failed `AMountOfAHeldRootMovesItWithNoJoin`, because the test now checks `ParamName`. Each plant gave exit code 2, and each restore passed `cmp`.
 - **Mode tests.** `BeforeUpdateTests` (6 tests) in `BrutalUi.Core.Tests` guards the Core slot: the first call with the `deltaTime` of `Update`, the replace with a `=` write, the throw for a nested `Update`, the exception rule that leaves `Update` before the input pass, the style and layout of a root that the handler adds in the same `Update`, and the slot path at 0 bytes after warm-up. `UiManagerTests` (6 tests), `ModeDiffTests` (9 tests), `LayoutSwapTests` (5 tests), `ModeActionMapTests` (5 tests), `ModeHistoryTests` (9 tests), and `UiManagerRegisterTests` (8 tests) in `tests/BrutalUi.Framework.Tests/Panels/` guard the manager: the deferred target, the leave, enter, stay, and move of the diff, the layout swap, the map switch, the history ring and the back step, the register checks, the error rule, and the applying guard. The tests `SetModeAndTheDiffAllocateNothingAfterWarmUp` and `AFrameWithNoTargetAllocatesNothing` in `ModeDiffTests` are 0-byte tests, not a numbered gate. panel-sample planned the gate `ModeDiffAllocationTests`. The gate now exists (next bullet). A diff step holds a leave, an enter, a stay with a new index, a move, a layout swap, a map switch, a deactivate, and a back step. Each gate runs 100 iterations after 2 warm-up rounds, measures 0 bytes in Debug, and asserts a fixed child-count sum, so an empty body cannot pass. Fourteen plants guard the code. In task 1.6, a weakened slot check gave exit code 2 and failed 1 test (`AnUpdateFromTheSlotThrowsAndTheContextStaysValid`). The drain moved before the slot call gave exit code 2 and failed 3 tests (`UpdateCallsTheSlotFirstWithTheDeltaTime`, `AnUpdateFromTheSlotThrowsAndTheContextStaysValid`, and `AnExceptionOfTheSlotLeavesUpdateBeforeTheInputPass`). An apply call added to `SetMode` gave exit code 2 and failed 3 tests (`SetModeRecordsTheTargetAndChangesNoTree`, `TwoSetModeCallsInOneFrameApplyTheLast`, and `SetModeRejectsAnUnknownName`). In task 2.7, the unmount removed from the leave pass gave exit code 2 and failed 11 tests, `APanelThatOnlyTheOldModeHoldsUnmountsAndKeepsItsState`, the enter, stay, move, order, and binding tests, and all 5 tests of `LayoutSwapTests`. The unmount of a staying panel gave exit code 2 and failed `APanelInBothModesInTheSameSlotStaysWithNoJoin`. The remove-root block deleted from the swap gave exit code 2 and failed 3 tests (`AModeWithAnotherLayoutSwapsTheContextRoot`, `ASwapBackReusesTheFirstLayoutRoot`, and `TheManagerKeepsTheRootsOfTheGame`). The deactivate branch deleted gave exit code 2 and failed `AModeWithNoMapDeactivatesTheOldMap`. In task 3.4, a push that also adds the back step gave exit code 2 and failed 4 tests (`TheApplyOfABackStepAddsNoEntry`, `BackWalksToTheFirstModeAndThenReturnsFalse`, `ASetModeAfterBackInOneFrameWins`, and `AFullHistoryDropsTheOldestMode`). The full ring overwriting the newest entry gave exit code 2 and failed `AFullHistoryDropsTheOldestMode`. In task 4.4, a planted allocation gave these results. In `Apply`: exit code 2 and one failed test, `SetModeAndTheDiffAllocateNothingAfterWarmUp` with 9600 bytes. In the handler, before the check of the target: exit code 2 and both 0-byte tests failed, with 2400 bytes and 9600 bytes. In `SetMode`: exit code 2 and one failed test, with 7200 bytes. In `ModeHistory.Back()`: exit code 2 and one failed test, with 2400 bytes. The applying check of `SetMode` deleted gave exit code 2 and failed `SetModeBackAndRegisterFromTheDiffThrow`. After each restore, `cmp` found no difference, and the re-run gave 0 failed.
-- **An eighteenth allocation gate.** `ModeDiffAllocationTests` (3 tests) in `tests/BrutalUi.Framework.Tests/Panels/` builds one HelloPanel shape before the measure. The context has a `RecordingRenderer` measurer and a viewport of 800 by 600. The `CommandRegistry` holds `mda.mode`, `mda.add`, and `mda.cancel`, each with its own counter, and the scene has one `UiActionMap` with the action `mda.cancel` on Escape. The build registers three panels, one layout with the slots `top` and `bottom`, and two modes, and both modes name the one map. The widget panel holds a `Label`, a `Button` bound to `mda.mode`, and a `TextField` with the capacity 16. The field holds the focus, so the caret pass runs in each `Update`. The state panel holds a `Button` bound to `mda.add` and a `Label` bound to a `Store<int>`. The info panel holds one `Label`. `TheToggleCycleAllocatesNothingAfterWarmUp` measures 100 toggle steps after 2 warm-up rounds. One step runs `SetMode`, `Update`, a store set, `SetMode`, `Update`, `History.Back()`, `Update`, `SetMode`, `Update`, and `Draw`. Each step closes in the first mode, so each step does the same work and the history grows by 2. The test asserts 0 bytes and the child-count sum 1200, that is 12 for each step. `AnIdleFrameAllocatesNothing` measures 100 idle frames with no target, and asserts 0 bytes and the sum 300, that is 3 for each frame. `TheMeasuredBodyDoesRealWork` reads the tree after one step: the current mode, the slot layout, the text of the bound label, the history growth of 2, one run of each factory, and the active map. Each 0-byte test calls `AllocationGate.ReleaseAllocationContext()` right before its measure. The measured bodies hold no lambda, no string, no boxed value, no array, and no `Assert`. Three plants guard the code. A planted `GC.KeepAlive(new object());` as the first line of `UiManager.Apply` gave exit code 2 and failed `TheToggleCycleAllocatesNothingAfterWarmUp` (9600 bytes, 4 applies of 24 bytes for each step). `AnIdleFrameAllocatesNothing` passed, because no target gives no apply. The same line as the first line of the `OnBeforeUpdate` handler, before the target check, gave exit code 2 and failed both 0-byte tests: `AnIdleFrameAllocatesNothing` (2400 bytes, 1 update of 24 bytes for each step) and `TheToggleCycleAllocatesNothingAfterWarmUp` (9600 bytes). An empty body of `ToggleStep` that returns 12 gave exit code 2 and failed `TheMeasuredBodyDoesRealWork` only, because the history did not grow. The toggle gate passed with 0 bytes and the sum 12, so the real-work test is the guard against an empty body. After each restore, `cmp` found no difference, and both `src/` snapshot hashes stayed equal to the value of task 1.1. The clean run gave the solution total 2824 (3 skipped) with 0 failed, `BrutalUi.Framework.Tests` 225, and a class-run total 3 with 0 failed. The sheet change of Decision 8 moved the two Markup pins `HelloPanelSheetTests` and `ParsedSheetAllocationTests` from 31 to 33 rules with value-only edits. `ModeDiffAllocationTests.cs` is the only new test file of the feature.
+- **An eighteenth allocation gate.** `ModeDiffAllocationTests` (4 tests) in `tests/BrutalUi.Framework.Tests/Panels/` builds one HelloPanel shape before the measure. The context has a `RecordingRenderer` measurer and a viewport of 800 by 600. The `CommandRegistry` holds `mda.mode`, `mda.add`, and `mda.cancel`, each with its own counter, and the scene has one `UiActionMap` with the action `mda.cancel` on Escape. The build registers three panels, one layout with the slots `top` and `bottom`, and two modes, and both modes name the one map. The widget panel holds a `Label`, a `Button` bound to `mda.mode`, and a `TextField` with the capacity 16. The field holds the focus, so the caret pass runs in each `Update`. The state panel holds a `Button` bound to `mda.add` and a `Label` bound to a `Store<int>`. The info panel holds one `Label`. `TheToggleCycleAllocatesNothingAfterWarmUp` measures 100 toggle steps after 2 warm-up rounds. One step runs `SetMode`, `Update`, a store set, `SetMode`, `Update`, `History.Back()`, `Update`, `SetMode`, `Update`, and `Draw`. Each step closes in the first mode, so each step does the same work and the history grows by 2. The test asserts 0 bytes and the child-count sum 1200, that is 12 for each step. `AnIdleFrameAllocatesNothing` measures 100 idle frames with no target, and asserts 0 bytes and the sum 300, that is 3 for each frame. `TheMeasuredBodyDoesRealWork` reads the tree after one step: the current mode, the slot layout, the text of the bound label, the history growth of 2, one run of each factory, and the active map. `TheToggleCycleOnLoadedRecordsAllocatesNothing` (markup/definition-loader) builds the same shape from XML with `DefinitionLoader` and a `TemplateBindings` set, runs the same step body on the loaded records, and asserts 0 bytes and the sum 1200. Each 0-byte test calls `AllocationGate.ReleaseAllocationContext()` right before its measure. The measured bodies hold no lambda, no string, no boxed value, no array, and no `Assert`. Three plants guard the code. A planted `GC.KeepAlive(new object());` as the first line of `UiManager.Apply` gave exit code 2 and failed `TheToggleCycleAllocatesNothingAfterWarmUp` (9600 bytes, 4 applies of 24 bytes for each step). Plant 5 of markup/definition-loader repeats the same plant with the loaded test: it gave exit code 2 and failed both toggle gates, `TheToggleCycleAllocatesNothingAfterWarmUp` and `TheToggleCycleOnLoadedRecordsAllocatesNothing` (9600 bytes each), and `ModeDiffTests.SetModeAndTheDiffAllocateNothingAfterWarmUp`, a stronger guard. `AnIdleFrameAllocatesNothing` passed, because no target gives no apply. The same line as the first line of the `OnBeforeUpdate` handler, before the target check, gave exit code 2 and failed both 0-byte tests: `AnIdleFrameAllocatesNothing` (2400 bytes, 1 update of 24 bytes for each step) and `TheToggleCycleAllocatesNothingAfterWarmUp` (9600 bytes). An empty body of `ToggleStep` that returns 12 gave exit code 2 and failed `TheMeasuredBodyDoesRealWork` only, because the history did not grow. The toggle gate passed with 0 bytes and the sum 12, so the real-work test is the guard against an empty body. After each restore, `cmp` found no difference, and both `src/` snapshot hashes stayed equal to the value of task 1.1. The clean run gave the solution total 2824 (3 skipped) with 0 failed, `BrutalUi.Framework.Tests` 225, and a class-run total 3 with 0 failed. The sheet change of Decision 8 moved the two Markup pins `HelloPanelSheetTests` and `ParsedSheetAllocationTests` from 31 to 33 rules with value-only edits. `ModeDiffAllocationTests.cs` is the only new test file of the feature.
 - **Input state tests.** `InputStateTests` (32 tests) in `BrutalUi.Core.Tests/Input/` guards the rules of section 9, item 11: the position rule, the delta, the NaN rule, the scroll sum, the button masks, the press ownership, the key masks, the repeat rule, the modifier rule, the game-view copy, the gate rule, the clear rule, and the gamepad slots and edges. One test asserts the size rule: `Unsafe.SizeOf<UiInputState>()` measures 804 bytes, inside the 1024-byte bound. The tests run through `PointerTree` and read both views after `Update` only. `GlfwUiInputFocusTests` (5 tests) in `BrutalUi.Glfw.Tests` guards the adapter through the internal seam: a focus loss calls `UiContext.ClearHeldKeys`, the seam returns after `Dispose`, and only the switch of `KeyboardEnabled` from `true` to `false` clears the held keys. Twelve plants guard the code of these two classes. Plant 1 removed the `EndFrame` hook and failed four tests. Plant 2 passed `default(UiRoutingGate)` to the hook and failed two. Plant 3 removed the NaN check of the delta and failed five. Plant 4 removed the release-ownership mask and failed two. Plant 5 skipped the button gate and failed one. Plant 6 wrote the scroll sum with `=` in place of `+=` and failed one. Plant 7 set the pressed flag for a repeat and failed one. Plant 8 removed the key clear of `EndFrame` and failed two. Plant 9 skipped the key gate and failed one. Plant 10 cleared the held keys on every `KeyboardEnabled` write and failed only `OnlyTheSwitchFromTrueToFalseClears`. Plants 11 and 12 cleared the pressed edge in `BeginFrame` and zeroed the game slots in `EndFrame`. Each failed two tests. Each plant gave exit code 2 with `0 Error(s)`, and each restored file equalled its copy under `cmp`. Task 5.2 adds four more plants on the gate class (next bullet).
 - **A nineteenth allocation gate.** `InputStateAllocationTests` (3 tests) in `tests/BrutalUi.Core.Tests/Input/` builds the 1000-element tree (`ThousandElementTree`) and runs `Update` once before the measure. One step pushes nine events: a move to grid slot 0, a press, a move outside the root, a release, a scroll outside the root, a W down, a W repeat, a W up, and a Left Shift down. The step calls `SetGamepad(0, ...)` with one of two hand-made states, calls `ClearHeldKeys` on every second step, and runs `Update(0.016f)`. It then reads `Input` and `GameInput` into a local `int` sum: the delta and the scroll as `int`, each button flag, the W flags, and the buttons of slot 0. `TheInputPassWithTheStateAllocatesNothingAfterWarmUp` runs 100 steps after 2 warm-up rounds and asserts zero bytes. `TheReadsOfTheStateAllocateNothing` runs each query over the 349 key codes, the 8 buttons, and the 16 slots with six axes, on both views, for 100 rounds, and asserts zero bytes. `TheMeasuredBodyDoesRealWork` checks the raw flags, the game-view flags with the press ownership, the key clear of a same-frame request, the gamepad edges, the scroll sum, and the fixed sums 10 and 16 for the two steps. Four plants guard the code. A planted `GC.KeepAlive(new object());` as the first line of `InputStateWriter.BeginFrame` gave exit code 2 and failed 41 gates; the input pass test measured 2400 bytes (plant 13). The same line in the `KeyDown` case of `Record` gave exit code 2 and failed 10 key-drain gates; the same test measured 7200 bytes (plant 14). The same line as the first line of `EndFrame` gave exit code 2 and failed the same 41 gates with 2400 bytes (plant 15). The same line as the first line of `UiKeyState.IsDown` gave exit code 2 and failed the two state tests: 1675200 bytes on the reads and 4800 bytes on the pass (plant 16). After each restore, `cmp` found no difference. The clean run gave the solution total 2864 (3 skipped) with 0 failed, and `InputStateTests` kept its 32 passes.
 - **A twentieth allocation gate.** `ElementFindAllocationTests` (2 tests) in `tests/BrutalUi.Core.Tests/Builder/` builds a tree of 218 named elements, three levels deep, with the target `Label` last in tree order. `FindAndFindTAllocateNothingAfterWarmUp` warms up with one call of each, releases the allocation context, runs 1000 rounds of a hit, a miss, and a typed hit, and asserts 0 bytes. `TheMeasuredFindDoesRealWork` checks that the same three calls give the target, `null`, and the typed target, and that the round counter reads 1000, so the measured body cannot be empty. The gate guards `Element.Find` and `Element.Find<T>` of the Builder API (section 11). Three plants guard the query. A plant that checks the children before the root in `Walk` gave exit code 2 and failed `FindChecksTheRootFirst`. A planted `GC.KeepAlive(new object());` as the first line of the untyped walk gave exit code 2 and failed `FindAndFindTAllocateNothingAfterWarmUp` with 10464000 bytes (a hit and a miss each walk 218 elements in each of 1000 rounds, 24 bytes each). A plant that returns `null` at the first name hit of another type in the typed walk gave exit code 2 and failed `FindTSkipsAnElementOfAnotherType`. After each restore, `cmp` found no difference.
