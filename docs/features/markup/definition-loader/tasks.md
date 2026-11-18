@@ -1,8 +1,8 @@
 # markup/definition-loader - Task Checklist
 
 **Epic:** markup (feature 5 of 6)
-**Last Updated:** 2026-11-18 20:40
-**Progress:** 20/20 tasks complete (100%)
+**Last Updated:** 2026-11-18 21:30
+**Progress:** 20/20 tasks complete (100%) — three phases built and gate-verified, the cross-phase review closed (5 findings, 5 fixed), and the review fixes verified
 
 Agent tiers: Phase 1 ADVANCED (opus), Phase 2 STANDARD (sonnet), Phase 3 STANDARD (sonnet).
 
@@ -85,6 +85,8 @@ Agent tiers: Phase 1 ADVANCED (opus), Phase 2 STANDARD (sonnet), Phase 3 STANDAR
 - [x] Each of the 13 kinds of `DefinitionErrorKind` occurs in at least one assert of `DefinitionErrorTests`. (Verifier gate 8: 30 kind asserts, all 13 names present.)
 - [x] Plants 6 to 9 each give a non-zero exit code with 0 `error CS` lines, and each restored file equals its copy under `cmp`.
 - [x] The package step prints `package-test: PASS Gauge level 0.5`.
+
+**Review-fix run (2026-11-18, groups 1 and 2, one verifier PASS):** CR-1 to CR-5 closed. `*DefinitionErrorTests` reads 12 with `failed: 0`: the two new cases `AChildOutsideTheNamespaceUnderAFailedElementGivesOneError` and `AFaultyEntryStillGivesItsOtherFaults`, and the Q3 case `ALayoutTemplateFaultIsATemplateFaultAtTheLayoutEntry`, moved to `DefinitionErrorTests.Layouts.cs` with its idle-layout assertions flipped (Decision 15). Final counts: build `0 Warning(s)`, `0 Error(s)`; solution 3195 (0 failed, 3 skipped); `BrutalUi.Framework.Tests` 384. The plan expected 3193 and 382: the review added two tests.
 
 ---
 

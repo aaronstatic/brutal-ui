@@ -1,9 +1,9 @@
 # markup/definition-loader - Context & Decisions
 
 **Epic:** markup (feature 5 of 6)
-**Last Updated:** 2026-11-18 21:25
-**Current Phase:** Phase 3 - The Positioned Definition Errors
-**Status:** ✅ Phase 1 complete. ✅ Phase 2 complete (verifier PASS, Demo PASS). ✅ Phase 3 complete (verifier PASS, Demo PASS).
+**Last Updated:** 2026-11-18 21:30
+**Current Phase:** Complete (phases 1 to 3, the cross-phase review, and the review fixes are done)
+**Status:** ✅ Ready for Review. The docs step ran: 20/20 tasks, five review findings closed, one review verifier PASS, and `docs/technical-design.md` section 11 holds the format, the errors, and the rules of the object.
 
 ---
 
@@ -18,12 +18,24 @@
 
 - ✅ Phase 2 group 2 (tasks 2.4 to 2.6): `DefinitionSet.cs`, `DefinitionParityTests.cs` with 2 tests, `ModeDiffAllocationTests.Loaded.cs` with 1 test, the `partial` edit of `ModeDiffAllocationTests.cs`, plant 5, and the section 10, 11, and 14 doc edits. Build `0 Warning(s)`, `0 Error(s)`. Solution 3179 (0 failed, 3 skipped), Framework 368. Phase 2 acceptance holds.
 
-- ✅ Phase 3 group 1 (tasks 3.1 to 3.3): the full read-pass messages (the `Window` case, the empty-value guidance, and `UnexpectedText`), the resolve-pass duplicate check, the mode panel check, the check load of each used layout with the slot walk (Q3, A5), the slot check, the completed messages, and the follow-on rule. New `DefinitionErrorTests.cs` with 10 tests. Plants 6, 7, and 8 ran. One phase 2 test text needed one line (Decision 13). Build `0 Warning(s)`, `0 Error(s)`. Solution 3189 (0 failed, 3 skipped), Framework 378. Group 1 acceptance holds.
+- ✅ Phase 3 group 1 (tasks 3.1 to 3.3): the full read-pass messages (the `Window` case, the empty-value guidance, and `UnexpectedText`), the resolve-pass duplicate check, the mode panel check, the check load of each used layout with the slot walk (Q3, A5; review group 2 widened it to each non-faulty layout, Decision 15), the slot check, the completed messages, and the follow-on rule. New `DefinitionErrorTests.cs` with 10 tests. Plants 6, 7, and 8 ran. One phase 2 test text needed one line (Decision 13). Build `0 Warning(s)`, `0 Error(s)`. Solution 3189 (0 failed, 3 skipped), Framework 378. Group 1 acceptance holds.
 
 - ✅ Phase 3 group 2 (tasks 3.4 to 3.6): the empty-name and duplicate-add guards in `DefinitionLoader`, the constructor and `RegisterTo` remarks, new `DefinitionLoaderApiTests.cs` with 4 tests, plant 9, the section 11 error block, the changelog line, and the package run (`package-test: PASS Gauge level 0.5`). Build `0 Warning(s)`, `0 Error(s)`. Solution 3193 (0 failed, 3 skipped), Framework 382. Phase 3 acceptance holds.
 
+- ✅ Cross-phase review (`/review-feature`, the C# library rule set of `AGENTS.md` and the quality bar): 5 findings (0 CRITICAL, 0 HIGH, 3 MEDIUM, 2 LOW), all 5 fixed. `code-review.md` reads `Resolved - 5 findings, 5 resolved`.
+
+- ✅ Review-fix group 1 (CR-2, CR-4, CR-5): the failed-parent check moved before the namespace check, so one fault gives one error; `PlaceMessage` builds its fix sentence from `TemplateLoader.Namespace`; the attribute name tables are `static readonly string[]` fields, `string.Join` runs only in the error branch, and `Load` reads the input span in place through an `UnmanagedMemoryStream` in a `fixed` block. New `DefinitionReader.Tables.cs` (157 lines) and `DefinitionErrorTests.FollowOn.cs` (31). Solution 3194, Framework 383, `*DefinitionErrorTests` 11.
+
+- ✅ Review-fix group 2 (CR-1, CR-3): the resolve pass marks a faulty entry instead of skipping it, so a faulty mode still reports `UnknownPanel` and the duplicate-panel faults, and a `Panel` with no `slot` and an unknown `template` reports both. Step 3b check-loads each non-faulty layout, also one that no mode names, so a successful result holds no factory that throws inside `RegisterTo` (Decision 15). New `DefinitionReader.Resolve.Checks.cs` (145) and `DefinitionErrorTests.Layouts.cs` (64); `DefinitionErrorTests.cs` gained the word `partial`. Solution 3195, Framework 384, `*DefinitionErrorTests` 12.
+
+- ✅ Review fixes verified by one independent verifier: PASS with Demo: PASS. Final state: build `0 Warning(s)`, `0 Error(s)`; solution 3195 (0 failed, 3 skipped); `BrutalUi.Framework.Tests` 384 (356 baseline, +28); the protected-path diff against `9fa4b43` empty; every file under the 400-line cap.
+
+- ✅ Docs step (`/update-feature markup/definition-loader`): `tasks.md`, this file, and `implementation.md` hold the close state; the `TemplateFault` row of section 11 and the `CHANGELOG.md` line now name each non-faulty layout, to match Decision 15. `inbox.md` holds no line.
+
 **What's Next:**
-- 📋 The coordinator: the docs step, the merge of this feature into the epic branch, and the copy of the open human tests below to `docs/features/markup/human-testing.md`. The feature build (20/20 tasks, 3 phases) is complete.
+- 📋 A person tests the three demo lines and the review-fix line under `## Needs Human Verification` below.
+- 📋 The coordinator: merge `feat/markup/definition-loader` into the epic branch, copy the open human tests below to `docs/features/markup/human-testing.md`, and run `/update-epic markup` and `/update-master`.
+- ⏳ `markup/markup-sample` (feature 6 of 6) loads the HelloPanel records through this API and closes the epic.
 
 **Blockers:**
 - None
@@ -36,6 +48,7 @@
 - `src/BrutalUi.Framework/Templates/DefinitionLoader.cs` - The public loader. It holds the template table and the action map table, and it registers the `SlotContainer` type on the `TemplateLoader`.
 - `src/BrutalUi.Framework/Templates/DefinitionReader.cs` - The read pass: the state, `Load`, `AddError`, the sort, and the entry structs.
 - `src/BrutalUi.Framework/Templates/DefinitionReader.Elements.cs` - The walk of the read pass: one element, its place, and its attributes. Group 2 added this partial file, because one file passed the 400-line cap.
+- `src/BrutalUi.Framework/Templates/DefinitionReader.Tables.cs` - The static name tables and message builders of the walk (`ResolveKind`, `PlaceMessage`, `EmptyValueMessage`, `AllowedNames`, `RequiredNames`). Review group 1 split this file, because the CR-5 fields block took `DefinitionReader.Elements.cs` past the 400-line cap.
 - `src/BrutalUi.Framework/Templates/DefinitionReader.Resolve.cs` - The resolve pass. It checks the names, check-loads each sound layout, and builds the three records.
 - `src/BrutalUi.Framework/Templates/DefinitionReader.Resolve.Checks.cs` - The resolve helpers: the check load, the slot walk, the name tables, the duplicate report, and the factory. Review group 2 split this file, because the step 4 rework pushed the pass toward the 400-line cap.
 - `src/BrutalUi.Framework/Templates/DefinitionLoadResult.cs` - The records or the errors, and `RegisterTo(UiManager)`.
@@ -121,6 +134,17 @@
 - **File sizes:** `DefinitionLoader.cs` 173 lines, `DefinitionLoadResult.cs` 156, `DefinitionLoaderApiTests.cs` 218. Each file stays under 400.
 - **API notes:** each `AddTemplate` and `AddActionMap` guard throws `ArgumentException` with `ParamName` `name` and a constant message; `UiManager.Register` throws with `ParamName` `panel` (the `RegisterTo` clash test reads it). The `SetMode` throw of an unregistered name has `ParamName` `name`. The guards land Decision 4.
 - **Verifier (post-phase, round 1):** PASS, no fix round. Build `0 Warning(s)`, `0 Error(s)`. Solution 3193, 0 failed, 3 skipped; `BrutalUi.Framework.Tests` 382, 0 failed. `*DefinitionErrorTests` total 10, `*DefinitionLoaderApiTests` total 4, each `failed: 0`; the Phase 1 and 2 classes read 4, 5, 2, and 4. All 13 kinds asserted (30 kind asserts). Protected-path diff empty; the `DefinitionRecordTests.cs` diff against `02c34e8` holds only the Decision 13 template line and its doc-comment reword (the accepted deviation). Every listed file under 400 lines; no reflection use; no plant residue. Section 11 holds the error block, the 13-kind table, the position rule, the follow-on rule, the Q3 and A5 check, and the rules of the object; `CHANGELOG.md` holds one tagged `### Added` line. Package run by hand: `package-test: PASS Gauge level 0.5`. Demo: PASS. UI check: none (headless test proof). Faults: none.
+
+## Review Fix Close Record (CR-1 to CR-5)
+
+- **Findings:** 5 (0 CRITICAL, 0 HIGH, 3 MEDIUM, 2 LOW), all resolved. `code-review.md` holds each finding, the fix, and its checked box.
+- **Edits, review group 1 (CR-2, CR-4, CR-5):** `DefinitionReader.Elements.cs` (the failed-parent check runs before the namespace check, the root message builds from `TemplateLoader.Namespace`, the static tables moved out), `DefinitionReader.cs` (`Load` reads the input span in place through an `UnmanagedMemoryStream` inside a `fixed` block, the remarks name the new partial file), new `DefinitionReader.Tables.cs`, and new `DefinitionErrorTests.FollowOn.cs` with `AChildOutsideTheNamespaceUnderAFailedElementGivesOneError`.
+- **Edits, review group 2 (CR-1, CR-3):** `DefinitionReader.Resolve.cs` (steps 2, 3, and 4 mark a faulty entry instead of skipping it; step 3b check-loads each non-faulty layout, Decision 15), new `DefinitionReader.Resolve.Checks.cs` (six helpers), `DefinitionErrorTests.cs` (the word `partial`, the Q3 case moved out), new `DefinitionErrorTests.Layouts.cs` (the flipped Q3 case), `DefinitionErrorTests.FollowOn.cs` (`AFaultyEntryStillGivesItsOtherFaults`), and section 11 of `docs/technical-design.md` (**The check of each layout (Q3, A5)**).
+- **Build:** `0 Warning(s)`, `0 Error(s)`. **Solution tests:** 3195 total, 0 failed, 3 skipped (the phase 3 close 3193 plus the 2 review cases). **`BrutalUi.Framework.Tests`:** 384 total, 0 failed, 0 skipped: +28 over the 356 baseline, where the plan expected +26.
+- **Demo state:** `*DefinitionErrorTests` → total 12, `failed: 0`. `*DefinitionLoaderDemoTests`, `*DefinitionRecordTests`, `*DefinitionParityTests`, and `*ModeDiffAllocationTests` read 4, 5, 2, and 4, each with `failed: 0`.
+- **File sizes:** `DefinitionReader.cs` 397 lines, `DefinitionReader.Elements.cs` 268, `DefinitionReader.Tables.cs` 157, `DefinitionReader.Resolve.cs` 274, `DefinitionReader.Resolve.Checks.cs` 145, `DefinitionErrorTests.cs` 352, `DefinitionErrorTests.FollowOn.cs` 63, `DefinitionErrorTests.Layouts.cs` 64. Each file stays under 400.
+- **Protected paths:** `git diff 9fa4b43 -- src/BrutalUi.Markup src/BrutalUi.Core src/BrutalUi.Framework/Panels` gives no output. No existing assertion changed except the named Q3 flip of Decision 15.
+- **Verifier (review-fix run, round 1):** PASS, Demo: PASS. UI check: none (headless test proof). No `bug` line and no inbox item reached the run.
 
 ## Tool Notes
 
@@ -374,13 +398,15 @@ For each plant, copy the file to `src/BrutalUi.Framework/obj/plantscratch/` (git
 - Group 2 of phase 2 keeps to the public loader API: the test project holds no `InternalsVisibleTo` for `BrutalUi.Framework`, so `DefinitionSet` uses `DefinitionLoadResult.Success` nowhere (Decision 11).
 - The diff parity test needs two map instances: one map is active on one context at most, and `Activate` on the second manager's context would clear the slots of the first (the switch rule of `UiActionMap`). The data parity test needs one map instance: it asserts the `ActionMap` reference equality of the two records.
 - `DefinitionSet.Load` makes one `TemplateLoader` and one `DefinitionLoader` in each call, so each manager gets a fresh `SlotContainer` registration and no second-loader throw (Notes item 4).
+- A rule that a review changes lives in more than one doc. Decision 15 (check-load each non-faulty layout) landed in the **The check of each layout** paragraph of section 11, but the `TemplateFault` row of the kind table in the same section and the `CHANGELOG.md` feature line still read `used layout`. The docs step searched `used layout` under `docs/`, fixed both hits, and left the quality-bar sentence of `implementation.md` as written, because the plan stays as the interview fixed it and the correction lives here.
 
 ---
 
 ## Testing Approach
 
-- Framework tests in `tests/BrutalUi.Framework.Tests/Templates/` and `Panels/`. The plan adds 26 tests and 9 plants. The planned solution total is 3193 with 3 skipped, from 3167 at `9fa4b43`.
+- Framework tests in `tests/BrutalUi.Framework.Tests/Templates/` and `Panels/`. The plan adds 26 tests and 9 plants. The cross-phase review adds 2 tests, so the real close is 28: `BrutalUi.Framework.Tests` 356 → 384, solution 3167 → 3195 with 3 skipped.
 - `ModeDiffAllocationTests` gets one case on loaded records at 0 bytes after warm-up (A9).
+- Each proof runs through the test binaries and the package test. The feature ships no screen, so no browser check applies.
 
 ---
 
@@ -388,23 +414,26 @@ For each plant, copy the file to `src/BrutalUi.Framework/obj/plantscratch/` (git
 
 - [ ] Phase 1 demo: the developer runs `BrutalUi.Framework.Tests --filter-class '*DefinitionLoaderDemoTests'` and reads a total of 4 with `failed: 0`. In `OneLoadedPanelMountsInItsSlot`, a test loads one text with one panel, one layout, and one mode, registers them, sets the mode, runs one `Update`, and finds the loaded panel root, with its `score` label, as the one child of the slot `top`.
 - [ ] Phase 2 demo: the developer runs `BrutalUi.Framework.Tests --filter-class '*DefinitionParityTests'` and reads a total of 2 with `failed: 0`. After each of five mode steps, with a layout swap and a back step, the layout root of the loaded manager and the layout root of the C# manager compare equal under `TreeCompare`, with the same panels in the same slots.
-- [ ] Phase 3 demo: the developer runs `BrutalUi.Framework.Tests --filter-class '*DefinitionErrorTests'` and reads a total of 10 with `failed: 0`. A mode with `<ui:Slot name="left">` on a layout with the slots `top` and `bottom` gives one `UnknownSlot` error at the line and the column of `name`, and the result holds no record.
+- [ ] Phase 3 demo: the developer runs `BrutalUi.Framework.Tests --filter-class '*DefinitionErrorTests'` and reads a total of 12 with `failed: 0` (10 from phase 3, 2 from the review fixes). A mode with `<ui:Slot name="left">` on a layout with the slots `top` and `bottom` gives one `UnknownSlot` error at the line and the column of `name`, and the result holds no record.
+- [ ] Review fixes: the developer reads three cases in the same run. `AChildOutsideTheNamespaceUnderAFailedElementGivesOneError` gives one `UnknownElement`, not two (CR-2). `AFaultyEntryStillGivesItsOtherFaults` gives `UnknownLayout` and `UnknownPanel` in one load (CR-1). `ALayoutTemplateFaultIsATemplateFaultAtTheLayoutEntry` reports `TemplateFault` for a bad layout that no mode names, the Decision 15 flip (CR-3).
 
 ---
 
 ## Next Steps
 
 ### Immediate
-1. None for this build. All 20 tasks and 3 phases are complete and verified. The coordinator runs the docs step, merges the feature into the epic branch, and copies the open human tests above to `docs/features/markup/human-testing.md`.
+1. A person runs the four lines of `## Needs Human Verification` above.
+2. The coordinator merges `feat/markup/definition-loader` into the epic branch, copies the open human tests above to `docs/features/markup/human-testing.md` (the file does not exist yet), and runs `/update-epic markup` and `/update-master`. The docs step of the run is done, and this run made no git write.
 
 ### Future
-1. markup-sample loads the HelloPanel records through this API.
+1. `markup/markup-sample` (feature 6 of 6) loads the HelloPanel records through this API: one `TemplateLoader` with its `TemplateBindings` attached, one `DefinitionLoader`, each `AddTemplate` and `AddActionMap` call, one `Load`, and one `RegisterTo`. It then closes Phase 3 of the technical design.
+2. A later version may add `WindowDefinition` to the format. The `Window` error message already tells an author that it comes later.
 
 ---
 
 ## Open Questions
 
-- (none. The Notes of `implementation.md` hold the open points for review.)
+- (none. The review closed each open point of the Notes of `implementation.md`. Decision 15 settles Notes item 6: the resolve pass check-loads each non-faulty layout, also one that no mode names.)
 
 ---
 
@@ -492,6 +521,14 @@ For each plant, copy the file to `src/BrutalUi.Framework/obj/plantscratch/` (git
 - Docs: section 11, **The check of each layout** paragraph, states the new rule; Decision 15 and the two Plan Record correction lines are above. `implementation.md` and the interview text stayed unchanged.
 - Counts: build `0 Warning(s)`, `0 Error(s)`. Solution 3195, 0 failed, 3 skipped. `BrutalUi.Framework.Tests` 384. `*DefinitionErrorTests` 12, 0 failed. File sizes: `DefinitionReader.Resolve.cs` 274, `DefinitionReader.Resolve.Checks.cs` 145, `DefinitionErrorTests.cs` 352, `DefinitionErrorTests.FollowOn.cs` 63, `DefinitionErrorTests.Layouts.cs` 64. Each file stays under 400. The protected-path diff against `9fa4b43` is empty. No git write ran: no commit, branch, merge, stash, reset, or push.
 - Open questions: none.
+
+### 2026-11-18 21:30 (docs step, `/update-feature`, Orca worker)
+- `/update-feature markup/definition-loader` ran on the closed build: 20/20 tasks, three phases each verified, the cross-phase review (5 findings, all 5 fixed), and the review-fix verifier PASS. The command changed docs only: `tasks.md`, this file, the header of `implementation.md` (`Ready for Review`, the target date, the timestamp), the `TemplateFault` row of section 11 of `docs/technical-design.md`, and the feature line of `CHANGELOG.md`.
+- The last two fixes carry Decision 15 into every doc: the pass check-loads each layout that is not faulty, so neither the kind table nor the changelog line says `used layout` any more. The quality-bar sentence of `implementation.md` stays as the interview fixed it; the correction lives in this file. `git status --porcelain` shows the five docs files and no source file.
+- Epic context loaded per section 4 of `.beast-mode/epic-resolution.md`: `epic-overview.md` plus builder-api, xml-element-loader, element-generator, and binding-attributes. This feature settles open points 7 (the template registry) and 8 (the error type) of xml-element-loader. `markup/markup-sample` (feature 6 of 6) is the next feature and the consumer of this API. The epic rollup still reads 4/6 features complete, because `/update-epic markup` belongs to the coordinator.
+- Inbox: `inbox.md` holds no line, and no user message reached this run (`orca orchestration check`: no messages). Every task of `tasks.md` is done, so the command promoted no `bug` line to `docs/bugs/` (the folder does not exist yet) and folds no done item into this note. No `note` or `change` line stays open.
+- `## Needs Human Verification` holds the three demo lines and the new review-fix line, with the phase 3 count corrected to 12. The coordinator copies them to `docs/features/markup/human-testing.md`, which does not exist yet.
+- Ship state: branch `feat/markup/definition-loader`, `HEAD` `fa7dcf3` (the review commit), with these five docs files changed and uncommitted. This run made no git write: no commit, branch, merge, stash, reset, or push.
 
 ---
 

@@ -1738,7 +1738,7 @@ public enum DefinitionErrorKind : byte
 | `UnknownPanel` | A `PanelRef` value that names no `Panel` entry of the same text. |
 | `DuplicateName` | Two entries of one text share one name, a layout template holds two slots of one name, or one mode places one panel two times. |
 | `UnknownSlot` | The slot of a placement that the mode layout does not hold. |
-| `TemplateFault` | The check load of a used layout template failed. The message holds one line for each `TemplateError`. |
+| `TemplateFault` | The check load of a layout template failed. The message holds one line for each `TemplateError`. |
 
 **The position rule.** An error at an element points at the first character of the element name. An error at a value
 points at the first character of its attribute name; a value has no position of its own. `MissingAttribute`,
