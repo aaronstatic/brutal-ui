@@ -1141,6 +1141,7 @@ The service registry rules:
 ### Panel definitions
 
 - `PanelDefinition`, `LayoutDefinition`, and `ModeDefinition` are sealed records. `ModePanel` is a readonly struct. Each record copies its UTF-8 names to a `byte[]` at build time (Q4), and each name property returns a span over the copy.
+- `DefinitionLoader` (section 11) reads the three records from XML. A loaded record is the same as a C# record: the same type, the same name copies, and the same factory shape.
 - Each record checks its input at build time (A5). An empty name throws `ArgumentException`. A `null` factory throws `ArgumentNullException`. `ModeDefinition` also rejects an empty entry and a panel that the list names two times.
 - The records keep the generated equality. It compares the name copies by reference, so two records from two constructor calls are not equal. Compare the names with `SequenceEqual`. `ToString` writes the names as text, for a debugger and a log only.
 - A mode groups its panels by slot (A4). The slot order is the order of the first entry. The panel order is the order of the list. A panel is in one slot at most.
@@ -1630,6 +1631,78 @@ rules, and `TemplateBindingErrorTests` guards each fault, its kind, and its posi
 command name allocate at load time; a loaded tree then allocates nothing in `Update` and `Draw`, as a C# bound tree
 does. `TemplateParityTests` guards the parity of a loaded tree with the same tree built in C# after 10 store versions
 and after a click, and `TemplateBindingAllocationTests` guards the cost at 0 bytes (section 14).
+
+### Definition format
+
+`BrutalUi.Framework` reads a definitions text into the three records of section 10. One `DefinitionLoader` serves one
+`TemplateLoader`, and the constructor registers the `SlotContainer` element type on it (section 10, Slot containers).
+A game adds each template text by name before the load.
+
+```xml
+<ui:Definitions xmlns:ui="brutal-ui">
+  <ui:Panel name="hud" slot="top" template="hud.panel" />
+  <ui:Layout name="game" template="game.layout" />
+  <ui:Mode name="play" layout="game">
+    <ui:Slot name="top">
+      <ui:PanelRef name="hud" />
+    </ui:Slot>
+  </ui:Mode>
+</ui:Definitions>
+```
+
+The two template texts that the demo adds:
+
+```xml
+<ui:Element name="hud" xmlns:ui="brutal-ui">
+  <ui:Label name="score" text="0" />
+</ui:Element>
+```
+
+```xml
+<ui:Element pickable="false" xmlns:ui="brutal-ui">
+  <ui:SlotContainer slot="top" />
+</ui:Element>
+```
+
+```csharp
+TemplateLoader templates = new();
+DefinitionLoader definitions = new(templates);       // registers the SlotContainer element type
+definitions.AddTemplate("hud.panel", panelText);     // copies the UTF-8 text
+definitions.AddTemplate("game.layout", layoutText);
+
+DefinitionLoadResult result = definitions.Load(definitionsText);
+result.RegisterTo(ui);                               // panels, then layouts, then modes
+ui.SetMode("play"u8);                                // the next Update mounts hud in the slot top
+```
+
+`Load` reads the text in two passes and throws nothing for the text. The read pass walks the text with an
+`XmlReader` and records each entry with the position of each value. The resolve pass checks the names and builds the
+records. The walk keeps reading after each error, so one load gives each error, and `Errors` sorts by line, then
+column. A result with one error or more holds no record, and `RegisterTo` throws `InvalidOperationException` with one
+error line for each error.
+
+**The element table.** Each element has one place and one set of attributes.
+
+| Element | Parent | Attributes | Record |
+|---|---|---|---|
+| `Definitions` | none (the root) | none | the result |
+| `Panel` | `Definitions` | `name`, `slot`, `template` (all required) | `PanelDefinition(name, slot, factory)` |
+| `Layout` | `Definitions` | `name`, `template` (both required) | `LayoutDefinition(name, factory)` |
+| `Mode` | `Definitions` | `name`, `layout` (both required) | `ModeDefinition(name, layout, placements)` |
+| `Slot` | `Mode` | `name` (required) | a group of placements |
+| `PanelRef` | `Slot` | `name` (required) | one `ModePanel` |
+| `SlotContainer` | a layout template | `slot` (required) | `new SlotContainer(slot)`, a leaf |
+
+The entry order makes no difference. A `Mode` can come before its `Panel` and its `Layout`. The placements of a mode
+keep the order of the text, and `ModeDefinition` groups them by slot in the order of the first entry of each slot.
+
+**The factories.** A panel factory captures the template loader, the template text copy, and the template name. Each
+call runs `templates.Load(text, templateName).GetRootOrThrow()`, so each call gives a new, detached root. The
+controller calls the factory one time, at the first mount. A fault of the template throws `InvalidOperationException`
+at that call, and the error rule of `UiManager` applies: the target stays, and the next `Update` runs the diff again.
+A layout factory is the same, and `UiManager.Register(LayoutDefinition)` calls it one time. The template name is the
+source name of each `TemplateError`, so an error line reads `hud.panel(3,5): UnknownBinding: <message>`. The factory
+ignores its `PanelContext`, because the attached `TemplateBindings` gives the commands and the stores.
 
 ### Stylesheet format
 
