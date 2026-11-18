@@ -16,11 +16,12 @@ namespace BrutalUi.Framework;
 /// only for <see cref="DefinitionErrorKind.NotWellFormed"/>.
 /// </para>
 /// <para>
-/// <strong>Phase 1 scope.</strong> The pass looks up each panel template and each layout template in the table of
-/// the loader, and each layout and each panel of a mode in the entries of the same text. It skips an entry whose
-/// value gave a read fault, so one fault gives one error. The duplicate check, the slot check, the check load of a
-/// used layout, and the follow-on rule of the plan come in phase 3. The <c>actions</c> value comes in phase 2, so
-/// each mode record gets no map in this phase.
+/// <strong>The scope of phases 1 and 2.</strong> The pass looks up each panel template and each layout template, and
+/// each <c>actions</c> value, in the table of the loader, and each layout and each panel of a mode in the entries of
+/// the same text. A mode with no <c>actions</c> value gets no map. The pass keeps each panel record, so a placement
+/// with no slot value takes the <see cref="PanelDefinition.DefaultSlot"/> of its panel record (Q5). It skips an entry
+/// whose value gave a read fault, so one fault gives one error. The duplicate check, the slot check, the check load of
+/// a used layout, and the follow-on rule of the plan come in phase 3.
 /// </para>
 /// </remarks>
 internal sealed partial class DefinitionReader
@@ -49,7 +50,10 @@ internal sealed partial class DefinitionReader
             _modeEntries,
             static entry => entry.Name);
 
-        // Step 2. The panels. Each record gets a factory that loads its template at each call (A4).
+        // Step 2. The panels. Each record gets a factory that loads its template at each call (A4). The array keeps
+        // each record by entry index, so a placement with no slot value can read the default slot of its panel (Q5).
+        // A skipped entry keeps a null element: its fault already has its error.
+        PanelDefinition?[] panelRecords = new PanelDefinition?[_panelEntries.Count];
         for (int i = 0; i < _panelEntries.Count; i++)
         {
             PanelEntry entry = _panelEntries[i];
@@ -81,7 +85,9 @@ internal sealed partial class DefinitionReader
 
             byte[] name = Encoding.UTF8.GetBytes(entry.Name.Text!);
             byte[] slot = Encoding.UTF8.GetBytes(entry.Slot.Text!);
-            panels.Add(new PanelDefinition(name, slot, CreateFactory(text!, template)));
+            PanelDefinition record = new(name, slot, CreateFactory(text!, template));
+            panelRecords[i] = record;
+            panels.Add(record);
         }
 
         // Step 3. The layouts.
@@ -143,20 +149,37 @@ internal sealed partial class DefinitionReader
                 continue;
             }
 
+            // The actions value names a registered map. No value gives no map, because DefinitionValue.HasName is the
+            // single test for a value (an empty value already has its InvalidValue error from the read pass).
+            UiActionMap? actionMap = null;
+            if (entry.Actions.HasName)
+            {
+                string map = entry.Actions.Text!;
+                if (!_loader.TryGetActionMap(map, out actionMap))
+                {
+                    AddError(
+                        DefinitionErrorKind.UnknownActionMap,
+                        $"'{map}' is not a registered action map. Add it with AddActionMap before the load.",
+                        entry.Actions.Line,
+                        entry.Actions.Column);
+                    continue;
+                }
+            }
+
             List<ModePanel> placements = [];
             HashSet<string> placed = new(StringComparer.Ordinal);
             for (int p = 0; p < entry.Placements.Count; p++)
             {
                 PlacementEntry placement = entry.Placements[p];
 
-                // A placement with no name, or with no slot name, already has its error from the read pass.
-                if (!placement.Name.HasName || !placement.Slot.HasName)
+                // A placement with no panel name already has its error from the read pass.
+                if (!placement.Name.HasName)
                 {
                     continue;
                 }
 
                 string panel = placement.Name.Text!;
-                if (!panelNames.ContainsKey(panel))
+                if (!panelNames.TryGetValue(panel, out int panelIndex))
                 {
                     AddError(
                         DefinitionErrorKind.UnknownPanel,
@@ -173,14 +196,26 @@ internal sealed partial class DefinitionReader
                     continue;
                 }
 
-                placements.Add(new ModePanel(
-                    Encoding.UTF8.GetBytes(placement.Slot.Text!),
-                    Encoding.UTF8.GetBytes(panel)));
+                // The slot of a placement: the name of the enclosing Slot, or the default slot of the panel record for
+                // a PanelRef directly under the mode (Q5). A panel entry with no record already has its error, so the
+                // pass skips its placement and gives no second error.
+                if (placement.Slot.HasName)
+                {
+                    placements.Add(new ModePanel(
+                        Encoding.UTF8.GetBytes(placement.Slot.Text!),
+                        Encoding.UTF8.GetBytes(panel)));
+                    continue;
+                }
+
+                if (panelRecords[panelIndex] is { } panelRecord)
+                {
+                    placements.Add(new ModePanel(panelRecord.DefaultSlot, Encoding.UTF8.GetBytes(panel)));
+                }
             }
 
             byte[] name = Encoding.UTF8.GetBytes(entry.Name.Text!);
             byte[] layoutName = Encoding.UTF8.GetBytes(layout);
-            modes.Add(new ModeDefinition(name, layoutName, placements.ToArray()));
+            modes.Add(new ModeDefinition(name, layoutName, placements.ToArray(), actionMap));
         }
     }
 

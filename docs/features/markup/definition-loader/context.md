@@ -1,9 +1,9 @@
 # markup/definition-loader - Context & Decisions
 
 **Epic:** markup (feature 5 of 6)
-**Last Updated:** 2026-11-18 18:50
-**Current Phase:** Phase 1 - One Panel, One Layout, One Mode
-**Status:** ✅ Phase 1 complete (verifier PASS, Demo PASS)
+**Last Updated:** 2026-11-18 19:45
+**Current Phase:** Phase 2 - Every Record Form, Equal to Code
+**Status:** ✅ Phase 1 complete. ✅ Phase 2 complete (verifier PASS, Demo PASS).
 
 ---
 
@@ -14,9 +14,12 @@
 - ✅ The plan: 3 slices, 20 tasks, about 190 steps.
 - ✅ Phase 1 group 1 (tasks 1.1 to 1.5): the four public types, `SlotContainerTemplate`, and the `DefinitionReader` placeholder exist. The build has 0 warnings. The test totals equal the baseline below.
 - ✅ Phase 1 group 2 (tasks 1.6 to 1.8): the read pass (`DefinitionReader.cs` and `DefinitionReader.Elements.cs`), the resolve pass (`DefinitionReader.Resolve.cs`), the four demo tests, plants 1 and 2, and the section 10 and 11 edits in `technical-design.md`. Build `0 Warning(s)`, `0 Error(s)`. Solution 3171 (0 failed, 3 skipped), Framework 360. Phase 1 acceptance holds.
+- ✅ Phase 2 group 1 (tasks 2.1 to 2.3): the `actions` attribute, the direct `PanelRef` under `Mode`, the action map lookup and the default-slot placement rule in the resolve pass, and five tests in `DefinitionRecordTests.cs`. Plants 3 and 4 ran. Build `0 Warning(s)`, `0 Error(s)`. Solution 3176 (0 failed, 3 skipped), Framework 365. Demo class `*DefinitionLoaderDemoTests` still reads 4.
+
+- ✅ Phase 2 group 2 (tasks 2.4 to 2.6): `DefinitionSet.cs`, `DefinitionParityTests.cs` with 2 tests, `ModeDiffAllocationTests.Loaded.cs` with 1 test, the `partial` edit of `ModeDiffAllocationTests.cs`, plant 5, and the section 10, 11, and 14 doc edits. Build `0 Warning(s)`, `0 Error(s)`. Solution 3179 (0 failed, 3 skipped), Framework 368. Phase 2 acceptance holds.
 
 **What's Next:**
-- 📋 Phase 2 group 1 (tasks 2.1 to 2.3): the `actions` attribute, a `PanelRef` directly under `Mode`, the record-form tests, and plants 3 and 4.
+- 📋 Phase 3 group 1 (tasks 3.1 to 3.3): the positioned definition errors, the duplicate and slot checks, the follow-on rule, and `DefinitionErrorTests`. Expect Framework +14 for the phase: 382 and solution 3193 at the close.
 
 **Blockers:**
 - None
@@ -60,6 +63,30 @@
 - **Protected paths:** `git diff 9fa4b43 -- src/BrutalUi.Markup src/BrutalUi.Core src/BrutalUi.Framework/Panels` gives no output.
 - **File sizes:** `DefinitionReader.cs` 361 lines, `DefinitionReader.Elements.cs` 349, `DefinitionReader.Resolve.cs` 228, `DefinitionLoaderDemoTests.cs` 222. Each new source file stays under 400.
 - **Verifier (post-phase, round 1):** PASS. Build `0 Warning(s)`, `0 Error(s)`. Solution 3171, 0 failed, 3 skipped; Framework 360, 0 failed. Protected-path diff empty. Section 10 bullet at line 1144; section 11 **### Definition format** at line 1635. Demo command: `*DefinitionLoaderDemoTests` total 4, `failed: 0`. Demo: PASS. UI check: none (headless test proof).
+
+## Phase 2 Group 1 Close Record (tasks 2.1 to 2.3)
+
+- **Build:** `dotnet build brutal-ui.sln -nodeReuse:false` → `0 Warning(s)`, `0 Error(s)`.
+- **Solution tests:** 3176 total, 0 failed, 3173 succeeded, 3 skipped. The Phase 1 close plus the 5 new tests.
+- **`BrutalUi.Framework.Tests`:** 365 total, 0 failed, 0 skipped. The Phase 1 close (360) plus 5.
+- **Demo state:** `*DefinitionRecordTests` → total 5, `failed: 0`. `*DefinitionLoaderDemoTests` still reads total 4, `failed: 0`. The five tests are `AModeNamesItsActionMap`, `AModeWithNoActionsHasNoMap`, `APanelRefWithNoSlotUsesTheDefaultSlot`, `TheSlotOrderAndThePanelOrderFollowTheText`, and `ABoundPanelTemplateBindsThroughTheAttachedBindings`.
+- **Plant 3** (`DefinitionReader.Resolve.cs`, a placement with no slot value takes the first slot of the mode instead of the panel default slot): exit 2, 0 `error CS` lines, 2 failed — `APanelRefWithNoSlotUsesTheDefaultSlot` and `TheSlotOrderAndThePanelOrderFollowTheText`. The brief named the first. The second also places one panel with a direct `PanelRef`, so it fails with the plant: a stronger guard, not a fault of the plant. Restore: `cmp` reports the file identical to its copy; the re-run gives 3176, 0 failed.
+- **Plant 4** (`DefinitionReader.Resolve.cs`, `modes.Add(...)` passes `null` as the map): exit 2, 0 `error CS` lines, 1 failed — `AModeNamesItsActionMap`, as the brief expects. Restore: `cmp` reports the file identical to its copy.
+- **Protected paths:** `git diff 9fa4b43 -- src/BrutalUi.Markup src/BrutalUi.Core src/BrutalUi.Framework/Panels` gives no output.
+- **File sizes:** `DefinitionReader.cs` 366 lines, `DefinitionReader.Elements.cs` 373, `DefinitionReader.Resolve.cs` 263, `DefinitionRecordTests.cs` 365. Each new source file stays under 400.
+- **Group 1 changed no doc of `technical-design.md`.** Task 2.6 owns the `actions` row, the direct `PanelRef` rule, and the parity rule in section 11.
+
+## Phase 2 Group 2 Close Record (tasks 2.4 to 2.6)
+
+- **Build:** `dotnet build brutal-ui.sln -nodeReuse:false` → `0 Warning(s)`, `0 Error(s)`.
+- **Solution tests:** 3179 total, 0 failed, 3176 succeeded, 3 skipped. The group 1 close plus the 3 new tests.
+- **`BrutalUi.Framework.Tests`:** 368 total, 0 failed, 0 skipped. The group 1 close (365) plus 3.
+- **Demo state:** `*DefinitionParityTests` → total 2, `failed: 0`: `TheLoadedRecordsGiveTheSameModeDiffAsTheCodeRecords` and `TheLoadedRecordsHoldTheSameDataAsTheCodeRecords`. `*ModeDiffAllocationTests` → total 4, `failed: 0`. `TheToggleCycleOnLoadedRecordsAllocatesNothing` measures 0 bytes over 100 toggle steps with the loaded records, asserts the sum 1200, and reads the loaded score label equal to the store value.
+- **Plant 5** (`UiManager.cs`, `GC.KeepAlive(new object());` as the first line of `UiManager.Apply`): exit 2, 0 `error CS` lines, 3 failed — both toggle gates, `TheToggleCycleOnLoadedRecordsAllocatesNothing` and `TheToggleCycleAllocatesNothingAfterWarmUp` (9600 bytes each), and `ModeDiffTests.SetModeAndTheDiffAllocateNothingAfterWarmUp`. The brief names the first two. The third shares `Apply`, so its kill is a stronger guard, not a fault of the plant. Restore: `cmp` reports the file identical to its copy; the re-run gives 3179, 0 failed.
+- **Docs:** section 10, **Mode set**, holds the loaded-record bullet. Section 11, **### Definition format**, holds the `actions` and map row of the `Mode` table, the direct `PanelRef` row with the Q5 rule, the `actions` and Q5 prose, and the **Parity** paragraph. Section 14, the eighteenth-gate bullet, reads 4 tests and names `TheToggleCycleOnLoadedRecordsAllocatesNothing` and plant 5.
+- **Protected paths:** `git diff 9fa4b43 -- src/BrutalUi.Markup src/BrutalUi.Core src/BrutalUi.Framework/Panels` gives no output. The diff of `ModeDiffAllocationTests.cs` shows one changed line: the `partial` keyword.
+- **File sizes:** `DefinitionSet.cs` 256 lines, `DefinitionParityTests.cs` 178, `ModeDiffAllocationTests.Loaded.cs` 177. Each new file stays under 400.
+- **Verifier (post-phase, round 1):** PASS, no fix round. Build `0 Warning(s)`, `0 Error(s)`. Solution 3179, 0 failed, 3 skipped; `BrutalUi.Framework.Tests` 368, 0 failed. `*DefinitionRecordTests` total 5, `*ModeDiffAllocationTests` total 4, each `failed: 0`. Protected-path diff empty; the `ModeDiffAllocationTests.cs` diff shows the one `partial` line; every listed file stays under 400 lines; no reflection use in `Definition*.cs` or `SlotContainerTemplate.cs`; plant 5 left no residue. Section 11 holds the `actions` row and the direct `PanelRef` Q5 rule, section 10 **Mode set** names `DefinitionParityTests` (line 1185), and section 14 names `TheToggleCycleOnLoadedRecordsAllocatesNothing` (line 1980). Demo: PASS. UI check: none (headless test proof). Faults: none.
 
 ## Tool Notes
 
@@ -245,6 +272,34 @@ For each plant, copy the file to `src/BrutalUi.Framework/obj/plantscratch/` (git
 **Rationale:** The public contract of `Load` ("the method never throws for the text") holds from phase 1, and no input gives a silent success with a missing record. Each check is three lines.
 **Impact:** `DefinitionReader.Elements.cs` (check 3c) and `DefinitionReader.Resolve.cs` (the skip and the first-placement rule).
 
+### Decision 7: The read split keeps the required names in their own table
+**Date:** 2026-11-18
+**Context:** Task 2.1 makes `actions` an optional attribute of `Mode`. Phase 1 reads one list per element kind, and check 4 reports `MissingAttribute` for every name in it, so the list cannot hold both a required name and an optional one.
+**Decision:** `AllowedNames(kind)` holds the required names plus `actions` for `Mode`, and a new `RequiredNames(kind)` holds only the required ones. Check 3b and the unknown-attribute message read the allowed list; check 4 reads the required list. A mode with no `actions` gives no error, so the value stays absent and the resolve pass gives no map.
+**Rationale:** Two small tables keep the order of the checks of `The Two Passes` and need no flag inside the loop. The Phase 3 messages of task 3.1 name both lists already: they list the attributes of the element, `actions` included.
+**Impact:** `DefinitionReader.Elements.cs` only.
+
+### Decision 8: The resolve pass keeps the panel records by entry index
+**Date:** 2026-11-18
+**Context:** Task 2.2 needs the `DefaultSlot` of the panel record for a `PanelRef` directly under `Mode`. The `panelNames` table gives the entry index of the first entry of one name, but a faulty entry (no `template`, an unknown template) is in that table and has no record, and `Load` must not throw for the text.
+**Decision:** Step 2 fills `PanelDefinition?[] panelRecords` beside the `panels` list. Step 4 reads the record at the entry index of its name: with a record it builds the `ModePanel` from `panelRecord.DefaultSlot`; with no record it skips the placement, because the fault of that panel entry already has its error.
+**Rationale:** One array of the entry count costs no search, keeps the follow-on shape of Decision 6, and gives one fault one error. Phase 3 replaces the skip with the follow-on rule for the same entries.
+**Impact:** `DefinitionReader.Resolve.cs` only. The skip of a direct `PanelRef` on a faulty panel is the shape that task 3.2 keeps.
+
+### Decision 11: DefinitionSet returns a nested Records type
+**Date:** 2026-11-18
+**Context:** Task 2.4 needs the three record lists of both paths in text order. `DefinitionLoadResult.Success` is internal, and `BrutalUi.Framework` keeps no `InternalsVisibleTo` for the test assembly (A10), so `RegisterCode` cannot wrap the C# records in a `DefinitionLoadResult`.
+**Decision:** `DefinitionSet.Load` and `DefinitionSet.RegisterCode` each return the nested `internal sealed class DefinitionSet.Records`, which holds the three arrays. `Load` copies the lists of the result into it, and `RegisterCode` builds it from the records it registers.
+**Rationale:** One small internal carrier gives both tests one loop shape, adds no public API, and keeps the rule "do not guess on a public API shape". The change needs no new production type.
+**Impact:** `DefinitionSet.cs` and `DefinitionParityTests.cs` only.
+
+### Decision 12: The loaded gate scene carries no inline size and no field focus
+**Date:** 2026-11-18
+**Context:** The C# `BuildScene` sets `Inline` sizes on the field, the add button, and the layout root, and gives the focus to the field. The template format has no style row, so a template cannot set an `Inline` member, and the task 2.5 brief lists no size and no focus step.
+**Decision:** `BuildLoadedScene` builds the same trees with no size and no focus, and reuses the existing `ToggleStep` as the measured body. `TreeCompare` reads no size, and the step sum and the 0-byte rule do not depend on the focus. The loaded score label keeps no name: the test reads it by child index, state root child 1, so the two shapes stay equal.
+**Rationale:** The overview of task 2.5 pins the build steps, and the parity rule of A9 needs the step body and the tree shape, not the size.
+**Impact:** `ModeDiffAllocationTests.Loaded.cs` only.
+
 ---
 
 ## Gotchas & Learnings
@@ -254,9 +309,14 @@ For each plant, copy the file to `src/BrutalUi.Framework/obj/plantscratch/` (git
 - `Load` gives one `NotWellFormed` error and stops the resolve pass for it, so a broken text gives no follow-on name error. A text with no root gives `NotWellFormed` at 1,1.
 - The resolve pass skips an entry whose required value is absent or empty. The read pass already named that fault, so one fault gives one error. Phase 3 keeps this shape and adds the follow-on rule for the kinds that a faulty entry causes elsewhere.
 - A mode with one panel two times: the resolve pass keeps the first placement and drops the second, because `ModeDefinition` rejects a repeated panel and `Load` must not throw. Phase 3 reports `DuplicateName` at the second `PanelRef` (task 3.2).
-- An `actions` attribute gives `UnknownAttribute` today, and a `PanelRef` directly under `Mode` gives `UnknownElement` at its place. Task 2.1 and 2.2 replace both with the real read and resolve paths. The demo text and the section 11 block hold neither form.
+- An `actions` attribute and a `PanelRef` directly under `Mode` read as the real forms since task 2.1 and 2.2. A mode with no `actions` gets no map, and a placement with no slot value takes the `DefaultSlot` of its panel record (Q5). The Phase 1 demo text and the section 11 block of `docs/technical-design.md` hold neither form, so no existing test changed. Task 3.1 owns the wording of the unknown-attribute message, which now lists `name, layout, actions` for `Mode`.
+- Check 3b and the unknown-attribute message read `AllowedNames(kind)`; check 4 reads `RequiredNames(kind)`. Keep the two tables in step when you add a name (Decision 7). A `Mode` table holds `actions` in the allowed list only.
+- `actions=""` gives `InvalidValue` in the read pass and no map in the resolve pass, because `HasName` is false. A direct `PanelRef` whose panel entry has no record gives no placement and no second error (Decision 8). Phase 3 replaces both skips with the follow-on rule wording and keeps the one-fault-one-error shape.
 - `DefinitionValue.HasName` is the single test that the resolve pass uses for a value. It is false for no value and for an empty value, so no record constructor sees an empty name and `Load` never throws for the text.
 - The internal members that group 2 consumes: `DefinitionLoader.Templates`, `TryGetTemplate(string, out byte[]?)`, `TryGetActionMap(string, out UiActionMap?)`, `DefinitionLoadResult.Success`, and `DefinitionLoadResult.Failure`. The `out byte[]?` and `out UiActionMap?` parameters are nullable; do not read them after a false return.
+- Group 2 of phase 2 keeps to the public loader API: the test project holds no `InternalsVisibleTo` for `BrutalUi.Framework`, so `DefinitionSet` uses `DefinitionLoadResult.Success` nowhere (Decision 11).
+- The diff parity test needs two map instances: one map is active on one context at most, and `Activate` on the second manager's context would clear the slots of the first (the switch rule of `UiActionMap`). The data parity test needs one map instance: it asserts the `ActionMap` reference equality of the two records.
+- `DefinitionSet.Load` makes one `TemplateLoader` and one `DefinitionLoader` in each call, so each manager gets a fresh `SlotContainer` registration and no second-loader throw (Notes item 4).
 
 ---
 
@@ -270,13 +330,15 @@ For each plant, copy the file to `src/BrutalUi.Framework/obj/plantscratch/` (git
 ## Needs Human Verification
 
 - [ ] Phase 1 demo: the developer runs `BrutalUi.Framework.Tests --filter-class '*DefinitionLoaderDemoTests'` and reads a total of 4 with `failed: 0`. In `OneLoadedPanelMountsInItsSlot`, a test loads one text with one panel, one layout, and one mode, registers them, sets the mode, runs one `Update`, and finds the loaded panel root, with its `score` label, as the one child of the slot `top`.
+- [ ] Phase 2 demo: the developer runs `BrutalUi.Framework.Tests --filter-class '*DefinitionParityTests'` and reads a total of 2 with `failed: 0`. After each of five mode steps, with a layout swap and a back step, the layout root of the loaded manager and the layout root of the C# manager compare equal under `TreeCompare`, with the same panels in the same slots.
 
 ---
 
 ## Next Steps
 
 ### Immediate
-1. Phase 1 group 2: tasks 1.6 to 1.8. Replace `DefinitionReader.cs` with the read pass, add `DefinitionReader.Resolve.cs`, write `DefinitionLoaderDemoTests`, run plants 1 and 2, and edit `technical-design.md`.
+1. Phase 3 group 1 (tasks 3.1 to 3.3): the positioned definition errors, the duplicate and slot checks, the check load of a used layout, the follow-on rule, the message wording, and `DefinitionErrorTests` with 10 tests.
+2. Phase 3 group 2 (tasks 3.4 to 3.6): the argument checks, `DefinitionLoaderApiTests`, the docs, the changelog line, and the package run.
 
 ### Future
 1. markup-sample loads the HelloPanel records through this API.
@@ -313,6 +375,26 @@ For each plant, copy the file to `src/BrutalUi.Framework/obj/plantscratch/` (git
 - Phase 1 is done: group 1 (tasks 1.1 to 1.5, the public types) and group 2 (tasks 1.6 to 1.8, the reader, the demo, and the docs), both by a `game-dev-advanced` agent. The verifier passed on round 1 with Demo: PASS. No fix round ran. No user message reached the inbox; no inbox line is open.
 - The Phase 1 demo line went to Needs Human Verification above. The coordinator copies it to `docs/features/markup/human-testing.md` after the merge into the epic branch, so this run wrote no line there.
 - No git write ran in this phase. The verdict file is `.beast-mode/briefs/markup/definition-loader/orca-phase-1.verdict.md`.
+
+### 2026-11-18 19:08 (phase 2, group 1)
+- Tasks 2.1 to 2.3 done. Edits: `DefinitionReader.cs` (the `Actions` value of the mode entry, the `PlacementEntry.Slot` note, the scope remarks), `DefinitionReader.Elements.cs` (the `actions` read, the `AllowedNames` and `RequiredNames` split, the `PanelRef` under `Mode` in the place table and the placement read), `DefinitionReader.Resolve.cs` (the `panelRecords` array, the `TryGetActionMap` lookup with `UnknownActionMap` at the attribute, the map pass-through, the default-slot placement rule). New test file: `tests/BrutalUi.Framework.Tests/Templates/DefinitionRecordTests.cs` with 5 tests.
+- Counts, both plants, and the demo state are in the Phase 2 Group 1 Close Record above. `git diff 9fa4b43 -- src/BrutalUi.Markup src/BrutalUi.Core src/BrutalUi.Framework/Panels` stays empty: the group changed no shared file, and no existing test needed an edit.
+- Blast radius: the group touched the reader only. The new resolve path calls `DefinitionLoader.TryGetActionMap`, `ModeDefinition(name, layout, panels, map)` with the map argument, and reads `PanelDefinition.DefaultSlot`. No record, manager, or Markup type changed.
+- Migration risks and follow-up: group 2 (tasks 2.4 to 2.6) owns the parity test, `DefinitionSet.cs`, the loaded allocation case, plant 5, and the section 10, 11, and 14 doc edits. Expect Framework 368 and solution 3179 after it: group 2 adds 3 tests. Phase 3 still owns the duplicate check, the slot check, the check load of a used layout, the follow-on rule, and the message wording.
+- No inbox line was open at the group start, and no user message reached this run. No git write ran: no commit, branch, merge, stash, reset, or push.
+
+### 2026-11-18 19:37 (phase 2, group 2)
+- Tasks 2.4 to 2.6 done. New files: `tests/BrutalUi.Framework.Tests/Shared/DefinitionSet.cs`, `tests/BrutalUi.Framework.Tests/Templates/DefinitionParityTests.cs` (2 tests), and `tests/BrutalUi.Framework.Tests/Panels/ModeDiffAllocationTests.Loaded.cs` (1 test). Edits: the class line of `ModeDiffAllocationTests.cs` (`partial`, one changed line against `9fa4b43`), sections 10, 11, and 14 of `technical-design.md`, and these docs.
+- Counts, plant 5, the demo state, and the protected paths are in the Phase 2 Group 2 Close Record above. Phase 2 acceptance holds: the loaded toggle gate measured 0 bytes on the first run, and the parity classes read 2 and 4 with `failed: 0`.
+- Blast radius: tests and docs only. The group changed no `src/` file; the plant restore left `cmp`-equal files and the protected-path diff is empty. The new tests consume the public `DefinitionLoader`, `DefinitionLoadResult.RegisterTo`, `TemplateBindings`, `UiManager`, and the record types. `ModeDiffAllocationTests` became `partial`; no existing test needed an edit.
+- Migration risks and follow-up: phase 3 owns the duplicate check, the slot check, the check load of a used layout, the follow-on rule, the message wording, the duplicate-add guards (Decision 4), and `DefinitionLoaderApiTests`. Expect Framework 382 and solution 3193 at the phase 3 close.
+- No inbox line was open at the group start, and no user message reached this run. No git write ran: no commit, branch, merge, stash, reset, or push.
+
+### 2026-11-18 19:45 (phase 2 close, Orca worker)
+- Phase 2 is done: group 1 (tasks 2.1 to 2.3, the record forms) and group 2 (tasks 2.4 to 2.6, the parity, the loaded gate, and the docs), each by one `game-dev` agent at the STANDARD tier, one agent at a time. The verifier passed on round 1 with Demo: PASS; no fix round ran, and no `bug` line was open, so no fix brief was needed.
+- The Phase 2 demo line went to Needs Human Verification above, and only there. This run wrote no line to `docs/features/markup/human-testing.md`: the coordinator copies the open human tests here after it merges the feature into the epic branch.
+- `tasks.md`: Phase 2 6/6, progress 14/20, and the four Phase 2 acceptance boxes checked on the verifier evidence.
+- No git write ran in this phase. The verdict file is `.beast-mode/briefs/markup/definition-loader/orca-phase-2.verdict.md`.
 
 ---
 

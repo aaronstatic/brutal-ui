@@ -94,6 +94,7 @@ internal sealed partial class DefinitionReader
                 {
                     Name = ValueOf("name"),
                     Layout = ValueOf("layout"),
+                    Actions = ValueOf("actions"),
                     Line = line,
                     Column = column,
                     Placements = [],
@@ -108,13 +109,16 @@ internal sealed partial class DefinitionReader
 
             case Kind.PanelRef:
                 // The placement joins the placements of its mode, in the order of the text. The list is a reference,
-                // so the add reaches the stored entry.
-                Frame slotFrame = _frames.Peek();
-                ModeEntry placementMode = _modeEntries[slotFrame.Index];
+                // so the add reaches the stored entry. A PanelRef under a Slot takes the slot name of that frame. A
+                // PanelRef directly under a Mode takes no slot value, so the resolve pass uses the default slot of the
+                // panel record (Q5).
+                Frame parentFrame = _frames.Peek();
+                DefinitionValue slotValue = parentFrame.Kind == Kind.Slot ? parentFrame.SlotName : default;
+                ModeEntry placementMode = _modeEntries[parentFrame.Index];
                 placementMode.Placements.Add(new PlacementEntry
                 {
                     Name = ValueOf("name"),
-                    Slot = slotFrame.SlotName,
+                    Slot = slotValue,
                     Line = line,
                     Column = column,
                 });
@@ -188,14 +192,16 @@ internal sealed partial class DefinitionReader
             _ = xml.MoveToElement();
         }
 
-        // Check 4. Each required name with no attribute gives MissingAttribute at the element.
-        for (int i = 0; i < allowed.Length; i++)
+        // Check 4. Each required name with no attribute gives MissingAttribute at the element. An optional name, the
+        // actions name of Mode, gives no error.
+        string[] required = RequiredNames(kind);
+        for (int i = 0; i < required.Length; i++)
         {
-            if (IndexOfName(allowed[i]) < 0)
+            if (IndexOfName(required[i]) < 0)
             {
                 AddError(
                     DefinitionErrorKind.MissingAttribute,
-                    $"{elementName} needs the attribute '{allowed[i]}'.",
+                    $"{elementName} needs the attribute '{required[i]}'.",
                     elementLine,
                     elementColumn);
             }
@@ -227,8 +233,12 @@ internal sealed partial class DefinitionReader
                 _ => Kind.Unknown,
             },
 
-            // Phase 2 reads a PanelRef directly under Mode.
-            Kind.Mode => localName == "Slot" ? Kind.Slot : Kind.Unknown,
+            Kind.Mode => localName switch
+            {
+                "Slot" => Kind.Slot,
+                "PanelRef" => Kind.PanelRef,
+                _ => Kind.Unknown,
+            },
             Kind.Slot => localName == "PanelRef" ? Kind.PanelRef : Kind.Unknown,
             _ => Kind.Unknown,
         };
@@ -265,11 +275,25 @@ internal sealed partial class DefinitionReader
         return $"'{localName}' cannot be a child of {NameOf(parent)}. Remove it.";
     }
 
-    /// <summary>Gives the attribute names that the table of one element kind holds. Each name is required in this
-    /// phase; phase 2 adds the optional <c>actions</c> name of <c>Mode</c>.</summary>
+    /// <summary>Gives the attribute names that the table of one element kind holds, the required names and the
+    /// optional ones. Check 3b reads this list, and check 4 reads <see cref="RequiredNames"/>.</summary>
     /// <param name="kind">The kind of the element.</param>
     /// <returns>The names, in the order of the table.</returns>
     private static string[] AllowedNames(Kind kind) => kind switch
+    {
+        Kind.Panel => ["name", "slot", "template"],
+        Kind.Layout => ["name", "template"],
+        Kind.Mode => ["name", "layout", "actions"],
+        Kind.Slot => ["name"],
+        Kind.PanelRef => ["name"],
+        _ => [],
+    };
+
+    /// <summary>Gives the attribute names that one element kind needs. The <c>actions</c> name of <c>Mode</c> is
+    /// optional, so it is absent here: a mode with no <c>actions</c> gets no map.</summary>
+    /// <param name="kind">The kind of the element.</param>
+    /// <returns>The required names, in the order of the table.</returns>
+    private static string[] RequiredNames(Kind kind) => kind switch
     {
         Kind.Panel => ["name", "slot", "template"],
         Kind.Layout => ["name", "template"],

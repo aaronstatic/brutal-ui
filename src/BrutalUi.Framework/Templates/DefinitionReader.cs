@@ -24,13 +24,14 @@ namespace BrutalUi.Framework;
 /// element pushes a failed frame, so its children give no error. The frame stack tracks the parent.
 /// </para>
 /// <para>
-/// <strong>Phase 1 scope.</strong> The walk reads <c>Definitions</c>, <c>Panel</c>, <c>Layout</c>, <c>Mode</c>,
-/// <c>Slot</c>, and a <c>PanelRef</c> under a <c>Slot</c>. The <c>actions</c> attribute and a <c>PanelRef</c>
-/// directly under <c>Mode</c> come in phase 2, so an <c>actions</c> attribute gives
-/// <see cref="DefinitionErrorKind.UnknownAttribute"/> today. A text node gives no error until phase 3 reports it as
-/// <see cref="DefinitionErrorKind.UnexpectedText"/>. The resolve pass gives the unknown-name kinds of phase 1 and
-/// skips a faulty entry with no second error; phase 3 adds the duplicate check, the slot check, the check load of a
-/// used layout, and the follow-on rule.
+/// <strong>The scope of phases 1 and 2.</strong> The walk reads <c>Definitions</c>, <c>Panel</c>, <c>Layout</c>,
+/// <c>Mode</c>, <c>Slot</c>, a <c>PanelRef</c> under a <c>Slot</c>, and a <c>PanelRef</c> directly under <c>Mode</c>.
+/// The last form is a placement with no slot value: the resolve pass then takes the
+/// <see cref="PanelDefinition.DefaultSlot"/> of the panel record (Q5). The optional <c>actions</c> attribute of
+/// <c>Mode</c> gives the mode entry its map name. A text node gives no error until phase 3 reports it as
+/// <see cref="DefinitionErrorKind.UnexpectedText"/>. The resolve pass gives the unknown-name kinds of phases 1 and 2
+/// and skips a faulty entry with no second error; phase 3 adds the duplicate check, the slot check, the check load of
+/// a used layout, and the follow-on rule.
 /// </para>
 /// </remarks>
 internal sealed partial class DefinitionReader
@@ -287,6 +288,9 @@ internal sealed partial class DefinitionReader
         /// <summary>The <c>layout</c> value.</summary>
         internal DefinitionValue Layout;
 
+        /// <summary>The optional <c>actions</c> value: the name of the action map. No value means no map.</summary>
+        internal DefinitionValue Actions;
+
         /// <summary>The line of the element name, for an error at the element.</summary>
         internal int Line;
 
@@ -303,8 +307,9 @@ internal sealed partial class DefinitionReader
         /// <summary>The <c>name</c> value of the <c>PanelRef</c>: the panel of the placement.</summary>
         internal DefinitionValue Name;
 
-        /// <summary>The <c>name</c> value of the enclosing <c>Slot</c>. Phase 2 gives a default value for a
-        /// <c>PanelRef</c> directly under a <c>Mode</c>.</summary>
+        /// <summary>The <c>name</c> value of the enclosing <c>Slot</c>. A <c>PanelRef</c> directly under a
+        /// <c>Mode</c> gives a default value: the resolve pass then takes the default slot of the panel
+        /// record (Q5).</summary>
         internal DefinitionValue Slot;
 
         /// <summary>The line of the element name, for an error at the element.</summary>
