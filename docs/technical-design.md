@@ -1750,11 +1750,12 @@ value of the entry has a fault; such an entry is faulty. A reference to a faulty
 faulty layout skips the slot check, and a placement with no panel record skips the slot check. So a `Panel` with no
 `template` gives one `MissingAttribute`, and a `Mode` that names it gives nothing more.
 
-**The check of a used layout (Q3, A5).** The resolve pass loads each layout template that a mode names, one time per
-load, and walks the built tree in pre-order for each `SlotContainer` without entering a slot. A failed template load
-gives `TemplateFault` at the `Layout` element, with each `TemplateError.ToString` line in the message. Two slots of
-one name give `DuplicateName` at the element, because `UiManager.Register(LayoutDefinition)` throws for them. A bad
-layout that no mode names gives no load error; its factory throws at the first `UiManager.Register` call.
+**The check of each layout (Q3, A5).** The resolve pass check-loads each layout that is not faulty, also a layout
+that no mode names, one time per layout. The pass walks the built tree in pre-order for each `SlotContainer` without
+entering a slot, drops the tree, and keeps the slot names. A failed template load gives `TemplateFault` at the
+`Layout` element, with each `TemplateError.ToString` line in the message. Two slots of one name give `DuplicateName`
+at the element, because `UiManager.Register(LayoutDefinition)` throws for them. A fault of an unused layout therefore
+lands at load time, and a successful result holds no factory that throws inside `RegisterTo`.
 
 **The rules of the object.** A game makes one `DefinitionLoader` for each `TemplateLoader`: the constructor registers
 the `SlotContainer` type, and a second constructor on one loader throws `ArgumentException` from

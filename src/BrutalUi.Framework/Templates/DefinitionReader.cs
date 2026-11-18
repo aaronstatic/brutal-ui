@@ -16,12 +16,14 @@ namespace BrutalUi.Framework;
 /// one text gives one error for each fault. XML that is not well formed stops the read with one
 /// <see cref="DefinitionErrorKind.NotWellFormed"/> error, and the resolve pass stops for it. The load sorts the
 /// errors by line, then column. This is the pattern of <c>TemplateReader</c>: the walk lives in
-/// <c>DefinitionReader.Elements.cs</c> and the resolve pass in <c>DefinitionReader.Resolve.cs</c>.
+/// <c>DefinitionReader.Elements.cs</c>, the element tables and messages in <c>DefinitionReader.Tables.cs</c>, and
+/// the resolve pass in <c>DefinitionReader.Resolve.cs</c>.
 /// </para>
 /// <para>
-/// <strong>The checks of one element,</strong> in this order: the namespace, the place under the parent, the
-/// attributes (a prefixed attribute, an unknown attribute, an empty value), and the required attributes. A failed
-/// element pushes a failed frame, so its children give no error. The frame stack tracks the parent.
+/// <strong>The checks of one element,</strong> in this order: the failed parent, the namespace, the place under
+/// the parent, the attributes (a prefixed attribute, an unknown attribute, an empty value), and the required
+/// attributes. A failed element pushes a failed frame, so its children give no error, in any namespace. The frame
+/// stack tracks the parent.
 /// </para>
 /// <para>
 /// <strong>The scope.</strong> The walk reads <c>Definitions</c>, <c>Panel</c>, <c>Layout</c>, <c>Mode</c>,
@@ -75,10 +77,11 @@ internal sealed partial class DefinitionReader
     /// <summary>Gets the errors that the load records, in the order of the load.</summary>
     internal List<DefinitionError> Errors { get; } = [];
 
-    /// <summary>Reads and resolves one definitions text.</summary>
+    /// <summary>Reads and resolves one definitions text. The method pins the input span and reads it in place
+    /// through an <see cref="UnmanagedMemoryStream"/>, so the read pass copies no bytes.</summary>
     /// <param name="utf8">The definitions text, coded as UTF-8.</param>
     /// <returns>The records, or the errors.</returns>
-    internal DefinitionLoadResult Load(ReadOnlySpan<byte> utf8)
+    internal unsafe DefinitionLoadResult Load(ReadOnlySpan<byte> utf8)
     {
         XmlReaderSettings settings = new()
         {
@@ -91,56 +94,63 @@ internal sealed partial class DefinitionReader
             CloseInput = true,
         };
 
-        byte[] bytes = utf8.ToArray();
-        try
+        fixed (byte* pointer = utf8)
         {
-            using MemoryStream stream = new(bytes, 0, bytes.Length, writable: false);
-            using XmlReader xml = XmlReader.Create(stream, settings);
-            while (xml.Read())
+            try
             {
-                switch (xml.NodeType)
+                // An empty span fixes to a null pointer, and the stream constructor takes none. The walk below
+                // reads nothing for an empty text, so the skip is equal.
+                if (pointer is not null)
                 {
-                    case XmlNodeType.Element:
-                        ReadElement(xml);
-                        break;
-
-                    case XmlNodeType.EndElement:
-                        if (_frames.Count > 0)
+                    using UnmanagedMemoryStream stream = new(pointer, utf8.Length);
+                    using XmlReader xml = XmlReader.Create(stream, settings);
+                    while (xml.Read())
+                    {
+                        switch (xml.NodeType)
                         {
-                            _ = _frames.Pop();
+                            case XmlNodeType.Element:
+                                ReadElement(xml);
+                                break;
+
+                            case XmlNodeType.EndElement:
+                                if (_frames.Count > 0)
+                                {
+                                    _ = _frames.Pop();
+                                }
+
+                                break;
+
+                            case XmlNodeType.Text:
+                            case XmlNodeType.CDATA:
+                                // Check 5. Text or CDATA is not valid in a definition text. Whitespace gives no node,
+                                // because the settings ignore it. A child of a failed element gives no error.
+                                if (_frames.Count == 0 || _frames.Peek().Kind != Kind.Failed)
+                                {
+                                    IXmlLineInfo textLineInfo = (IXmlLineInfo)xml;
+                                    AddError(
+                                        DefinitionErrorKind.UnexpectedText,
+                                        "Text is not valid in a definition text. Remove the text.",
+                                        Math.Max(1, textLineInfo.LineNumber),
+                                        Math.Max(1, textLineInfo.LinePosition));
+                                }
+
+                                break;
+
+                            default:
+                                // The declaration, whitespace, and the other node types give no work.
+                                break;
                         }
-
-                        break;
-
-                    case XmlNodeType.Text:
-                    case XmlNodeType.CDATA:
-                        // Check 5. Text or CDATA is not valid in a definition text. Whitespace gives no node,
-                        // because the settings ignore it. A child of a failed element gives no error.
-                        if (_frames.Count == 0 || _frames.Peek().Kind != Kind.Failed)
-                        {
-                            IXmlLineInfo textLineInfo = (IXmlLineInfo)xml;
-                            AddError(
-                                DefinitionErrorKind.UnexpectedText,
-                                "Text is not valid in a definition text. Remove the text.",
-                                Math.Max(1, textLineInfo.LineNumber),
-                                Math.Max(1, textLineInfo.LinePosition));
-                        }
-
-                        break;
-
-                    default:
-                        // The declaration, whitespace, and the other node types give no work.
-                        break;
+                    }
                 }
             }
-        }
-        catch (XmlException ex)
-        {
-            AddError(
-                DefinitionErrorKind.NotWellFormed,
-                "The definition text is not well-formed XML. " + ex.Message,
-                Math.Max(1, ex.LineNumber),
-                Math.Max(1, ex.LinePosition));
+            catch (XmlException ex)
+            {
+                AddError(
+                    DefinitionErrorKind.NotWellFormed,
+                    "The definition text is not well-formed XML. " + ex.Message,
+                    Math.Max(1, ex.LineNumber),
+                    Math.Max(1, ex.LinePosition));
+            }
         }
 
         if (Errors.Count == 0 && !_sawRoot)

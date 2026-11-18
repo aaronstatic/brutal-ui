@@ -6,8 +6,8 @@ namespace BrutalUi.Framework;
 
 internal sealed partial class DefinitionReader
 {
-    /// <summary>Reads one element node: the namespace, the place, the attributes, the required attributes, and the
-    /// entry.</summary>
+    /// <summary>Reads one element node: the failed parent, the namespace, the place, the attributes, the required
+    /// attributes, and the entry.</summary>
     /// <param name="xml">The reader, on the element node.</param>
     private void ReadElement(XmlReader xml)
     {
@@ -20,6 +20,16 @@ internal sealed partial class DefinitionReader
         // XmlReader gives the correct value only on the element node, so read it before the attribute walk.
         bool isEmpty = xml.IsEmptyElement;
 
+        Kind parent = _frames.Count == 0 ? Kind.Root : _frames.Peek().Kind;
+
+        // A child of a failed element gives no error. The fault of the parent names the place. Read this before the
+        // namespace, so a child outside the namespace under a failed element gives no follow-on error.
+        if (parent == Kind.Failed)
+        {
+            PushFrame(Kind.Failed, -1, default, isEmpty);
+            return;
+        }
+
         // Check 1. An element outside the namespace is an error. Read its subtree with no error.
         if (xml.NamespaceURI != TemplateLoader.Namespace)
         {
@@ -29,15 +39,6 @@ internal sealed partial class DefinitionReader
                     + $"Add xmlns:ui=\"{TemplateLoader.Namespace}\" and write <ui:{localName}>.",
                 line,
                 column);
-            PushFrame(Kind.Failed, -1, default, isEmpty);
-            return;
-        }
-
-        Kind parent = _frames.Count == 0 ? Kind.Root : _frames.Peek().Kind;
-
-        // A child of a failed element gives no error. The fault of the parent names the place.
-        if (parent == Kind.Failed)
-        {
             PushFrame(Kind.Failed, -1, default, isEmpty);
             return;
         }
@@ -140,7 +141,6 @@ internal sealed partial class DefinitionReader
     {
         _attributes.Clear();
         string[] allowed = AllowedNames(kind);
-        string names = string.Join(", ", allowed);
 
         if (xml.MoveToFirstAttribute())
         {
@@ -166,9 +166,11 @@ internal sealed partial class DefinitionReader
 
                 string name = xml.Name;
 
-                // Check 3b. An attribute that the table does not hold is an error.
+                // Check 3b. An attribute that the table does not hold is an error. Build the joined list only here,
+                // so a clean read allocates nothing.
                 if (Array.IndexOf(allowed, name) < 0)
                 {
+                    string names = string.Join(", ", allowed);
                     AddError(
                         DefinitionErrorKind.UnknownAttribute,
                         $"'{name}' is not an attribute of {elementName}. The attributes of {elementName} are {names}.",
@@ -209,134 +211,6 @@ internal sealed partial class DefinitionReader
             }
         }
     }
-
-    /// <summary>
-    /// Gives the kind of an element under one parent, or <see cref="Kind.Unknown"/> when the place holds no element
-    /// of that name.
-    /// </summary>
-    /// <param name="parent">The kind of the parent element, or <see cref="Kind.Root"/> at the root position.</param>
-    /// <param name="localName">The local name of the element.</param>
-    /// <param name="atRoot">Whether the walk stands on the root element of the text.</param>
-    /// <returns>The kind of the element.</returns>
-    private static Kind ResolveKind(Kind parent, string localName, bool atRoot)
-    {
-        if (atRoot)
-        {
-            return localName == "Definitions" ? Kind.Definitions : Kind.Unknown;
-        }
-
-        return parent switch
-        {
-            Kind.Definitions => localName switch
-            {
-                "Panel" => Kind.Panel,
-                "Layout" => Kind.Layout,
-                "Mode" => Kind.Mode,
-                _ => Kind.Unknown,
-            },
-
-            Kind.Mode => localName switch
-            {
-                "Slot" => Kind.Slot,
-                "PanelRef" => Kind.PanelRef,
-                _ => Kind.Unknown,
-            },
-            Kind.Slot => localName == "PanelRef" ? Kind.PanelRef : Kind.Unknown,
-            _ => Kind.Unknown,
-        };
-    }
-
-    /// <summary>Gives the message for an element that the place does not hold.</summary>
-    /// <param name="parent">The kind of the parent element.</param>
-    /// <param name="localName">The local name of the element.</param>
-    /// <param name="atRoot">Whether the walk stands on the root element of the text.</param>
-    /// <returns>The message.</returns>
-    private static string PlaceMessage(Kind parent, string localName, bool atRoot)
-    {
-        if (atRoot)
-        {
-            return $"'{localName}' is not the root of a definition text. "
-                + "Write <ui:Definitions xmlns:ui=\"brutal-ui\"> as the root.";
-        }
-
-        if (parent == Kind.Definitions)
-        {
-            if (localName == "Window")
-            {
-                return "'Window' is not a definition. WindowDefinition comes in a later version. "
-                    + "The definitions are Panel, Layout, and Mode.";
-            }
-
-            return $"'{localName}' is not a definition. The definitions are Panel, Layout, and Mode.";
-        }
-
-        if (parent == Kind.Mode)
-        {
-            return $"'{localName}' cannot be a child of Mode. Write Slot or PanelRef.";
-        }
-
-        if (parent == Kind.Slot)
-        {
-            return $"'{localName}' cannot be a child of Slot. Write PanelRef.";
-        }
-
-        return $"'{localName}' cannot be a child of {NameOf(parent)}. Remove it.";
-    }
-
-    /// <summary>Gives the <see cref="DefinitionErrorKind.InvalidValue"/> message of an empty attribute value. The
-    /// second sentence names the fix for that attribute.</summary>
-    /// <param name="name">The attribute name.</param>
-    /// <returns>The message.</returns>
-    private static string EmptyValueMessage(string name) => name switch
-    {
-        "slot" => "'slot' needs a value. Write the name of a slot, for example 'top'.",
-        "template" => "'template' needs a value. Write the name of a registered template.",
-        "layout" => "'layout' needs a value. Write the name of a layout of this text.",
-        "actions" => "'actions' needs a value. Write the name of a registered action map.",
-        _ => $"'{name}' needs a value. Write a name.",
-    };
-
-    /// <summary>Gives the attribute names that the table of one element kind holds, the required names and the
-    /// optional ones. Check 3b reads this list, and check 4 reads <see cref="RequiredNames"/>.</summary>
-    /// <param name="kind">The kind of the element.</param>
-    /// <returns>The names, in the order of the table.</returns>
-    private static string[] AllowedNames(Kind kind) => kind switch
-    {
-        Kind.Panel => ["name", "slot", "template"],
-        Kind.Layout => ["name", "template"],
-        Kind.Mode => ["name", "layout", "actions"],
-        Kind.Slot => ["name"],
-        Kind.PanelRef => ["name"],
-        _ => [],
-    };
-
-    /// <summary>Gives the attribute names that one element kind needs. The <c>actions</c> name of <c>Mode</c> is
-    /// optional, so it is absent here: a mode with no <c>actions</c> gets no map.</summary>
-    /// <param name="kind">The kind of the element.</param>
-    /// <returns>The required names, in the order of the table.</returns>
-    private static string[] RequiredNames(Kind kind) => kind switch
-    {
-        Kind.Panel => ["name", "slot", "template"],
-        Kind.Layout => ["name", "template"],
-        Kind.Mode => ["name", "layout"],
-        Kind.Slot => ["name"],
-        Kind.PanelRef => ["name"],
-        _ => [],
-    };
-
-    /// <summary>Gives the element name of a kind.</summary>
-    /// <param name="kind">The kind.</param>
-    /// <returns>The name.</returns>
-    private static string NameOf(Kind kind) => kind switch
-    {
-        Kind.Definitions => "Definitions",
-        Kind.Panel => "Panel",
-        Kind.Layout => "Layout",
-        Kind.Mode => "Mode",
-        Kind.Slot => "Slot",
-        Kind.PanelRef => "PanelRef",
-        _ => "the text",
-    };
 
     /// <summary>Gives the value of one attribute name, or a default value when the element holds no such
     /// attribute.</summary>

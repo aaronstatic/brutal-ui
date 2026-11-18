@@ -1,7 +1,7 @@
 # markup/definition-loader - Context & Decisions
 
 **Epic:** markup (feature 5 of 6)
-**Last Updated:** 2026-11-18 20:43
+**Last Updated:** 2026-11-18 21:25
 **Current Phase:** Phase 3 - The Positioned Definition Errors
 **Status:** ✅ Phase 1 complete. ✅ Phase 2 complete (verifier PASS, Demo PASS). ✅ Phase 3 complete (verifier PASS, Demo PASS).
 
@@ -36,7 +36,8 @@
 - `src/BrutalUi.Framework/Templates/DefinitionLoader.cs` - The public loader. It holds the template table and the action map table, and it registers the `SlotContainer` type on the `TemplateLoader`.
 - `src/BrutalUi.Framework/Templates/DefinitionReader.cs` - The read pass: the state, `Load`, `AddError`, the sort, and the entry structs.
 - `src/BrutalUi.Framework/Templates/DefinitionReader.Elements.cs` - The walk of the read pass: one element, its place, and its attributes. Group 2 added this partial file, because one file passed the 400-line cap.
-- `src/BrutalUi.Framework/Templates/DefinitionReader.Resolve.cs` - The resolve pass. It checks the names and builds the three records.
+- `src/BrutalUi.Framework/Templates/DefinitionReader.Resolve.cs` - The resolve pass. It checks the names, check-loads each sound layout, and builds the three records.
+- `src/BrutalUi.Framework/Templates/DefinitionReader.Resolve.Checks.cs` - The resolve helpers: the check load, the slot walk, the name tables, the duplicate report, and the factory. Review group 2 split this file, because the step 4 rework pushed the pass toward the 400-line cap.
 - `src/BrutalUi.Framework/Templates/DefinitionLoadResult.cs` - The records or the errors, and `RegisterTo(UiManager)`.
 - `src/BrutalUi.Framework/Templates/DefinitionError.cs` - `DefinitionError` and `DefinitionErrorKind` (13 kinds).
 - `src/BrutalUi.Framework/Templates/SlotContainerTemplate.cs` - The `SlotContainer` element type with the required `slot` attribute.
@@ -215,6 +216,7 @@ The entry order in the text does not matter. A `Mode` can come before its `Panel
 1. **The name tables.** One ordinal table for the panels, one for the layouts, and one for the modes. The first entry of a name wins. A later entry gives `DuplicateName`. The three kinds have three tables, as in `UiManager`.
 2. **The panels.** The `template` value must be a registered template, or `UnknownTemplate`. The record gets a factory that loads the template at each call (A4).
 3. **The layouts.** The `template` value must be a registered template, or `UnknownTemplate`. A layout that a mode names loads its template one time (Q3). A template error gives `TemplateFault` at the `Layout` element, with each `TemplateError.ToString` line in the message (A5). The walk collects the slot names of each `SlotContainer` in pre-order and does not enter a slot. Two slots of one name give `DuplicateName` at the `Layout` element, because `UiManager.Register(LayoutDefinition)` throws for them. The pass drops the tree and keeps the slot names.
+   *(Correction, review group 2, Decision 15: the resolve pass check-loads each layout that is not faulty, also a layout that no mode names, one time per layout.)*
 4. **The modes.** The `layout` value must be a `Layout` entry of the text, or `UnknownLayout`. The `actions` value must be a registered map, or `UnknownActionMap`. Each placement names a `Panel` entry of the text, or `UnknownPanel`. A panel two times in one mode gives `DuplicateName` at the second `PanelRef`. The slot of a placement is the `Slot` name, or the `DefaultSlot` of the panel for a direct `PanelRef`. A slot that the layout does not hold gives `UnknownSlot`.
 5. **The result.** One error or more gives a sorted error list and no record. No error gives the three lists in text order.
 
@@ -226,6 +228,7 @@ The entry order in the text does not matter. A `Mode` can come before its `Panel
 
 - **A panel factory** captures the `TemplateLoader`, the template text copy, and the template name. Each call runs `templates.Load(text, templateName).GetRootOrThrow()`. The controller calls it one time, at the first mount. A fault of the template throws `InvalidOperationException` at that call, and the error rule of `UiManager` applies: the target stays, and the next `Update` tries again (A4).
 - **A layout factory** is the same. `UiManager.Register(LayoutDefinition)` calls it one time. The check of Q3 found no fault in a used layout, so that call does not throw for the text.
+  *(Correction, review group 2, Decision 15: the check covers each non-faulty layout, also one that no mode names, so no factory of a successful result throws.)*
 - The template name is the source name of each `TemplateError`, so an error line reads `hud.panel(3,5): UnknownBinding: ...`.
 - The factory ignores its `PanelContext`. The attached `TemplateBindings` gives the commands and the stores.
 
@@ -347,6 +350,13 @@ For each plant, copy the file to `src/BrutalUi.Framework/obj/plantscratch/` (git
 **Rationale:** The first sentence, `'{name}' needs a value.`, stays the pinned shape for every attribute; only the unpinned fix sentence varies. No public API changes.
 **Impact:** `DefinitionReader.Elements.cs` only; `DefinitionErrorTests` asserts the pinned `slot` message.
 
+### Decision 15: The review takes the Notes item 6 option for an unused layout
+**Date:** 2026-11-18
+**Context:** Review CR-3 found that a bad template of a layout that no mode names passed the load and threw from the layout factory inside `RegisterTo`. Notes item 6 of `implementation.md` records the open point and offers the code fix or the doc weakening; the review recommends the fix.
+**Decision:** The resolve pass check-loads each layout that is not faulty, also a layout that no mode names, one time per layout. A fault of an unused layout gives `TemplateFault` at the `Layout` element at load time, and the result holds no record.
+**Rationale:** A result with no error then holds no factory that throws inside `RegisterTo`, and one load gives each fault. The extra load costs build time only (epic A10 permits load-time allocation).
+**Impact:** Step 3b of `DefinitionReader.Resolve.cs`, the flipped Q3 case in the new partial file `DefinitionErrorTests.Layouts.cs`, and the **The check of each layout** paragraph in section 11 of `technical-design.md`. Notes item 6 of `implementation.md` stays as written; this decision replaces it, together with the two correction lines in the Plan Record.
+
 ---
 
 ## Gotchas & Learnings
@@ -463,6 +473,25 @@ For each plant, copy the file to `src/BrutalUi.Framework/obj/plantscratch/` (git
 - The Phase 3 demo line went to Needs Human Verification above, and only there. This run wrote no line to `docs/features/markup/human-testing.md`: the coordinator copies the open human tests there after it merges the feature into the epic branch.
 - `tasks.md`: Phase 3 6/6, progress 20/20, and the four Phase 3 acceptance boxes checked on the verifier evidence. The feature build is complete.
 - No inbox line was open at the phase start, no `Inbox:` line came from any agent of this phase, and no user message reached this run. No git write ran in this phase. The verdict file is `.beast-mode/briefs/markup/definition-loader/orca-phase-3.verdict.md`.
+
+### 2026-11-18 21:10 (review group 1)
+- CR-2, CR-4, and CR-5 of the code review applied. The `CR-<n>` boxes in `code-review.md` stay open for the verifier.
+- CR-2: the failed-parent check in `ReadElement` (`DefinitionReader.Elements.cs`) now runs before Check 1, the namespace check. A child outside the namespace under a failed element pushes a failed frame and gives no follow-on error. The repro `<ui:Definitions xmlns:ui="brutal-ui"><ui:Window><Panel /></ui:Window></ui:Definitions>` gives exactly one `UnknownElement`. One new test: `AChildOutsideTheNamespaceUnderAFailedElementGivesOneError` (the choice was a new test, not an extension), in the new partial file `tests/BrutalUi.Framework.Tests/Templates/DefinitionErrorTests.FollowOn.cs`. The split was necessary: `DefinitionErrorTests.cs` reads 398 lines, and any added case would cross the 400-line cap. The class declaration gained only the word `partial`; no existing assertion or count changed.
+- CR-4: `PlaceMessage` builds the root fix sentence from `TemplateLoader.Namespace`; the text is otherwise identical, and no `brutal-ui` literal remains in the method.
+- CR-5: `AllowedNames` and `RequiredNames` now return `private static readonly string[]` fields, and `Array.Empty<string>()` covers the kinds with no attributes, so no call allocates. The two tables stay in step: the allowed table of `Mode` adds `actions`; the other allowed tables equal their required tables (Decision 7). Check 3b builds `string.Join(", ", allowed)` only inside the unknown-attribute branch. `Load` reads the input span through an `UnmanagedMemoryStream` inside a `fixed` block, so the read pass copies no array. An empty span fixes to a null pointer, and the constructor rejects a null pointer, so `Load` skips the walk for an empty text; the empty text still gives `NotWellFormed` at 1,1 through the `_sawRoot` check.
+- Split of the source: the static kind tables and messages moved from `DefinitionReader.Elements.cs` to a new partial file `DefinitionReader.Tables.cs` (`ResolveKind`, `PlaceMessage`, `EmptyValueMessage`, `AllowedNames`, `RequiredNames`, `NameOf`, and the five name arrays), because the fields block took Elements.cs past the 400-line cap. The seam follows the existing partial pattern.
+- Docs kept true: the `ReadElement` summary, the class remarks of `DefinitionReader.cs` (the check order now names the failed parent first, and the split names `DefinitionReader.Tables.cs`), and the `Load` summary now note the in-place read. `Load` carries the `unsafe` modifier.
+- Counts: build `0 Warning(s)`, `0 Error(s)`. Solution 3194, 0 failed, 3 skipped. `BrutalUi.Framework.Tests` 383. `*DefinitionErrorTests` 11, 0 failed. File sizes: `DefinitionReader.cs` 397, `DefinitionReader.Elements.cs` 268, `DefinitionReader.Tables.cs` 157, `DefinitionErrorTests.cs` 398, `DefinitionErrorTests.FollowOn.cs` 31. Each file stays under 400. The protected-path diff against `9fa4b43` is empty. No git write ran: no commit, branch, merge, stash, reset, or push.
+- Open questions: none.
+
+### 2026-11-18 21:25 (review group 2)
+- CR-1 and CR-3 of the code review applied. The `CR-<n>` boxes in `code-review.md` stay open for the verifier.
+- CR-1: the resolve pass steps 2, 3, and 4 mark a faulty entry instead of skipping it. The placement loop of a mode now runs also under an `UnknownLayout`, an `UnknownActionMap`, an absent `name`, an absent `layout`, or a duplicate mode name, so a faulty mode gives its `UnknownPanel` and its duplicate-panel faults in the same load. Steps 2 and 3 look up a present `template` also when another value of the entry has a fault, so a `Panel` with no `slot` and an unknown `template` gives both errors. The record lands only when the entry is sound; the follow-on rule (no second error on a reference to a faulty entry, no slot check on a faulty layout) keeps its shape. The repro `<ui:Mode name="m" layout="gam"><ui:PanelRef name="hdu" /></ui:Mode>` gives two errors. New test: `AFaultyEntryStillGivesItsOtherFaults` in `DefinitionErrorTests.FollowOn.cs`.
+- CR-3 (Decision 15): step 3b now check-loads every layout that is not faulty, also one that no mode names, one time per layout; the used-layouts table is gone. A bad template of an unused layout gives `TemplateFault` at the `Layout` element at load time, so a successful result holds no factory that throws inside `RegisterTo`. The flipped case is `ALayoutTemplateFaultIsATemplateFaultAtTheLayoutEntry` in the new partial file `DefinitionErrorTests.Layouts.cs`.
+- Splits: the six helper methods (`CheckLayout`, `CollectSlots`, `ReportDuplicates`, `BuildNames`, `CreateFactory`, `IsFirstName`) moved to the new partial file `DefinitionReader.Resolve.Checks.cs`, because the reworked pass grew toward the 400-line cap. The Q3 test moved to `DefinitionErrorTests.Layouts.cs`, because `DefinitionErrorTests.cs` read 398 and the flipped idle assertions crossed the cap; no assertion of the moved test changed except the named Q3 flip.
+- Docs: section 11, **The check of each layout** paragraph, states the new rule; Decision 15 and the two Plan Record correction lines are above. `implementation.md` and the interview text stayed unchanged.
+- Counts: build `0 Warning(s)`, `0 Error(s)`. Solution 3195, 0 failed, 3 skipped. `BrutalUi.Framework.Tests` 384. `*DefinitionErrorTests` 12, 0 failed. File sizes: `DefinitionReader.Resolve.cs` 274, `DefinitionReader.Resolve.Checks.cs` 145, `DefinitionErrorTests.cs` 352, `DefinitionErrorTests.FollowOn.cs` 63, `DefinitionErrorTests.Layouts.cs` 64. Each file stays under 400. The protected-path diff against `9fa4b43` is empty. No git write ran: no commit, branch, merge, stash, reset, or push.
+- Open questions: none.
 
 ---
 
