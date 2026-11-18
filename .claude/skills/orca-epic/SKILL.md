@@ -83,7 +83,7 @@ The script runs the epic in this order. You do not choose a feature or a stage. 
 1. **The epic branch.** `branch` creates `epic/<epic>` from the default branch, or switches to it.
 2. **The features.** The script reads the Build Order of `epic-overview.md`. A merged feature leaves the run list, and so does a feature built outside this run. For each feature of the run list, in Build Order:
    1. `branch` creates the lane branch `feat/<epic>/<feature>` from `epic/<epic>`, or switches to it.
-   2. The tabs of the feature run: a plan tab when the feature has no plan, a tab for each phase, the review, and an inbox tab. The docs tab of a feature runs `/update-feature` only. Each phase follows the verify rules below.
+   2. The tabs of the feature run: a plan tab when the feature has no plan (it asks its questions in its own tab, so the user answers there, and you wait), a tab for each phase, the review, and an inbox tab. The docs tab of a feature runs `/update-feature` only. Each phase follows the verify rules below.
    3. `commit` makes the feature-end commit, `feat: <epic>/<feature>`, when the work tree holds changes.
    4. `merge` merges the lane branch into `epic/<epic>`, with `--no-ff`. For a lane in a worktree, `merge` also removes the worktree. When Orca refuses the removal, the run goes on, and the result says to remove it in Orca. Then it adds the open human tests of the feature to `docs/features/<epic>/human-testing.md`, and commits them.
 3. **The epic docs.** An epic docs tab runs `/update-epic <epic>`, then `/update-master <epic>`. It makes no commit.
@@ -204,6 +204,7 @@ To end the run, state what ran, what the output says, and the smallest next step
 - Run `start --retry` only from the retry option of a `start-failed` ask.
 - A `start-unknown` ask means that Orca gave no answer to a start, so a tab can be open. The options are stop (recommended) and clear. Both say "Check Orca for a new tab of <work> first". Tell the user to check Orca before the answer. Never offer a retry for it.
 - A project command of `orca.json` starts the tab of that agent, in a lane tab and in the epic docs tab too. The `start` action names `path` (`agent` or `command`) and `command`, and its `say` names the command. Run the `run` line as written: the loop does not change. A start result with `readyState` `ready-unconfirmed` is not a fault. Show its `say`, and call `next`. A failed start leaves its terminal open. Show its detail line, which tells the user to close it in Orca.
+- A dsh tab can keep its prompt as a draft, so the `start` step presses Enter in the tab until the turn starts. A start result with `submit` `unconfirmed` is not a fault. Show its `say`, and call `next`.
 - When Orca refuses to make the worktree of a lane, the next call stops with `lane-worktree-refused`. Show the `fix` line. The lane, and its whole group, then build in sequence, in the main workspace. The mark stays until the user deletes the lane record.
 - `next` decides from the state, not from the message. So a duplicate wake does no harm.
 - A `run` line names the absolute `node`, the absolute CLI path, and `--project`. It needs no `beast-mode` on the path. Compose no `run` line yourself.

@@ -3,7 +3,7 @@
   "beastModeVersion": "6.2.0",
   "harness": "claude",
   "harnessRoot": ".claude",
-  "generated": "2026-11-18T16:10:07.034Z",
+  "generated": "2026-11-18T17:29:43.626Z",
   "files": [
     {
       "destination": ".claude/skills/audit-feature/SKILL.md",
@@ -68,13 +68,13 @@
     {
       "destination": ".claude/skills/orca-epic/SKILL.md",
       "source": "templates/skills/orca-epic/SKILL.md",
-      "sha256": "63afe18e3c790e86b9495fe11e5201a3882db81012928982a51af1dc53663121",
+      "sha256": "2ca8c979fc08ad7f6f7a48e4a41be42e0750f06e123f8dad7fe292507c9f68fa",
       "owned": true
     },
     {
       "destination": ".claude/skills/orca-feature/SKILL.md",
       "source": "templates/skills/orca-feature/SKILL.md",
-      "sha256": "e2494c6a4fb4c8dc6908ebbdf66e801ff43ac01a4b0e4678e5e3f96335164ea8",
+      "sha256": "b0fb1c4b31b799b7ba428aa790675bf991ac67bfce4c1060c701f0fc7b758678",
       "owned": true
     },
     {
