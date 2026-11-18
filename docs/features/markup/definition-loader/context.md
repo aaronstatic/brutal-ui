@@ -1,9 +1,9 @@
 # markup/definition-loader - Context & Decisions
 
 **Epic:** markup (feature 5 of 6)
-**Last Updated:** 2026-11-18 19:45
-**Current Phase:** Phase 2 - Every Record Form, Equal to Code
-**Status:** ✅ Phase 1 complete. ✅ Phase 2 complete (verifier PASS, Demo PASS).
+**Last Updated:** 2026-11-18 20:43
+**Current Phase:** Phase 3 - The Positioned Definition Errors
+**Status:** ✅ Phase 1 complete. ✅ Phase 2 complete (verifier PASS, Demo PASS). ✅ Phase 3 complete (verifier PASS, Demo PASS).
 
 ---
 
@@ -18,8 +18,12 @@
 
 - ✅ Phase 2 group 2 (tasks 2.4 to 2.6): `DefinitionSet.cs`, `DefinitionParityTests.cs` with 2 tests, `ModeDiffAllocationTests.Loaded.cs` with 1 test, the `partial` edit of `ModeDiffAllocationTests.cs`, plant 5, and the section 10, 11, and 14 doc edits. Build `0 Warning(s)`, `0 Error(s)`. Solution 3179 (0 failed, 3 skipped), Framework 368. Phase 2 acceptance holds.
 
+- ✅ Phase 3 group 1 (tasks 3.1 to 3.3): the full read-pass messages (the `Window` case, the empty-value guidance, and `UnexpectedText`), the resolve-pass duplicate check, the mode panel check, the check load of each used layout with the slot walk (Q3, A5), the slot check, the completed messages, and the follow-on rule. New `DefinitionErrorTests.cs` with 10 tests. Plants 6, 7, and 8 ran. One phase 2 test text needed one line (Decision 13). Build `0 Warning(s)`, `0 Error(s)`. Solution 3189 (0 failed, 3 skipped), Framework 378. Group 1 acceptance holds.
+
+- ✅ Phase 3 group 2 (tasks 3.4 to 3.6): the empty-name and duplicate-add guards in `DefinitionLoader`, the constructor and `RegisterTo` remarks, new `DefinitionLoaderApiTests.cs` with 4 tests, plant 9, the section 11 error block, the changelog line, and the package run (`package-test: PASS Gauge level 0.5`). Build `0 Warning(s)`, `0 Error(s)`. Solution 3193 (0 failed, 3 skipped), Framework 382. Phase 3 acceptance holds.
+
 **What's Next:**
-- 📋 Phase 3 group 1 (tasks 3.1 to 3.3): the positioned definition errors, the duplicate and slot checks, the follow-on rule, and `DefinitionErrorTests`. Expect Framework +14 for the phase: 382 and solution 3193 at the close.
+- 📋 The coordinator: the docs step, the merge of this feature into the epic branch, and the copy of the open human tests below to `docs/features/markup/human-testing.md`. The feature build (20/20 tasks, 3 phases) is complete.
 
 **Blockers:**
 - None
@@ -87,6 +91,35 @@
 - **Protected paths:** `git diff 9fa4b43 -- src/BrutalUi.Markup src/BrutalUi.Core src/BrutalUi.Framework/Panels` gives no output. The diff of `ModeDiffAllocationTests.cs` shows one changed line: the `partial` keyword.
 - **File sizes:** `DefinitionSet.cs` 256 lines, `DefinitionParityTests.cs` 178, `ModeDiffAllocationTests.Loaded.cs` 177. Each new file stays under 400.
 - **Verifier (post-phase, round 1):** PASS, no fix round. Build `0 Warning(s)`, `0 Error(s)`. Solution 3179, 0 failed, 3 skipped; `BrutalUi.Framework.Tests` 368, 0 failed. `*DefinitionRecordTests` total 5, `*ModeDiffAllocationTests` total 4, each `failed: 0`. Protected-path diff empty; the `ModeDiffAllocationTests.cs` diff shows the one `partial` line; every listed file stays under 400 lines; no reflection use in `Definition*.cs` or `SlotContainerTemplate.cs`; plant 5 left no residue. Section 11 holds the `actions` row and the direct `PanelRef` Q5 rule, section 10 **Mode set** names `DefinitionParityTests` (line 1185), and section 14 names `TheToggleCycleOnLoadedRecordsAllocatesNothing` (line 1980). Demo: PASS. UI check: none (headless test proof). Faults: none.
+
+## Phase 3 Group 1 Close Record (tasks 3.1 to 3.3)
+
+- **Edits:** `DefinitionReader.cs` (the `UnexpectedText` case of the walk, the `UnderSlot` mark of `PlacementEntry`, the scope remarks), `DefinitionReader.Elements.cs` (the `Window` message, the `EmptyValueMessage` table, the `UnderSlot` fill), `DefinitionReader.Resolve.cs` (rewrite: the duplicate check, the fault marks, the check load with the slot walk, the slot check, the completed messages, the follow-on rule), `DefinitionRecordTests.cs` (one line of the shared layout template, Decision 13), and new `tests/BrutalUi.Framework.Tests/Templates/DefinitionErrorTests.cs` (10 tests).
+- **Build:** `dotnet build brutal-ui.sln -nodeReuse:false` → `0 Warning(s)`, `0 Error(s)`.
+- **Solution tests:** 3189 total, 0 failed, 3186 succeeded, 3 skipped. The group start (3179) plus the 10 new tests.
+- **`BrutalUi.Framework.Tests`:** 378 total, 0 failed, 0 skipped. The group start (368) plus 10.
+- **Demo state:** `*DefinitionErrorTests` → total 10, `failed: 0`. The classes `*DefinitionLoaderDemoTests`, `*DefinitionRecordTests`, `*DefinitionParityTests`, and `*ModeDiffAllocationTests` read 4, 5, 2, and 4 with `failed: 0`.
+- **Kind coverage:** all 13 `DefinitionErrorKind` members occur in at least one assert of `DefinitionErrorTests`: `NotWellFormed` and `UnexpectedText` in `TextAndBadXmlGiveTheirKinds`, `UnknownElement` in `AWindowOrAnotherUnknownElementIsAnUnknownElementError`, `UnknownAttribute`, `MissingAttribute`, and `InvalidValue` in `AnAttributeFaultGivesItsKind`, `UnknownTemplate` in `AnUnknownTemplateNameIsAnUnknownTemplateError` and `OneFaultGivesOneErrorAndNoRecord`, `UnknownActionMap` in `AnUnknownActionMapNameIsAnUnknownActionMapError`, `UnknownLayout` and `UnknownPanel` in `AnUnknownLayoutOrPanelNameIsAnError`, `DuplicateName` in `ADuplicateNameIsADuplicateNameError` and `ALayoutTemplateFaultIsATemplateFaultAtTheLayoutEntry`, `UnknownSlot` in `ASlotThatTheLayoutDoesNotHoldIsAnUnknownSlotError`, and `TemplateFault` in `ALayoutTemplateFaultIsATemplateFaultAtTheLayoutEntry`.
+- **Plant 6** (`DefinitionReader.Resolve.cs`, the duplicate check skips the modes): exit 2, 0 `error CS` lines, 1 failed — `ADuplicateNameIsADuplicateNameError`, as the brief expects. Restore: `cmp` reports the file identical to its copy; the re-run passes.
+- **Plant 7** (`DefinitionReader.Resolve.cs`, the two slot checks never fire): exit 2, 0 `error CS` lines, 1 failed — `ASlotThatTheLayoutDoesNotHoldIsAnUnknownSlotError`, as the brief expects. Restore: `cmp` equal.
+- **Plant 8** (`DefinitionReader.Resolve.cs`, a placement whose panel entry has no record gives `UnknownPanel`, the faulty entry leaving its table): exit 2, 0 `error CS` lines, 1 failed — `OneFaultGivesOneErrorAndNoRecord`, as the brief expects. Restore: `cmp` equal; the re-run gives 3189, 0 failed.
+- **Protected paths:** `git diff 9fa4b43 -- src/BrutalUi.Markup src/BrutalUi.Core src/BrutalUi.Framework/Panels` gives no output.
+- **File sizes:** `DefinitionReader.cs` 387 lines, `DefinitionReader.Elements.cs` 394, `DefinitionReader.Resolve.cs` 396, `DefinitionErrorTests.cs` 398. Each new source file stays under 400.
+- **Message notes:** the `UnknownTemplate` and `UnknownActionMap` messages now name `DefinitionLoader.AddTemplate` and `DefinitionLoader.AddActionMap`. The empty-value message keeps the brief wording for `slot` and carries a per-attribute fix sentence for the other names (Decision 14).
+
+## Phase 3 Group 2 Close Record (tasks 3.4 to 3.6)
+
+- **Edits:** `DefinitionLoader.cs` (the four guard-message constants, the empty-name and duplicate checks before each add, the constructor remarks that name the `TemplateLoader.Register` throw, and the end-state rule paragraphs), `DefinitionLoadResult.cs` (the `RegisterTo` remarks that name the `ArgumentException` of a held manager name), new `tests/BrutalUi.Framework.Tests/Templates/DefinitionLoaderApiTests.cs` (4 tests), section 11 of `docs/technical-design.md` (the `DefinitionErrorKind` block, the 13-kind cause table, the position rule, the follow-on rule, the Q3 and A5 check, and the rules of the object), and one `### Added` line in `CHANGELOG.md`.
+- **Build:** `dotnet build brutal-ui.sln -nodeReuse:false` → `0 Warning(s)`, `0 Error(s)`.
+- **Solution tests:** 3193 total, 0 failed, 3190 succeeded, 3 skipped. The group start (3189) plus the 4 new tests. The phase closes at Framework +14 in phase 3 and +26 in total: 356 baseline to 382.
+- **`BrutalUi.Framework.Tests`:** 382 total, 0 failed, 0 skipped.
+- **Demo state:** `*DefinitionLoaderApiTests` → total 4, `failed: 0`. The tests are `TheMethodsCheckTheirArguments`, `ASecondAddForOneNameThrows`, `ASecondDefinitionLoaderOnOneTemplateLoaderThrows`, and `RegisterToChecksTheResultAndTheManager`. `*DefinitionErrorTests` still reads total 10, `failed: 0`. `BrutalUi.Markup.Tests` passes with no edit.
+- **Plant 9** (`DefinitionLoadResult.cs`, `RegisterTo` skips the check of a failed result): exit 2, 0 `error CS` lines, 1 failed — `RegisterToChecksTheResultAndTheManager`, as the brief expects. Restore: `cmp` reports the file identical to its copy; the re-run gives 3193, 0 failed.
+- **Package run:** `pack`, `package-restore`, and `package` of `scripts/test-linux.sh`, by hand: `package-test: PASS Gauge level 0.5`.
+- **Protected paths:** `git diff 9fa4b43 -- src/BrutalUi.Markup src/BrutalUi.Core src/BrutalUi.Framework/Panels` gives no output. The group changed no existing test.
+- **File sizes:** `DefinitionLoader.cs` 173 lines, `DefinitionLoadResult.cs` 156, `DefinitionLoaderApiTests.cs` 218. Each file stays under 400.
+- **API notes:** each `AddTemplate` and `AddActionMap` guard throws `ArgumentException` with `ParamName` `name` and a constant message; `UiManager.Register` throws with `ParamName` `panel` (the `RegisterTo` clash test reads it). The `SetMode` throw of an unregistered name has `ParamName` `name`. The guards land Decision 4.
+- **Verifier (post-phase, round 1):** PASS, no fix round. Build `0 Warning(s)`, `0 Error(s)`. Solution 3193, 0 failed, 3 skipped; `BrutalUi.Framework.Tests` 382, 0 failed. `*DefinitionErrorTests` total 10, `*DefinitionLoaderApiTests` total 4, each `failed: 0`; the Phase 1 and 2 classes read 4, 5, 2, and 4. All 13 kinds asserted (30 kind asserts). Protected-path diff empty; the `DefinitionRecordTests.cs` diff against `02c34e8` holds only the Decision 13 template line and its doc-comment reword (the accepted deviation). Every listed file under 400 lines; no reflection use; no plant residue. Section 11 holds the error block, the 13-kind table, the position rule, the follow-on rule, the Q3 and A5 check, and the rules of the object; `CHANGELOG.md` holds one tagged `### Added` line. Package run by hand: `package-test: PASS Gauge level 0.5`. Demo: PASS. UI check: none (headless test proof). Faults: none.
 
 ## Tool Notes
 
@@ -256,7 +289,7 @@ For each plant, copy the file to `src/BrutalUi.Framework/obj/plantscratch/` (git
 **Context:** The Rules of the Object say a second `AddTemplate` or `AddActionMap` for one name throws `ArgumentException` before the add. Task 1.5 names only the `ArgumentNullException` checks for this group ("Each throws `ArgumentNullException` for a `null` argument in this phase").
 **Decision:** Group 1 stores with the dictionary indexer and documents the end-state rule in the class remarks. Task 3.4 owns the guard: it edits `DefinitionLoader.cs` so `AddTemplate` and `AddActionMap` throw `ArgumentException` for a duplicate name.
 **Rationale:** The brief pins the checks of this phase, and the plan gives task 3.4 as the owner.
-**Impact:** See the record in Gotchas. `AddTemplate` and `AddActionMap` overwrite a name until task 3.4 runs.
+**Impact:** See the record in Gotchas. `AddTemplate` and `AddActionMap` overwrite a name until task 3.4 runs. Task 3.4 ran on 2026-11-18 (phase 3 group 2): the guards now throw before the add.
 
 ### Decision 5: The read pass spans two partial files
 **Date:** 2026-11-18
@@ -300,6 +333,20 @@ For each plant, copy the file to `src/BrutalUi.Framework/obj/plantscratch/` (git
 **Rationale:** The overview of task 2.5 pins the build steps, and the parity rule of A9 needs the step body and the tree shape, not the size.
 **Impact:** `ModeDiffAllocationTests.Loaded.cs` only.
 
+### Decision 13: The slot check of phase 3 invalidates one phase 2 test text
+**Date:** 2026-11-18
+**Context:** Task 3.2 and the demo test `ASlotThatTheLayoutDoesNotHoldIsAnUnknownSlotError` require the `UnknownSlot` check on a direct `PanelRef` whose panel default slot the layout does not hold. The phase 2 text `TheSlotOrderAndThePanelOrderFollowTheText` has exactly that shape: panel `dr.p4` has `slot="center"`, and the shared `dr.layout` template held only the slots `top` and `bottom`. The brief asked for all existing tests to pass "with no edit", but no consistent rule can pass both texts, so one edit was unavoidable.
+**Decision:** Keep the plan's rule, and add one `<ui:SlotContainer slot="center" />` line to the shared layout template literal of `DefinitionRecordTests.cs`. No test name, no assertion, and no count changed; the class still reads 5 with `failed: 0`.
+**Rationale:** Task 3.2, the phase 3 demo, and plant 7 pin the slot check; the phase 2 text predates it. The one-line change keeps the checked template sound for every test that shares it.
+**Impact:** `tests/BrutalUi.Framework.Tests/Templates/DefinitionRecordTests.cs` shows a 4-line diff (one template line, two doc lines rewrapped, one deleted) against `9fa4b43`. The protected `src/` paths stay untouched.
+
+### Decision 14: The empty-value message names the fix of each attribute
+**Date:** 2026-11-18
+**Context:** Task 3.1 pins the `InvalidValue` message word for word only for `slot`: `'slot' needs a value. Write the name of a slot, for example 'top'.` An empty `name`, `template`, `layout`, or `actions` needs a message of the same shape, and "the name of a slot" fits none of them.
+**Decision:** `EmptyValueMessage` keeps the pinned `slot` sentence, and gives the other names their own second sentence: `template` names a registered template, `layout` names a layout of this text, `actions` names a registered action map, and any other name gets `Write a name.`
+**Rationale:** The first sentence, `'{name}' needs a value.`, stays the pinned shape for every attribute; only the unpinned fix sentence varies. No public API changes.
+**Impact:** `DefinitionReader.Elements.cs` only; `DefinitionErrorTests` asserts the pinned `slot` message.
+
 ---
 
 ## Gotchas & Learnings
@@ -307,11 +354,11 @@ For each plant, copy the file to `src/BrutalUi.Framework/obj/plantscratch/` (git
 - Read the Notes of `implementation.md` before phase 1. Item 4: a second `DefinitionLoader` on one `TemplateLoader` throws from `TemplateLoader.Register`. Item 5: `RegisterTo` is not atomic. Item 6: a bad layout that no mode names gives no error at load time.
 - The reader lives in three partial files: `DefinitionReader.cs` (state, `Load`, `AddError`, `HoldsNotWellFormed`, `SortErrors`, and the entry structs), `DefinitionReader.Elements.cs` (the walk: `ReadElement`, `ReadAttributes`, the place and attribute tables, and the frame helpers), and `DefinitionReader.Resolve.cs` (the resolve pass). Tasks 2.1, 2.2, 3.1, and 3.2 name only `DefinitionReader.cs` and `DefinitionReader.Resolve.cs`. The walk edits of tasks 2.1 and 3.1 belong in `DefinitionReader.Elements.cs`; the `DefinitionReader.cs` edits of those tasks are the entries and the value rules.
 - `Load` gives one `NotWellFormed` error and stops the resolve pass for it, so a broken text gives no follow-on name error. A text with no root gives `NotWellFormed` at 1,1.
-- The resolve pass skips an entry whose required value is absent or empty. The read pass already named that fault, so one fault gives one error. Phase 3 keeps this shape and adds the follow-on rule for the kinds that a faulty entry causes elsewhere.
-- A mode with one panel two times: the resolve pass keeps the first placement and drops the second, because `ModeDefinition` rejects a repeated panel and `Load` must not throw. Phase 3 reports `DuplicateName` at the second `PanelRef` (task 3.2).
+- The resolve pass skips an entry whose required value is absent or empty, because the read pass already named that fault. Phase 3 added the follow-on rule on top: a reference to a skipped (faulty) entry gives no second error, a mode on a faulty layout skips the slot check, and a placement with no panel record skips the slot check.
+- A mode with one panel two times: the resolve pass reports `DuplicateName` at the second `PanelRef` and keeps the first placement (task 3.2). `Load` still never throws for the text: the record constructor only sees the kept placements.
 - An `actions` attribute and a `PanelRef` directly under `Mode` read as the real forms since task 2.1 and 2.2. A mode with no `actions` gets no map, and a placement with no slot value takes the `DefaultSlot` of its panel record (Q5). The Phase 1 demo text and the section 11 block of `docs/technical-design.md` hold neither form, so no existing test changed. Task 3.1 owns the wording of the unknown-attribute message, which now lists `name, layout, actions` for `Mode`.
 - Check 3b and the unknown-attribute message read `AllowedNames(kind)`; check 4 reads `RequiredNames(kind)`. Keep the two tables in step when you add a name (Decision 7). A `Mode` table holds `actions` in the allowed list only.
-- `actions=""` gives `InvalidValue` in the read pass and no map in the resolve pass, because `HasName` is false. A direct `PanelRef` whose panel entry has no record gives no placement and no second error (Decision 8). Phase 3 replaces both skips with the follow-on rule wording and keeps the one-fault-one-error shape.
+- `actions=""` gives `InvalidValue` in the read pass and no map in the resolve pass, because `HasName` is false. A direct `PanelRef` whose panel entry has no record gives no placement and no second error (Decision 8, kept by the phase 3 follow-on rule). `PlacementEntry.UnderSlot` tells a `PanelRef` under a `Slot` with a faulty `name` (skip, no second error) from a direct `PanelRef` (default slot path).
 - `DefinitionValue.HasName` is the single test that the resolve pass uses for a value. It is false for no value and for an empty value, so no record constructor sees an empty name and `Load` never throws for the text.
 - The internal members that group 2 consumes: `DefinitionLoader.Templates`, `TryGetTemplate(string, out byte[]?)`, `TryGetActionMap(string, out UiActionMap?)`, `DefinitionLoadResult.Success`, and `DefinitionLoadResult.Failure`. The `out byte[]?` and `out UiActionMap?` parameters are nullable; do not read them after a false return.
 - Group 2 of phase 2 keeps to the public loader API: the test project holds no `InternalsVisibleTo` for `BrutalUi.Framework`, so `DefinitionSet` uses `DefinitionLoadResult.Success` nowhere (Decision 11).
@@ -331,14 +378,14 @@ For each plant, copy the file to `src/BrutalUi.Framework/obj/plantscratch/` (git
 
 - [ ] Phase 1 demo: the developer runs `BrutalUi.Framework.Tests --filter-class '*DefinitionLoaderDemoTests'` and reads a total of 4 with `failed: 0`. In `OneLoadedPanelMountsInItsSlot`, a test loads one text with one panel, one layout, and one mode, registers them, sets the mode, runs one `Update`, and finds the loaded panel root, with its `score` label, as the one child of the slot `top`.
 - [ ] Phase 2 demo: the developer runs `BrutalUi.Framework.Tests --filter-class '*DefinitionParityTests'` and reads a total of 2 with `failed: 0`. After each of five mode steps, with a layout swap and a back step, the layout root of the loaded manager and the layout root of the C# manager compare equal under `TreeCompare`, with the same panels in the same slots.
+- [ ] Phase 3 demo: the developer runs `BrutalUi.Framework.Tests --filter-class '*DefinitionErrorTests'` and reads a total of 10 with `failed: 0`. A mode with `<ui:Slot name="left">` on a layout with the slots `top` and `bottom` gives one `UnknownSlot` error at the line and the column of `name`, and the result holds no record.
 
 ---
 
 ## Next Steps
 
 ### Immediate
-1. Phase 3 group 1 (tasks 3.1 to 3.3): the positioned definition errors, the duplicate and slot checks, the check load of a used layout, the follow-on rule, the message wording, and `DefinitionErrorTests` with 10 tests.
-2. Phase 3 group 2 (tasks 3.4 to 3.6): the argument checks, `DefinitionLoaderApiTests`, the docs, the changelog line, and the package run.
+1. None for this build. All 20 tasks and 3 phases are complete and verified. The coordinator runs the docs step, merges the feature into the epic branch, and copies the open human tests above to `docs/features/markup/human-testing.md`.
 
 ### Future
 1. markup-sample loads the HelloPanel records through this API.
@@ -395,6 +442,27 @@ For each plant, copy the file to `src/BrutalUi.Framework/obj/plantscratch/` (git
 - The Phase 2 demo line went to Needs Human Verification above, and only there. This run wrote no line to `docs/features/markup/human-testing.md`: the coordinator copies the open human tests here after it merges the feature into the epic branch.
 - `tasks.md`: Phase 2 6/6, progress 14/20, and the four Phase 2 acceptance boxes checked on the verifier evidence.
 - No git write ran in this phase. The verdict file is `.beast-mode/briefs/markup/definition-loader/orca-phase-2.verdict.md`.
+
+### 2026-11-18 20:20 (phase 3, group 1)
+- Tasks 3.1 to 3.3 done. Edits: `DefinitionReader.cs` (the `UnexpectedText` walk case, the `PlacementEntry.UnderSlot` mark, the scope remarks), `DefinitionReader.Elements.cs` (the `Window` message, `EmptyValueMessage`, the `UnderSlot` fill), `DefinitionReader.Resolve.cs` (rewrite: duplicate check, fault marks, used-layout check load with the pre-order slot walk, slot check, completed messages, follow-on rule), new `DefinitionErrorTests.cs` (10 tests), and the one-line `DefinitionRecordTests.cs` template fix of Decision 13.
+- Counts, the three plants, and the demo state are in the Phase 3 Group 1 Close Record above. Group 1 acceptance holds: 10 new tests, all 13 kinds asserted, plants 6 to 8 each exit non-zero with 0 `error CS` lines and `cmp`-equal restores, build `0 Warning(s)`, `0 Error(s)`, solution 3189 (0 failed, 3 skipped), Framework 378, protected-path diff empty.
+- Blast radius: the three reader partial files and one test template. No `src/BrutalUi.Markup`, `src/BrutalUi.Core`, or `src/BrutalUi.Framework/Panels` change; no existing assertion changed. The new resolve path calls `TemplateLoader.Load` for each used layout and walks the built tree for `SlotContainer`.
+- Open point for the verifier: Decision 13 records the one place where two acceptance lines of the brief contradicted (the slot check of task 3.2 versus "no edit" for `TheSlotOrderAndThePanelOrderFollowTheText`). The plan rule won; the test kept all its asserts.
+- Group 2 (tasks 3.4 to 3.6) still owns the duplicate-add guards (Decision 4), `DefinitionLoaderApiTests` with 4 tests, plant 9, the section 11 docs, the changelog line, and the package run. Expect Framework 382 and solution 3193 at the phase close.
+- No inbox line was open at the group start, and no user message reached this run. No git write ran: no commit, branch, merge, stash, reset, or push.
+
+### 2026-11-18 20:32 (phase 3, group 2)
+- Tasks 3.4 to 3.6 done. Edits: `DefinitionLoader.cs` (guard constants, empty-name and duplicate checks before the add, constructor remarks), `DefinitionLoadResult.cs` (`RegisterTo` remarks), new `DefinitionLoaderApiTests.cs` (4 tests), section 11 of `technical-design.md` (the error block, the kind table, the position rule, the follow-on rule, the Q3 and A5 check, and the rules of the object), and one `CHANGELOG.md` line.
+- Counts, plant 9, the demo state, the package run, and the protected paths are in the Phase 3 Group 2 Close Record above. Phase 3 acceptance holds: 14 new phase 3 tests, build `0 Warning(s)`, `0 Error(s)`, solution 3193 (0 failed, 3 skipped), Framework 382, `package-test: PASS Gauge level 0.5`.
+- Blast radius: `DefinitionLoader.cs` and `DefinitionLoadResult.cs` only in `src/`. The duplicate-add guard is a behavior change: a game that re-added one name now gets `ArgumentException`. No existing test or sample re-adds one name, so no existing test needed an edit. No `src/BrutalUi.Markup`, `src/BrutalUi.Core`, or `src/BrutalUi.Framework/Panels` change; the protected-path diff is empty.
+- No inbox line was open at the group start, and no user message reached this run. No git write ran: no commit, branch, merge, stash, reset, or push. The phase now awaits the close and the verifier pass.
+
+### 2026-11-18 20:44 (phase 3 close, Orca worker)
+- Phase 3 is done: group 1 (tasks 3.1 to 3.3, the positioned errors and `DefinitionErrorTests`) and group 2 (tasks 3.4 to 3.6, the argument checks, `DefinitionLoaderApiTests`, the docs, and the package run), each by one `game-dev` agent at the STANDARD tier, one agent at a time. The verifier passed on round 1 with Demo: PASS; no fix round ran, and no `bug` line was open, so no fix brief was needed.
+- The one accepted deviation, Decision 13: group 1 added one `<ui:SlotContainer slot="center" />` line to the shared layout template literal of `DefinitionRecordTests.cs`, because the task 3.2 slot check of a direct `PanelRef` rejects the phase 2 scene. No test name, assertion, or count changed; the verifier gate 7 checked the diff.
+- The Phase 3 demo line went to Needs Human Verification above, and only there. This run wrote no line to `docs/features/markup/human-testing.md`: the coordinator copies the open human tests there after it merges the feature into the epic branch.
+- `tasks.md`: Phase 3 6/6, progress 20/20, and the four Phase 3 acceptance boxes checked on the verifier evidence. The feature build is complete.
+- No inbox line was open at the phase start, no `Inbox:` line came from any agent of this phase, and no user message reached this run. No git write ran in this phase. The verdict file is `.beast-mode/briefs/markup/definition-loader/orca-phase-3.verdict.md`.
 
 ---
 

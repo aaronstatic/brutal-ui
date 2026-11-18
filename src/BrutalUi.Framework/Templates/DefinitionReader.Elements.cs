@@ -113,12 +113,14 @@ internal sealed partial class DefinitionReader
                 // PanelRef directly under a Mode takes no slot value, so the resolve pass uses the default slot of the
                 // panel record (Q5).
                 Frame parentFrame = _frames.Peek();
-                DefinitionValue slotValue = parentFrame.Kind == Kind.Slot ? parentFrame.SlotName : default;
+                bool underSlot = parentFrame.Kind == Kind.Slot;
+                DefinitionValue slotValue = underSlot ? parentFrame.SlotName : default;
                 ModeEntry placementMode = _modeEntries[parentFrame.Index];
                 placementMode.Placements.Add(new PlacementEntry
                 {
                     Name = ValueOf("name"),
                     Slot = slotValue,
+                    UnderSlot = underSlot,
                     Line = line,
                     Column = column,
                 });
@@ -180,7 +182,7 @@ internal sealed partial class DefinitionReader
                 {
                     AddError(
                         DefinitionErrorKind.InvalidValue,
-                        $"'{name}' needs a value. Write a name.",
+                        EmptyValueMessage(name),
                         lineInfo.LineNumber,
                         lineInfo.LinePosition);
                 }
@@ -259,6 +261,12 @@ internal sealed partial class DefinitionReader
 
         if (parent == Kind.Definitions)
         {
+            if (localName == "Window")
+            {
+                return "'Window' is not a definition. WindowDefinition comes in a later version. "
+                    + "The definitions are Panel, Layout, and Mode.";
+            }
+
             return $"'{localName}' is not a definition. The definitions are Panel, Layout, and Mode.";
         }
 
@@ -274,6 +282,19 @@ internal sealed partial class DefinitionReader
 
         return $"'{localName}' cannot be a child of {NameOf(parent)}. Remove it.";
     }
+
+    /// <summary>Gives the <see cref="DefinitionErrorKind.InvalidValue"/> message of an empty attribute value. The
+    /// second sentence names the fix for that attribute.</summary>
+    /// <param name="name">The attribute name.</param>
+    /// <returns>The message.</returns>
+    private static string EmptyValueMessage(string name) => name switch
+    {
+        "slot" => "'slot' needs a value. Write the name of a slot, for example 'top'.",
+        "template" => "'template' needs a value. Write the name of a registered template.",
+        "layout" => "'layout' needs a value. Write the name of a layout of this text.",
+        "actions" => "'actions' needs a value. Write the name of a registered action map.",
+        _ => $"'{name}' needs a value. Write a name.",
+    };
 
     /// <summary>Gives the attribute names that the table of one element kind holds, the required names and the
     /// optional ones. Check 3b reads this list, and check 4 reads <see cref="RequiredNames"/>.</summary>

@@ -119,12 +119,14 @@ public sealed class DefinitionRecordTests
         <ui:Element name="dr.chatRoot" xmlns:ui="brutal-ui" />
         """u8;
 
-    /// <summary>Gets the layout template: a root that is not pickable, with the slots <c>top</c> and
-    /// <c>bottom</c>.</summary>
+    /// <summary>Gets the layout template: a root that is not pickable, with the slots <c>top</c>, <c>bottom</c>,
+    /// and <c>center</c>. The <c>center</c> slot holds the default-slot placement of <c>OrderText</c>, which the
+    /// phase 3 slot check needs.</summary>
     private static ReadOnlySpan<byte> LayoutTemplate => """
         <ui:Element pickable="false" xmlns:ui="brutal-ui">
           <ui:SlotContainer slot="top" />
           <ui:SlotContainer slot="bottom" />
+          <ui:SlotContainer slot="center" />
         </ui:Element>
         """u8;
 

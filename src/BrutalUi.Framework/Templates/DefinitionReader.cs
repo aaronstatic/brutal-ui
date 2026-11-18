@@ -24,14 +24,14 @@ namespace BrutalUi.Framework;
 /// element pushes a failed frame, so its children give no error. The frame stack tracks the parent.
 /// </para>
 /// <para>
-/// <strong>The scope of phases 1 and 2.</strong> The walk reads <c>Definitions</c>, <c>Panel</c>, <c>Layout</c>,
+/// <strong>The scope.</strong> The walk reads <c>Definitions</c>, <c>Panel</c>, <c>Layout</c>, <c>Mode</c>,
 /// <c>Mode</c>, <c>Slot</c>, a <c>PanelRef</c> under a <c>Slot</c>, and a <c>PanelRef</c> directly under <c>Mode</c>.
 /// The last form is a placement with no slot value: the resolve pass then takes the
 /// <see cref="PanelDefinition.DefaultSlot"/> of the panel record (Q5). The optional <c>actions</c> attribute of
-/// <c>Mode</c> gives the mode entry its map name. A text node gives no error until phase 3 reports it as
-/// <see cref="DefinitionErrorKind.UnexpectedText"/>. The resolve pass gives the unknown-name kinds of phases 1 and 2
-/// and skips a faulty entry with no second error; phase 3 adds the duplicate check, the slot check, the check load of
-/// a used layout, and the follow-on rule.
+/// <c>Mode</c> gives the mode entry its map name. Each read fault has its kind and its full message: the
+/// namespace, the place, the attributes, the required attributes, and the text. The walk keeps reading after each
+/// error. The resolve pass adds the duplicate check, the slot check, the check load of a used layout, and the
+/// follow-on rule of The Two Passes.
 /// </para>
 /// </remarks>
 internal sealed partial class DefinitionReader
@@ -112,8 +112,24 @@ internal sealed partial class DefinitionReader
 
                         break;
 
+                    case XmlNodeType.Text:
+                    case XmlNodeType.CDATA:
+                        // Check 5. Text or CDATA is not valid in a definition text. Whitespace gives no node,
+                        // because the settings ignore it. A child of a failed element gives no error.
+                        if (_frames.Count == 0 || _frames.Peek().Kind != Kind.Failed)
+                        {
+                            IXmlLineInfo textLineInfo = (IXmlLineInfo)xml;
+                            AddError(
+                                DefinitionErrorKind.UnexpectedText,
+                                "Text is not valid in a definition text. Remove the text.",
+                                Math.Max(1, textLineInfo.LineNumber),
+                                Math.Max(1, textLineInfo.LinePosition));
+                        }
+
+                        break;
+
                     default:
-                        // Text, CDATA, whitespace, and the declaration give no work in this phase. See the remarks.
+                        // The declaration, whitespace, and the other node types give no work.
                         break;
                 }
             }
@@ -274,8 +290,8 @@ internal sealed partial class DefinitionReader
         /// <summary>The line of the element name, for an error at the element.</summary>
         internal int Line;
 
-        /// <summary>The column of the element name, for an error at the element. Phase 3 places a layout template
-        /// fault here.</summary>
+        /// <summary>The column of the element name. A layout template fault and a duplicate slot of a layout
+        /// template sit here.</summary>
         internal int Column;
     }
 
@@ -311,6 +327,11 @@ internal sealed partial class DefinitionReader
         /// <c>Mode</c> gives a default value: the resolve pass then takes the default slot of the panel
         /// record (Q5).</summary>
         internal DefinitionValue Slot;
+
+        /// <summary>Whether the <c>PanelRef</c> sits under a <c>Slot</c>. A <c>Slot</c> with a faulty
+        /// <c>name</c> still gives <see langword="true"/>, so the resolve pass does not take the default slot
+        /// of the panel for such a placement.</summary>
+        internal bool UnderSlot;
 
         /// <summary>The line of the element name, for an error at the element.</summary>
         internal int Line;

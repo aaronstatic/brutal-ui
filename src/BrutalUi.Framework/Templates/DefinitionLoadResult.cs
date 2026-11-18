@@ -107,9 +107,10 @@ public sealed class DefinitionLoadResult
     /// <see cref="BrutalUi.Markup.TemplateLoadResult.GetRootOrThrow"/>.
     /// </para>
     /// <para>
-    /// The method is not atomic. A <see cref="UiManager"/> name clash throws from its <c>Register</c> call, and the
-    /// records before the throw stay registered (A6). A game that needs a clean manager builds the manager again and
-    /// calls <see cref="RegisterTo"/> once for each text, or registers the records itself.
+    /// The call is not atomic. A name that the <see cref="UiManager"/> holds already makes its <c>Register</c> call
+    /// throw <see cref="ArgumentException"/> (A6), and the records before the throw stay registered. A game that
+    /// needs a clean manager builds the manager again and calls <see cref="RegisterTo"/> once for each text, or
+    /// registers the records itself.
     /// </para>
     /// </remarks>
     /// <param name="ui">The manager that takes the records.</param>

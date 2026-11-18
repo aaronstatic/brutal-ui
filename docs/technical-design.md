@@ -1712,6 +1712,59 @@ A layout factory is the same, and `UiManager.Register(LayoutDefinition)` calls i
 source name of each `TemplateError`, so an error line reads `hud.panel(3,5): UnknownBinding: <message>`. The factory
 ignores its `PanelContext`, because the attached `TemplateBindings` gives the commands and the stores.
 
+**Definition errors.** `Errors` holds `DefinitionError` structs: the kind, the line, the column, the message, and the
+source name. `ToString` gives the line `<source>(<line>,<column>): <kind>: <message>`. The kind is one member of
+`DefinitionErrorKind`:
+
+```csharp
+public enum DefinitionErrorKind : byte
+{
+    NotWellFormed, UnknownElement, UnknownAttribute, MissingAttribute, InvalidValue, UnexpectedText,
+    UnknownTemplate, UnknownActionMap, UnknownLayout, UnknownPanel, DuplicateName, UnknownSlot, TemplateFault,
+}
+```
+
+| Kind | Cause |
+|---|---|
+| `NotWellFormed` | `XmlReader` rejects the text: a missing or wrong end tag, a control character, a DTD, or a text with no root element. The read pass stops and gives one error of this kind. |
+| `UnknownElement` | An element name that the format does not hold at this place, or a name outside the `brutal-ui` namespace. |
+| `UnknownAttribute` | An attribute that the element does not hold. A prefixed attribute gives this kind, also with the `ui` prefix. |
+| `MissingAttribute` | An element with no attribute for one of its required names: `name`, `slot`, `template`, or `layout`. |
+| `InvalidValue` | An attribute value that is empty where the format needs a name. |
+| `UnexpectedText` | Text or a CDATA section between definition elements. Whitespace there gives no error. |
+| `UnknownTemplate` | A `template` value that names no template added with `AddTemplate`. |
+| `UnknownActionMap` | An `actions` value that names no map added with `AddActionMap`. |
+| `UnknownLayout` | A `layout` value that names no `Layout` entry of the same text. |
+| `UnknownPanel` | A `PanelRef` value that names no `Panel` entry of the same text. |
+| `DuplicateName` | Two entries of one text share one name, a layout template holds two slots of one name, or one mode places one panel two times. |
+| `UnknownSlot` | The slot of a placement that the mode layout does not hold. |
+| `TemplateFault` | The check load of a used layout template failed. The message holds one line for each `TemplateError`. |
+
+**The position rule.** An error at an element points at the first character of the element name. An error at a value
+points at the first character of its attribute name; a value has no position of its own. `MissingAttribute`,
+`UnknownElement`, `TemplateFault`, and the duplicate slot of a template sit at the element. Each other kind sits at
+its attribute. The line and the column start at 1, and the column counts UTF-16 units, as `TemplateError` does.
+
+**The follow-on rule.** One fault gives one error. An entry with a name stays in its name table, also when another
+value of the entry has a fault; such an entry is faulty. A reference to a faulty entry gives no error. A mode on a
+faulty layout skips the slot check, and a placement with no panel record skips the slot check. So a `Panel` with no
+`template` gives one `MissingAttribute`, and a `Mode` that names it gives nothing more.
+
+**The check of a used layout (Q3, A5).** The resolve pass loads each layout template that a mode names, one time per
+load, and walks the built tree in pre-order for each `SlotContainer` without entering a slot. A failed template load
+gives `TemplateFault` at the `Layout` element, with each `TemplateError.ToString` line in the message. Two slots of
+one name give `DuplicateName` at the element, because `UiManager.Register(LayoutDefinition)` throws for them. A bad
+layout that no mode names gives no load error; its factory throws at the first `UiManager.Register` call.
+
+**The rules of the object.** A game makes one `DefinitionLoader` for each `TemplateLoader`: the constructor registers
+the `SlotContainer` type, and a second constructor on one loader throws `ArgumentException` from
+`TemplateLoader.Register`. An empty name throws `ArgumentException`, and a second `AddTemplate` or `AddActionMap`
+call for one name throws `ArgumentException` before the add, so the throw leaves the table unchanged; `AddTemplate`
+copies the text. An add after a load is valid: the next load reads the tables again, and an add call and a load call
+must not run at the same time. The load checks duplicate names inside one text only (A6). A name that the manager
+holds makes its `Register` call throw `ArgumentException` inside `RegisterTo`, and the call is not atomic: the
+records before the throw stay registered.
+
 ### Stylesheet format
 
 The `BrutalUi.Markup` package reads a stylesheet text into a `StyleSheet`. The sheet is the same type that `StyleSheet.Builder` makes (section 7). The format is a small part of CSS. `samples/HelloPanel/HelloScreen.css` is a full example.

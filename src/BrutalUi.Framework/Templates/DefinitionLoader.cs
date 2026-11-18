@@ -18,10 +18,10 @@ namespace BrutalUi.Framework;
 /// </para>
 /// <para>
 /// <strong>One name holds one template, and one name holds one map.</strong> The tables compare names with an
-/// ordinal compare, because <c>XmlReader</c> gives each value as a <see cref="string"/>. A second
-/// <see cref="AddTemplate"/> or <see cref="AddActionMap"/> call for one name throws
-/// <see cref="ArgumentException"/> before the add. <see cref="AddTemplate"/> copies the text, so a later change of
-/// the source changes nothing.
+/// ordinal compare, because <c>XmlReader</c> gives each value as a <see cref="string"/>. An empty name throws
+/// <see cref="ArgumentException"/>, and a second <see cref="AddTemplate"/> or <see cref="AddActionMap"/> call for
+/// one name throws <see cref="ArgumentException"/> before the add, so the throw leaves the table unchanged.
+/// <see cref="AddTemplate"/> copies the text, so a later change of the source changes nothing.
 /// </para>
 /// <para>
 /// <strong>An add after a load is valid.</strong> The next load reads the tables again. An add call and a load call
@@ -49,10 +49,26 @@ public sealed class DefinitionLoader
     /// <summary>The action map table: name to map. The compare is ordinal.</summary>
     private readonly Dictionary<string, UiActionMap> _actionMaps;
 
+    /// <summary>The message of an empty template name.</summary>
+    private const string EmptyTemplateNameMessage = "The template name is empty. Give each template one name.";
+
+    /// <summary>The message of a second AddTemplate call for one name.</summary>
+    private const string DuplicateTemplateNameMessage =
+        "One name holds one template. The table holds this name already. Use another name.";
+
+    /// <summary>The message of an empty action map name.</summary>
+    private const string EmptyMapNameMessage = "The action map name is empty. Give each map one name.";
+
+    /// <summary>The message of a second AddActionMap call for one name.</summary>
+    private const string DuplicateMapNameMessage =
+        "One name holds one map. The table holds this name already. Use another name.";
+
     /// <summary>Creates a loader and registers the <c>SlotContainer</c> element type on the given template loader.</summary>
     /// <remarks>
-    /// A game makes one <see cref="DefinitionLoader"/> for each <see cref="TemplateLoader"/>. See Notes item 4 of the
-    /// plan: the second loader on one template loader throws.
+    /// A game makes one <see cref="DefinitionLoader"/> for each <see cref="TemplateLoader"/>. The constructor calls
+    /// <see cref="TemplateLoader.Register(in ElementTypeInfo)"/> for the <c>SlotContainer</c> element type. A second
+    /// <see cref="DefinitionLoader"/> on one <see cref="TemplateLoader"/> makes that call throw
+    /// <see cref="ArgumentException"/>, because the loader holds the type name already.
     /// </remarks>
     /// <param name="templates">The template loader that the panel and layout factories use.</param>
     /// <exception cref="ArgumentNullException"><paramref name="templates"/> is <see langword="null"/>.</exception>
@@ -79,9 +95,20 @@ public sealed class DefinitionLoader
     /// <param name="name">The name of the template, for example <c>hud.panel</c>. The compare is ordinal.</param>
     /// <param name="utf8">The template text, coded as UTF-8.</param>
     /// <exception cref="ArgumentNullException"><paramref name="name"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException"><paramref name="name"/> is empty, or the table holds the name already.
+    /// The add does not run.</exception>
     public void AddTemplate(string name, ReadOnlySpan<byte> utf8)
     {
         ArgumentNullException.ThrowIfNull(name);
+        if (name.Length == 0)
+        {
+            throw new ArgumentException(EmptyTemplateNameMessage, nameof(name));
+        }
+
+        if (_templatesByName.ContainsKey(name))
+        {
+            throw new ArgumentException(DuplicateTemplateNameMessage, nameof(name));
+        }
 
         _templatesByName[name] = utf8.ToArray();
     }
@@ -91,10 +118,21 @@ public sealed class DefinitionLoader
     /// <param name="name">The name of the map, for example <c>play.actions</c>. The compare is ordinal.</param>
     /// <param name="map">The map.</param>
     /// <exception cref="ArgumentNullException"><paramref name="name"/> or <paramref name="map"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException"><paramref name="name"/> is empty, or the table holds the name already.
+    /// The add does not run.</exception>
     public void AddActionMap(string name, UiActionMap map)
     {
         ArgumentNullException.ThrowIfNull(name);
         ArgumentNullException.ThrowIfNull(map);
+        if (name.Length == 0)
+        {
+            throw new ArgumentException(EmptyMapNameMessage, nameof(name));
+        }
+
+        if (_actionMaps.ContainsKey(name))
+        {
+            throw new ArgumentException(DuplicateMapNameMessage, nameof(name));
+        }
 
         _actionMaps[name] = map;
     }
