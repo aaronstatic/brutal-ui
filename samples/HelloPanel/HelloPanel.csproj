@@ -16,10 +16,14 @@
     <ProjectReference Include="../../src/BrutalUi.Glfw/BrutalUi.Glfw.csproj" />
     <ProjectReference Include="../../src/BrutalUi.ImGui/BrutalUi.ImGui.csproj" />
     <ProjectReference Include="../../src/BrutalUi.Markup/BrutalUi.Markup.csproj" />
+    <!-- The generator runs on the marked sample types. An analyzer from a ProjectReference does not flow on. -->
+    <ProjectReference Include="../../src/BrutalUi.Generators/BrutalUi.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <ItemGroup>
     <None Include="HelloScreen.css" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="HelloState.xml" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="HelloDefinitions.xml" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

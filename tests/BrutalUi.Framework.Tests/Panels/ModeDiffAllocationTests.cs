@@ -26,7 +26,7 @@ namespace BrutalUi.Framework.Tests;
 /// guard the three tests.
 /// </para>
 /// </remarks>
-public sealed class ModeDiffAllocationTests
+public sealed partial class ModeDiffAllocationTests
 {
     /// <summary>The count of measured steps in each 0-byte test.</summary>
     private const int Iterations = 100;

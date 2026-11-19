@@ -1,0 +1,22 @@
+<ui:Definitions xmlns:ui="brutal-ui">
+  <ui:Panel name="hello.widgets" slot="top" template="HelloModes.CreateWidgetPanel" />
+  <ui:Panel name="hello.state" slot="bottom" template="HelloState.xml" />
+  <ui:Panel name="hello.info" slot="bottom" template="HelloModes.CreateInfoPanel" />
+  <ui:Layout name="hello.layout" template="HelloModes.CreateLayout" />
+  <ui:Mode name="hello.main" layout="hello.layout" actions="hello.actions">
+    <ui:Slot name="top">
+      <ui:PanelRef name="hello.widgets" />
+    </ui:Slot>
+    <ui:Slot name="bottom">
+      <ui:PanelRef name="hello.state" />
+    </ui:Slot>
+  </ui:Mode>
+  <ui:Mode name="hello.detail" layout="hello.layout" actions="hello.actions">
+    <ui:Slot name="top">
+      <ui:PanelRef name="hello.widgets" />
+    </ui:Slot>
+    <ui:Slot name="bottom">
+      <ui:PanelRef name="hello.info" />
+    </ui:Slot>
+  </ui:Mode>
+</ui:Definitions>

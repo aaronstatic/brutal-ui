@@ -9,8 +9,8 @@ using BrutalUi.Markup;
 namespace HelloPanel;
 
 /// <summary>
-/// Builds the trees of the sample: the widget panel, the state panel, the info panel, and the layout with the two
-/// slots. Also fills the pixels of the checker texture of the image, and gives the text of the gate label.
+/// Builds the trees of the sample: the widget panel, the info panel, and the layout with the two slots. Also fills
+/// the pixels of the checker texture of the image, and gives the text of the gate label.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -21,8 +21,8 @@ namespace HelloPanel;
 /// </para>
 /// <para>
 /// The tree: the layout root holds two slot containers, <c>top</c> and <c>bottom</c>. The widget panel
-/// (<see cref="BuildWidgetPanel"/>) sits in <c>top</c> in both modes. The state panel
-/// (<see cref="BuildStatePanel"/>) sits in <c>bottom</c> in <c>hello.main</c>, and the info panel
+/// (<see cref="BuildWidgetPanel"/>) sits in <c>top</c> in both modes. The state panel, built from
+/// <c>HelloState.xml</c>, sits in <c>bottom</c> in <c>hello.main</c>, and the info panel
 /// (<see cref="BuildInfoPanel"/>) sits in <c>bottom</c> in <c>hello.detail</c>. The layout root is a column with
 /// padding, a slot is a column of its panels, and each panel is a column with a fill, a border, and round corners.
 /// A panel takes the size of its content.
@@ -55,9 +55,9 @@ namespace HelloPanel;
 /// the status labels and the change counts, and gives the delegates of the widgets. The mode row is the last child,
 /// after the widget section. It is a plain element with the <c>hello-row</c> class, and it holds the
 /// <c>Mode (F1)</c> button of <see cref="HelloModes"/>. A click on the button runs <c>hello.mode</c>, and the manager
-/// applies the other mode at the start of the next update. <see cref="HelloState"/> builds the state row: an
-/// <c>Add</c> button, a <c>Rebind (Up)</c> button, a <c>Restore</c> button, and a score label.
-/// <see cref="BuildStatePanel"/> puts that row in the state panel, so the row is no longer a child of the widget panel.
+/// applies the other mode at the start of the next update. <c>HelloState.xml</c> builds the state panel: a
+/// <see cref="HelloRow"/> with the <c>hello-row</c> class holds the <c>Add</c> button, the <c>Rebind (Up)</c> button,
+/// the <c>Restore</c> button, and a score label. The state panel is not a child of the widget panel.
 /// </para>
 /// <para>
 /// The second label is the gate label. It shows the two values of <see cref="UiContext.RoutingGate"/>. The frame
@@ -359,33 +359,6 @@ internal static class HelloScreen
         panel.Children.Add(widgets.Section);
         panel.Children.Add(modeRow);
 
-        return panel;
-    }
-
-    /// <summary>Builds the state panel: the row of <see cref="HelloState"/>.</summary>
-    /// <remarks>
-    /// <para>
-    /// The factory of <c>hello.state</c> calls this method (see <see cref="HelloModes"/>). The panel holds the row and
-    /// is not focusable; the <c>Add</c> button of the row takes the focus. The panel sets the classes
-    /// <c>hello-panel</c> and <c>hello-panel-root</c>, so it shows with the fill, the border, and the round corners of
-    /// the sheet, and the margin of the root rule keeps it apart from the panel above it.
-    /// </para>
-    /// <para>
-    /// The score label is a child of the row, so the rule <c>.hello-row &gt; Label</c> styles it. The mode keeps the
-    /// panel: the switch to <c>hello.detail</c> unmounts this root, and a back step mounts the same root with its
-    /// score.
-    /// </para>
-    /// </remarks>
-    /// <param name="state">The state of the sample. Its row is the only child of the panel.</param>
-    /// <returns>The root element of the state panel.</returns>
-    public static Element BuildStatePanel(HelloState state)
-    {
-        ArgumentNullException.ThrowIfNull(state);
-
-        Element panel = new();
-        panel.Classes.Add(PanelClass);
-        panel.Classes.Add(PanelRootClass);
-        panel.Children.Add(state.Row);
         return panel;
     }
 

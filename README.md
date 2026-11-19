@@ -2,7 +2,7 @@
 
 A UI framework for the [BRUTAL](https://github.com/ahwootech/brutal) C# framework. Retained tree, flexbox, styles, data binding. Zero allocations per frame.
 
-brutal-ui gives you an element tree, a flexbox layout engine, a stylesheet with a CSS-subset parser, data binding, and a panel and mode model. It renders through the Dear ImGui draw list that BRUTAL already ships. It allocates nothing in the frame loop after warm-up, and a test proves it. The XML markup loader is planned.
+brutal-ui gives you an element tree, a flexbox layout engine, a stylesheet with a CSS-subset parser, data binding, and a panel and mode model. It renders through the Dear ImGui draw list that BRUTAL already ships. It allocates nothing in the frame loop after warm-up, and a test proves it. The XML markup loader reads the element tree and the panel, layout, and mode records from XML.
 
 > **Status: early alpha, public.** The repository is public. Nothing is on NuGet yet. The element tree, the flexbox engine, the allocation gate, the ImGui renderer, the style system with a CSS-subset parser, the widgets, input routing, the gamepad state, the typed action map, and the framework layer (stores, bindings, commands, panels, modes) are in place and tested: the suite runs 2921 tests. The XML markup loader and the debugger window are not written yet, and the input epic has two features left. Expect the API to change before the first public release.
 
@@ -13,7 +13,7 @@ BRUTAL gives you Vulkan, OpenGL, GLFW, a Dear ImGui binding, textures, and local
 - **Zero allocation in the frame loop.** Layout, input, and draw allocate no managed memory after warm-up. A test on a 1000-element tree fails when they do.
 - **One package reference.** brutal-ui draws into `ImDrawList`. The BRUTAL Vulkan and OpenGL backends render it. No native dependency, no second render path.
 - **Declare the screen.** A mode is a set of named panels in named slots. You declare the next mode, and the framework computes the diff.
-- **Style it, and read the input like a game.** Style the tree with a small CSS subset: classes, names, and pseudo-states. Bind keys, mouse, sticks, and triggers to typed actions, and read one value per frame. A planned XML loader brings the same tree from markup.
+- **Style it, and read the input like a game.** Style the tree with a small CSS subset: classes, names, and pseudo-states. Bind keys, mouse, sticks, and triggers to typed actions, and read one value per frame. The XML loader brings the same tree from markup.
 - **Familiar to Unity developers.** The concepts of UI Toolkit, UXML, and USS carry over under new names. A port is a translation, not a redesign.
 - **BRUTAL conventions.** `Brutal.Numerics` vector types, UTF-8 text, `required` create-info structs, file-scoped namespaces.
 
@@ -25,7 +25,7 @@ BRUTAL gives you Vulkan, OpenGL, GLFW, a Dear ImGui binding, textures, and local
 | `BrutalUi.ImGui` | `IUiRenderer` on `ImDrawList`, fonts through the ImGui atlas, textures through the BRUTAL backends, render to texture | `Brutal.ImGui`, `Brutal.ImGui.Backends` |
 | `BrutalUi.Glfw` | The GLFW input adapter `GlfwUiInput`, which pushes window events and the gamepad state to a `UiContext` | `Brutal.Glfw`, `BrutalUi.Core` |
 | `BrutalUi.Framework` | Stores, panels, modes, slots, windows, commands, the typed action map, an event bus, and a service registry | `BrutalUi.Core` |
-| `BrutalUi.Markup` | The CSS-subset stylesheet parser. The XML element loader is planned | `BrutalUi.Core` |
+| `BrutalUi.Markup` | The XML element loader, the element generator, and the CSS-subset stylesheet parser | `BrutalUi.Core` |
 | `BrutalUi.Debugger` | A state, composition, and event inspector window. Planned | `BrutalUi.Framework` |
 
 `BrutalUi.Core` references no ImGui package. A second renderer is possible without a change to the tree.
@@ -114,16 +114,48 @@ var hud = new Element().Class("hud").Child(score).Child(pause);
 ui.AddRoot(hud);
 ```
 
-### The same tree in XML (planned)
+### The same tree in XML
 
-The XML element loader is not written yet. The target shape:
+`samples/HelloPanel/HelloState.xml` is the XML state panel of HelloPanel. The loader builds this tree:
 
 ```xml
-<ui:Panel class="hud" xmlns:ui="brutal-ui">
-  <ui:Label name="score" class="hud-value" text="0" />
-  <ui:Button name="pause" class="hud-button" text="Pause" command="game.pause" />
-</ui:Panel>
+<ui:Element class="hello-panel hello-panel-root" xmlns:ui="brutal-ui">
+  <ui:HelloRow>
+    <ui:Button name="add" text="Add" command="hello.add" />
+    <ui:Button name="rebind" text="Rebind (Up)" command="hello.rebind" />
+    <ui:Button name="restore" text="Restore" command="hello.restore" />
+    <ui:Label name="score" pickable="false" bind-text="hello.score" />
+  </ui:HelloRow>
+</ui:Element>
 ```
+
+`HelloRow` is a custom element type that carries `[TemplateElement("HelloRow")]`, and the source generator inside `BrutalUi.Markup` writes `RegisterHelloPanelElements` for the assembly, so the loader builds `ui:HelloRow` with no hand-written table.
+
+```csharp
+// Once, at start, before the window opens.
+TemplateLoader templates = new();                                   // BrutalUi.Markup
+TemplateBindings bindings = new(state.Map.Commands);                // BrutalUi.Framework
+bindings.AddText("hello.score", state.Score, static (int value) => value);
+bindings.AttachTo(templates);                                       // command and bind-* rows
+templates.RegisterHelloPanelElements();                             // generated
+
+DefinitionLoader definitions = new(templates);
+definitions.AddTemplate("HelloState.xml", stateText);               // copies the UTF-8 text
+definitions.AddFactory("HelloModes.CreateWidgetPanel", modes.CreateWidgetPanel);
+definitions.AddFactory("HelloModes.CreateInfoPanel", modes.CreateInfoPanel);
+definitions.AddFactory("HelloModes.CreateLayout", modes.CreateLayout);
+definitions.AddActionMap("hello.actions", state.Map);
+
+DefinitionLoadResult result = definitions.Load(definitionsText, "HelloDefinitions.xml");
+foreach (DefinitionError error in result.Errors)
+{
+    Console.Error.WriteLine(error.ToString());                      // one line per fault, exit 1
+}
+
+IReadOnlyList<PanelController> controllers = result.RegisterTo(manager);   // panels, then layouts, then modes
+```
+
+A game with its own `[TemplateElement]` types references `BrutalUi.Markup` and adds the generator analyzer line to its project, because the packed `BrutalUi.Framework` package excludes the Markup analyzers.
 
 ### A stylesheet
 
@@ -148,7 +180,7 @@ manager.Register(new ModeDefinition("gameplay"u8, "main"u8, [new ModePanel("top"
 manager.SetMode("gameplay"u8);
 ```
 
-The panel and layout records that `UiManager` holds are plain definitions; `samples/HelloPanel/HelloModes.cs` registers them. The sample runs the full frame: widgets, a stylesheet, stores, two modes, and a typed action map that moves a `Move` vector with W, A, S, D or the left stick.
+The panel and layout records that `UiManager` holds are plain definitions; `samples/HelloPanel/HelloDefinitions.xml` names them, and `samples/HelloPanel/HelloModes.cs` holds the C# factories. The sample runs the full frame: widgets, a stylesheet, stores, an XML state panel, two modes, and a typed action map that moves a `Move` vector with W, A, S, D or the left stick.
 
 ### Typed actions
 
@@ -166,7 +198,7 @@ float2 move = map.ReadVector("Move"u8);
 
 ```
 src/        the six packages
-samples/    HelloPanel (widgets, a store, two modes, typed actions) and WorldSpace (a panel on a quad)
+samples/    HelloPanel (widgets, a store, two modes, typed actions, an XML state panel) and WorldSpace (a panel on a quad)
 tests/      xUnit tests for each package, and the BenchmarkDotNet project with the allocation gate
 scripts/    the Linux and Windows test scripts
 docs/       the mission statement, the technical design, the feasibility study, and the feature plans

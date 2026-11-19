@@ -10,6 +10,8 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/BrutalUi.Framework/BrutalUi.Framework.csproj" />
+    <!-- The generator runs on the marked sample types. An analyzer from a ProjectReference does not flow on. -->
+    <ProjectReference Include="../../src/BrutalUi.Generators/BrutalUi.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <ItemGroup>
@@ -18,6 +20,14 @@
     <Compile Include="../BrutalUi.Core.Tests/Shared/ThousandWidgetTree.cs" LinkBase="Shared" />
     <Compile Include="../BrutalUi.Core.Tests/Shared/TextMeasure.cs" LinkBase="Shared" />
     <Compile Include="../BrutalUi.Core.Tests/Shared/TreeCompare.cs" LinkBase="Shared" />
+    <Compile Include="../../samples/HelloPanel/HelloRow.cs" LinkBase="Shared" />
+    <Compile Include="../../samples/HelloPanel/HelloMarkupNames.cs" LinkBase="Shared" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="../../samples/HelloPanel/HelloState.xml" Link="HelloState.xml" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../samples/HelloPanel/HelloDefinitions.xml" Link="HelloDefinitions.xml" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../samples/HelloPanel/HelloScreen.css" Link="HelloScreen.css" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

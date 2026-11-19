@@ -52,8 +52,8 @@ This file maps each neutral term of a Beast Mode command to a tool of Claude Cod
 # Harness Glossary - DeepSeek Harness
 
 **Harness:** dsh
-**Targets:** DeepSeek Harness 0.1.5-rc.1 (npm @deepseek-ai/dsh@0.1.5-rc.1, git tag dsh-v0.1.5-rc.1)
-**Last Updated:** 2026-10-07 01:30
+**Targets:** DeepSeek Harness 0.2.1-rc.3 (npm @deepseek-ai/dsh@0.2.1-rc.3, git tag dsh-v0.2.1-rc.3)
+**Last Updated:** 2026-11-18 19:58
 
 This file maps each neutral term of a Beast Mode command to a tool of the DeepSeek Harness. Read the row before you act on the term. Use the mapped tool, and use no tool name from another harness.
 
@@ -62,7 +62,7 @@ This file maps each neutral term of a Beast Mode command to a tool of the DeepSe
 | Neutral term | This harness |
 | --- | --- |
 | ask the user to choose | Use the `ask_user_question` tool. |
-| delegate to the `<name>` agent | Call the `subagent` tool with `run_in_background: false`, so the call returns the result. Start its prompt with the body of the `<name>` agent file. Pass the model route of the `## Notes` rule. |
+| delegate to the `<name>` agent | Call the `subagent` tool. It starts the agent and returns at once. The runtime brings the result in as a new message when the agent finishes. End the turn and wait for that message. Do not poll, and do not start the same work again. Start its prompt with the body of the `<name>` agent file. Pass the model route of the `## Notes` rule. |
 | run the `/<name>` command | Load the `<name>` skill with the `skill` tool, then follow it to the end. |
 | load the `<name>` skill | Use the `skill` tool with the skill name. |
 | search the web | Use the `web_search` tool. Use `web_fetch` to read one page. |
@@ -77,7 +77,7 @@ This file maps each neutral term of a Beast Mode command to a tool of the DeepSe
 | run a shell command | Use the `bash` tool. |
 | evaluate in the browser | Use the evaluate call of the browser tool of row 9. dsh attaches no browser tool by default, so skip the step when the user attached none. |
 | take a page snapshot | Use the snapshot call of the same browser tool. Skip the step when the user attached no browser tool. |
-| send a message to an agent | Use the `send_message` tool with `agent_id` and `message`. It reaches a continuable child only. A child of a `subagent` call with `run_in_background: false` takes no message, so skip the step. |
+| send a message to an agent | Use the `send_message` tool with `agent_id` and `message`. It reaches a direct continuable child by its id. A working child receives the message at its next step. An idle child starts a new turn with it. The result is a delivery confirmation, not the answer of the child. |
 
 ## Notes
 
@@ -88,7 +88,7 @@ This file maps each neutral term of a Beast Mode command to a tool of the DeepSe
 - dsh watches a skill root at depth 1. A new skill folder appears with no restart.
 - The `skill` tool result states a base directory. Resolve a relative path against that directory.
 - Read the `<name>` agent file at `.agents/skills/<name>.md` first. Put its full body before the task in the prompt.
-- The `subagent` tool runs in the background by default. Always set `run_in_background: false`. A background call makes the parent poll with `sleep`, and one measured run spent 15.6M prompt tokens in 67 poll steps. Never wait with `sleep` or `list_agents`.
+- The `subagent` tool always starts the agent in the background and returns at once. It has no blocking option. The result arrives as a new message when the agent finishes. End the turn and wait for that message. Never wait with `sleep` or `list_agents`, because one measured run spent 15.6M prompt tokens in 67 poll steps.
 - The `subagent` call needs a `description` of three to five words, and it passes the prompt with no parent history.
 - A child agent cannot call `ask_user_question`. A child reports an open question in its result instead.
 - The `read` tool result carries line numbers, so a read after an edit is not needed.

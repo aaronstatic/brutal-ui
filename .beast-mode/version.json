@@ -1,19 +1,19 @@
 {
   "schema": 1,
-  "beastModeVersion": "6.2.0",
-  "generated": "2026-11-18T17:29:43.627Z",
+  "beastModeVersion": "6.2.1",
+  "generated": "2026-11-19T05:28:39.824Z",
   "harnesses": {
     "claude": {
       "harnessRoot": ".claude",
-      "version": "6.2.0",
+      "version": "6.2.1",
       "installed": "2026-10-16T09:02:43.897Z",
-      "updated": "2026-11-18T17:29:43.627Z"
+      "updated": "2026-11-19T05:28:39.809Z"
     },
     "dsh": {
       "harnessRoot": ".agents",
-      "version": "6.2.0",
+      "version": "6.2.1",
       "installed": "2026-11-07T18:24:37.146Z",
-      "updated": "2026-11-18T16:10:07.050Z"
+      "updated": "2026-11-19T05:28:39.824Z"
     }
   }
 }
