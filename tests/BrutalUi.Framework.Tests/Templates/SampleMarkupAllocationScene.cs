@@ -126,17 +126,17 @@ public sealed partial class SampleMarkupAllocationTests
     /// <returns>The scene, ready for warm-up and a measure.</returns>
     private static Scene BuildScene()
     {
-        byte[] stateText = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "HelloState.xml"));
-        byte[] definitionsText = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "HelloDefinitions.xml"));
+        byte[] stateText = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, HelloMarkupNames.StateFileName));
+        byte[] definitionsText = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, HelloMarkupNames.DefinitionsFileName));
         byte[] cssText = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "HelloScreen.css"));
 
         Store<int> store = new(new Store<int>.CreateInfo { Initial = 0 });
         Holder holder = new() { Score = store };
         CommandRegistry registry = new();
-        registry.Register("hello.add"u8, s_add, holder);
-        registry.Register("hello.reset"u8, s_reset, holder);
-        registry.Register("hello.rebind"u8, s_count, holder);
-        registry.Register("hello.restore"u8, s_count, holder);
+        registry.Register(HelloMarkupNames.AddCommand, s_add, holder);
+        registry.Register(HelloMarkupNames.ResetCommand, s_reset, holder);
+        registry.Register(HelloMarkupNames.RebindCommand, s_count, holder);
+        registry.Register(HelloMarkupNames.RestoreCommand, s_count, holder);
 
         UiActionMap map = new(new UiActionMap.CreateInfo { Commands = registry });
 
@@ -155,22 +155,22 @@ public sealed partial class SampleMarkupAllocationTests
 
         TemplateLoader templates = new();
         TemplateBindings bindings = new(registry);
-        bindings.AddText("hello.score", store, s_score);
+        bindings.AddText(HelloMarkupNames.ScoreKey, store, s_score);
         bindings.AttachTo(templates);
         templates.RegisterBrutalUiFrameworkTestsElements();
 
         // The check load of Decision 7: a fault in the panel text lands here.
-        TemplateLoadResult check = templates.Load(stateText, "HelloState.xml");
+        TemplateLoadResult check = templates.Load(stateText, HelloMarkupNames.StateTemplateName);
         Assert.True(check.Succeeded);
 
         DefinitionLoader definitions = new(templates);
-        definitions.AddTemplate("HelloState.xml", stateText);
-        definitions.AddFactory("HelloModes.CreateWidgetPanel", widgetTwin.Create);
-        definitions.AddFactory("HelloModes.CreateInfoPanel", infoTwin.Create);
-        definitions.AddFactory("HelloModes.CreateLayout", layoutTwin.Create);
-        definitions.AddActionMap("hello.actions", map);
+        definitions.AddTemplate(HelloMarkupNames.StateTemplateName, stateText);
+        definitions.AddFactory(HelloMarkupNames.WidgetPanelFactoryName, widgetTwin.Create);
+        definitions.AddFactory(HelloMarkupNames.InfoPanelFactoryName, infoTwin.Create);
+        definitions.AddFactory(HelloMarkupNames.LayoutFactoryName, layoutTwin.Create);
+        definitions.AddActionMap(HelloMarkupNames.ActionsMapName, map);
 
-        DefinitionLoadResult result = definitions.Load(definitionsText, "HelloDefinitions.xml");
+        DefinitionLoadResult result = definitions.Load(definitionsText, HelloMarkupNames.DefinitionsFileName);
         Assert.True(result.Succeeded);
 
         PanelContext panels = new()

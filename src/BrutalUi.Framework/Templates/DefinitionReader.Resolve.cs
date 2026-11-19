@@ -74,21 +74,8 @@ internal sealed partial class DefinitionReader
             {
                 faulty = true;
             }
-            else if (_loader.TryGetTemplate(entry.Template.Text!, out text))
+            else if (!TryResolveTemplate(entry.Template, out text, out factory))
             {
-                // The template text path.
-            }
-            else if (_loader.TryGetFactory(entry.Template.Text!, out factory))
-            {
-                // The factory path. The load calls no factory (Decision 3).
-            }
-            else
-            {
-                AddError(
-                    DefinitionErrorKind.UnknownTemplate,
-                    $"'{entry.Template.Text}{UnknownTemplateMessage}",
-                    entry.Template.Line,
-                    entry.Template.Column);
                 faulty = true;
             }
 
@@ -123,21 +110,8 @@ internal sealed partial class DefinitionReader
             {
                 faulty = true;
             }
-            else if (_loader.TryGetTemplate(entry.Template.Text!, out text))
+            else if (!TryResolveTemplate(entry.Template, out text, out factory))
             {
-                // The template text path.
-            }
-            else if (_loader.TryGetFactory(entry.Template.Text!, out factory))
-            {
-                // The factory path. The load calls no factory (Decision 3).
-            }
-            else
-            {
-                AddError(
-                    DefinitionErrorKind.UnknownTemplate,
-                    $"'{entry.Template.Text}{UnknownTemplateMessage}",
-                    entry.Template.Line,
-                    entry.Template.Column);
                 faulty = true;
             }
 
@@ -309,5 +283,33 @@ internal sealed partial class DefinitionReader
             byte[] layoutName = Encoding.UTF8.GetBytes(layout);
             modes.Add(new ModeDefinition(modeName, layoutName, placements.ToArray(), actionMap));
         }
+    }
+
+    /// <summary>
+    /// Resolves one <c>template</c> value for a panel or a layout: the template text first, then the factory
+    /// (Decision 1). The pass calls no factory (Decision 3).
+    /// </summary>
+    /// <param name="value">The template value. The caller checks <see cref="DefinitionValue.HasName"/> first, so
+    /// the value holds a name.</param>
+    /// <param name="text">The template text bytes when the name hits the template table; otherwise
+    /// <see langword="null"/>.</param>
+    /// <param name="factory">The added delegate when the name hits the factory table; otherwise
+    /// <see langword="null"/>.</param>
+    /// <returns><see langword="true"/> when one table holds the name. On <see langword="false"/>, the pass adds the
+    /// <see cref="DefinitionErrorKind.UnknownTemplate"/> error at the position of the value.</returns>
+    private bool TryResolveTemplate(DefinitionValue value, out byte[]? text, out Func<PanelContext, Element>? factory)
+    {
+        factory = null;
+        if (_loader.TryGetTemplate(value.Text!, out text) || _loader.TryGetFactory(value.Text!, out factory))
+        {
+            return true;
+        }
+
+        AddError(
+            DefinitionErrorKind.UnknownTemplate,
+            $"'{value.Text}{UnknownTemplateMessage}",
+            value.Line,
+            value.Column);
+        return false;
     }
 }

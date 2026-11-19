@@ -14,17 +14,20 @@ namespace HelloPanel;
 /// </summary>
 /// <remarks>
 /// <para>
-/// The register order: <see cref="DefinitionLoadResult.RegisterTo(UiManager)"/> registers the three panels, then the
-/// layout, then the two modes, in the text order of <c>HelloDefinitions.xml</c>. The file must keep this order,
-/// because <see cref="UiManager.Register(ModeDefinition)"/> resolves each layout name, each slot name, and each
-/// panel name against the names registered before it. The frame loop calls
+/// The register order: <see cref="Register"/> calls
+/// <see cref="DefinitionLoadResult.RegisterTo(UiManager)"/> one time before the window, inside
+/// <see cref="HelloMarkup.Load"/>. It registers the three panels, then the layout, then the two modes, in the
+/// text order of <c>HelloDefinitions.xml</c>. The file must keep this order, because
+/// <see cref="UiManager.Register(ModeDefinition)"/> resolves each layout name, each slot name, and each panel
+/// name against the names registered before it, and a miss throws there (Decision 3). The frame loop calls
 /// <see cref="UiManager.SetMode(ReadOnlySpan{byte})"/> with <c>hello.main</c> one time before the first update.
 /// </para>
 /// <para>
 /// The build rule: <see cref="Mount"/> calls <see cref="PanelController.EnsureRoot"/> on each controller that
-/// <see cref="DefinitionLoadResult.RegisterTo(UiManager)"/> returns, so every root exists before the first frame and
-/// no factory runs in a frame. The manager mounts the built roots at the first apply. <see cref="HelloScreen"/>
-/// builds the widget, info, and layout trees, and <c>HelloState.xml</c> builds the state tree.
+/// <see cref="Register"/> returns, so every root exists before the first frame and no factory runs in a frame.
+/// The panel factories read the checker texture, so they stay inside <see cref="Mount"/>, after the window
+/// (Decision 5). The manager mounts the built roots at the first apply. <see cref="HelloScreen"/> builds the
+/// widget, info, and layout trees, and <c>HelloState.xml</c> builds the state tree.
 /// </para>
 /// <para>
 /// The map rule: both modes name the one action map of <see cref="HelloState"/>, so the switch keeps the map. The
@@ -56,7 +59,9 @@ namespace HelloPanel;
 /// map, because neither key is a text key.
 /// </para>
 /// <para>
-/// Copy this file to start a screen with modes of your game. Keep the register order and the build rule.
+/// Copy this file to start a screen with modes of your game. Keep the register order, the build rule, and the
+/// one-time rule: <see cref="Register"/> runs one time before the window, and <see cref="Mount"/> runs one time
+/// after it.
 /// </para>
 /// </remarks>
 internal sealed class HelloModes
@@ -93,6 +98,18 @@ internal sealed class HelloModes
 
     /// <summary>The state of the sample. Its map serves both modes, and its XML row fills the state panel.</summary>
     private readonly HelloState _state;
+
+    /// <summary>The panel controllers that <see cref="Register"/> returns. <see cref="Mount"/> builds each root.</summary>
+    private IReadOnlyList<PanelController>? _controllers;
+
+    /// <summary>The registered records. <see cref="Mount"/> reads the mode records and the record counts.</summary>
+    private DefinitionLoadResult? _definitions;
+
+    /// <summary>The flag of the one-time rule of <see cref="Register"/>.</summary>
+    private bool _registered;
+
+    /// <summary>The flag of the one-time rule of <see cref="Mount"/>.</summary>
+    private bool _mounted;
 
     /// <summary>The checker texture for the widget panel. <see cref="Mount"/> sets it before the first factory call.</summary>
     private TextureHandle _checker;
@@ -136,7 +153,7 @@ internal sealed class HelloModes
 
     /// <summary>
     /// Creates the mode model: the commands, the keys, the mode button, the panel context, and the manager. The
-    /// records register later, in <see cref="Mount"/>.
+    /// records register later, in <see cref="Register"/>.
     /// </summary>
     /// <remarks>
     /// The constructor needs no GPU. The panel factories run only inside <see cref="Mount"/>, after the texture
@@ -175,45 +192,92 @@ internal sealed class HelloModes
     }
 
     /// <summary>
-    /// Registers the loaded records with the manager, builds every panel root, and returns the mounted trees.
-    /// <see cref="HelloMarkup.Load"/> has read <c>HelloState.xml</c> and <c>HelloDefinitions.xml</c> and run both
-    /// loads before this call.
+    /// Registers the loaded records with the manager: the three panels, then the layout, then the two modes
+    /// (<see cref="DefinitionLoadResult.RegisterTo(UiManager)"/>). <see cref="HelloMarkup.Load"/> calls this method
+    /// one time before the window, so a mode that names an unknown slot throws there, and the run ends with no
+    /// GLFW call (A3, Decision 3).
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The method starts at <see cref="DefinitionLoadResult.RegisterTo(UiManager)"/>. The load calls no factory;
-    /// <see cref="PanelController.EnsureRoot"/> runs the factories (the build rule), so the panel factories run only
-    /// inside <see cref="Mount"/>, after the texture handle exists (Decision 5). The load itself needs no GPU and
-    /// runs before the window, in <see cref="HelloMarkup.Load"/> (Decision 6).
+    /// The call needs no GPU. <see cref="UiManager.Register(PanelDefinition)"/> defers each panel root build, so
+    /// the panel factories stay out of this step and run only inside <see cref="Mount"/>, after the texture handle
+    /// exists (Decision 5). <see cref="UiManager.Register(LayoutDefinition)"/> calls the layout factory one time,
+    /// and <see cref="HelloScreen.BuildLayout"/> needs no texture.
+    /// <see cref="UiManager.Register(ModeDefinition)"/> checks each placement slot against the built layout root
+    /// and throws <see cref="ArgumentException"/> for a miss (Decision 3).
     /// </para>
     /// <para>
-    /// The mounted state root comes from the template panel record; the check tree of the load is dropped
-    /// (Decision 7).
+    /// The one-time rule: this method runs one time. A second call throws
+    /// <see cref="InvalidOperationException"/>, because the first call registered each name already.
     /// </para>
     /// </remarks>
     /// <param name="definitions">The succeeded result of <see cref="HelloMarkup.Load"/>.</param>
-    /// <param name="checker">The checker texture for the image of the widget panel.</param>
-    /// <returns>The mount: the two roots, the six labels, the widgets, the <c>Add</c> button, and the counts.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="definitions"/> is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentException"><paramref name="definitions"/> is a failed result.</exception>
-    /// <exception cref="InvalidOperationException">
-    /// The widget factory left the gate label, the input label, the stick label, the move label, the scheme label,
-    /// the rebind label, or the widget section null. A panel controller, a mounted element, or a loaded mode is
-    /// missing. The build rule cannot fail in this sample; the checks document the contract of
-    /// <see cref="HelloScreen.BuildWidgetPanel"/>.
-    /// </exception>
-    public HelloMount Mount(DefinitionLoadResult definitions, TextureHandle checker)
+    /// <exception cref="InvalidOperationException"><see cref="Register"/> ran one time already.</exception>
+    public void Register(DefinitionLoadResult definitions)
     {
         ArgumentNullException.ThrowIfNull(definitions);
         if (!definitions.Succeeded)
         {
-            throw new ArgumentException("The definitions load failed. Mount needs a succeeded result.",
+            throw new ArgumentException("The definitions load failed. Register needs a succeeded result.",
                 nameof(definitions));
         }
 
-        _checker = checker;
+        if (_registered)
+        {
+            throw new InvalidOperationException("Register runs one time. A second call registers each record twice.");
+        }
 
-        IReadOnlyList<PanelController> controllers = definitions.RegisterTo(Manager);
+        _registered = true;
+        _controllers = definitions.RegisterTo(Manager);
+        _definitions = definitions;
+    }
+
+    /// <summary>
+    /// Builds every panel root with the checker texture and returns the mounted trees.
+    /// <see cref="Register"/> must have run one time before this call.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The load calls no factory; <see cref="PanelController.EnsureRoot"/> runs the factories (the build rule), so
+    /// the panel factories run only inside <see cref="Mount"/>, after the texture handle exists (Decision 5). The
+    /// load and the register step need no GPU and run before the window, in <see cref="HelloMarkup.Load"/>
+    /// (Decision 6).
+    /// </para>
+    /// <para>
+    /// The mounted state root comes from the template panel record; the check tree of the load is dropped
+    /// (Decision 7). <see cref="Main"/> and <see cref="Detail"/> stay <see langword="null"/> until this method runs,
+    /// so run <c>hello.mode</c> not before <see cref="Mount"/>.
+    /// </para>
+    /// <para>
+    /// The one-time rule: this method runs one time. A second call throws
+    /// <see cref="InvalidOperationException"/>, because the first call built each root already.
+    /// </para>
+    /// </remarks>
+    /// <param name="checker">The checker texture for the image of the widget panel.</param>
+    /// <returns>The mount: the two roots, the six labels, the widgets, the <c>Add</c> button, and the counts.</returns>
+    /// <exception cref="InvalidOperationException">
+    /// <see cref="Register"/> did not run before this call, or <see cref="Mount"/> ran one time already. Or: the
+    /// widget factory left the gate label, the input label, the stick label, the move label, the scheme label, the
+    /// rebind label, or the widget section null. A panel controller, a mounted element, or a loaded mode is
+    /// missing. The build rule cannot fail in this sample; the checks document the contract of
+    /// <see cref="HelloScreen.BuildWidgetPanel"/>.
+    /// </exception>
+    public HelloMount Mount(TextureHandle checker)
+    {
+        IReadOnlyList<PanelController> controllers = _controllers
+            ?? throw new InvalidOperationException("Mount needs one succeeded call to Register before it.");
+        DefinitionLoadResult definitions = _definitions
+            ?? throw new InvalidOperationException("Mount needs one succeeded call to Register before it.");
+
+        if (_mounted)
+        {
+            throw new InvalidOperationException("Mount runs one time. A second call builds each panel root again.");
+        }
+
+        _mounted = true;
+        _checker = checker;
 
         // The build rule: each root exists before the first frame, so no factory runs in a frame (Decision 3).
         foreach (PanelController controller in controllers)

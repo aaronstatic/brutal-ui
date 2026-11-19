@@ -112,6 +112,7 @@ public sealed class DefinitionFactoryTests
         Assert.Single(result.Layouts);
         Assert.Single(result.Modes);
         Assert.Same(widgetsFactory, result.Panels[0].CreateRoot);
+        Assert.Same(layoutFactory, result.Layouts[0].CreateRoot);
 
         result.RegisterTo(ui);
         ui.SetMode("fct.main"u8);

@@ -21,6 +21,7 @@
     <Compile Include="../BrutalUi.Core.Tests/Shared/TextMeasure.cs" LinkBase="Shared" />
     <Compile Include="../BrutalUi.Core.Tests/Shared/TreeCompare.cs" LinkBase="Shared" />
     <Compile Include="../../samples/HelloPanel/HelloRow.cs" LinkBase="Shared" />
+    <Compile Include="../../samples/HelloPanel/HelloMarkupNames.cs" LinkBase="Shared" />
   </ItemGroup>
 
   <ItemGroup>

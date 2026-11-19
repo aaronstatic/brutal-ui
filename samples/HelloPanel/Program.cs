@@ -61,9 +61,10 @@ namespace HelloPanel;
 /// </para>
 /// <para>
 /// The sample then builds the renderer, the context, the state, and the modes, and loads
-/// <c>HelloState.xml</c> and <c>HelloDefinitions.xml</c> through <see cref="HelloMarkup.Load"/>, all before it
-/// opens the window. Each template error and each definition error prints its line to standard error, and a run
-/// with one error or more gives exit code 1, with no GPU and no display (A3, Decision 6).
+/// <c>HelloState.xml</c> and <c>HelloDefinitions.xml</c> and registers the records through
+/// <see cref="HelloMarkup.Load"/>, all before it opens the window. Each template error, each definition error,
+/// and each register slot fault prints its line to standard error, and a run with one error or more gives exit
+/// code 1, with no GPU and no display (A3, Decision 3, Decision 6).
 /// </para>
 /// </remarks>
 internal static class Program
@@ -317,8 +318,8 @@ internal static class Program
     }
 
     /// <summary>
-    /// Loads the sheet and the two markup files, builds the managed UI objects, starts GLFW, runs the sample, and
-    /// ends GLFW. After the run, writes the frame count (line 1),
+    /// Loads the sheet and the two markup files, builds the managed UI objects, registers the records, starts
+    /// GLFW, runs the sample, and ends GLFW. After the run, writes the frame count (line 1),
     /// the draw command count and the vertex count of the last frame (line 2), the allocated bytes after warm-up
     /// (line 3), the gate counts of the measured frames (line 4), the widget counts of the full run (line 5), the
     /// state counts of the full run (line 6), the mode counts (line 7), and the markup counts (line 8) to standard
@@ -339,13 +340,13 @@ internal static class Program
     /// <see cref="ExitFailure"/>.
     /// </para>
     /// <para>
-    /// The managed build and the markup load run before the first GLFW call (Decision 6). The constructors of
-    /// <see cref="ImGuiFontService"/>, <see cref="ImGuiTextureService"/>, <see cref="ImGuiRenderer"/>,
-    /// <see cref="UiContext"/>, <see cref="HelloState"/>, and <see cref="HelloModes"/> store fields and call no
-    /// ImGui, GLFW, or Vulkan function; keep that rule when you move code across this line.
-    /// <see cref="HelloMarkup.Load"/> writes one error line per template error and per definition error to standard
-    /// error, with no prefix (A3). A <see langword="null"/> result returns <see cref="ExitFailure"/> with no GLFW
-    /// call.
+    /// The managed build, the markup load, and the register step run before the first GLFW call (Decision 6).
+    /// The constructors of <see cref="ImGuiFontService"/>, <see cref="ImGuiTextureService"/>,
+    /// <see cref="ImGuiRenderer"/>, <see cref="UiContext"/>, <see cref="HelloState"/>, and
+    /// <see cref="HelloModes"/> store fields and call no ImGui, GLFW, or Vulkan function; keep that rule when you
+    /// move code across this line. <see cref="HelloMarkup.Load"/> writes one error line per template error, per
+    /// definition error, and per register slot fault to standard error, with no prefix (A3, Decision 3). A
+    /// <see langword="null"/> result returns <see cref="ExitFailure"/> with no GLFW call.
     /// </para>
     /// <para>
     /// The input check runs after the allocation check. It runs only for a run with a frame limit and 2 measured
@@ -402,8 +403,9 @@ internal static class Program
         StyleSheet sheet = HelloScreen.LoadSheet();
 
         // The managed build runs before the first GLFW call (Decision 6): these constructors store fields and call
-        // no native function. The state builds the store, the commands, the action map, and the state row one
-        // time, at build time. The modes own the panel context, the manager, the commands, the keys, and the mode
+        // no native function. The state builds the store, the commands, and the action map one time, at build
+        // time. HelloState.xml builds the state row inside HelloModes.Mount. The modes own the panel context,
+        // the manager, the commands, the keys, and the mode
         // button. The sample loads no font, so font 0 is the ImGui default font. The renderer measures the text of
         // the layout pass and draws the tree, so the context and the draw use the same font ids.
         ImGuiFontService fonts = new();
@@ -417,10 +419,9 @@ internal static class Program
         HelloState state = new(ui);
         HelloModes modes = new(ui, state);
 
-        // The load of the two markup files runs before the window (A3). Each error prints one line to standard
-        // error, with no prefix. A null result gives exit code 1 with no GLFW call.
-        DefinitionLoadResult? definitions = HelloMarkup.Load(state, modes, Console.Error);
-        if (definitions is null)
+        // The load of the two markup files and the register step run before the window (A3). Each error prints
+        // one line to standard error, with no prefix. A null result gives exit code 1 with no GLFW call.
+        if (HelloMarkup.Load(state, modes, Console.Error) is null)
         {
             return ExitFailure;
         }
@@ -435,7 +436,7 @@ internal static class Program
         RunResult result;
         try
         {
-            result = RunWindow(sheet, uiRenderer, ui, state, modes, definitions, frameLimit);
+            result = RunWindow(sheet, uiRenderer, ui, state, modes, frameLimit);
         }
         finally
         {
@@ -547,8 +548,8 @@ internal static class Program
     /// <param name="uiRenderer">The renderer, built before GLFW and used as the measurer of the context.</param>
     /// <param name="ui">The context of the tree, built before GLFW.</param>
     /// <param name="state">The state of the sample, built before GLFW.</param>
-    /// <param name="modes">The modes of the sample, built before GLFW, mounted inside <see cref="RunImGui"/>.</param>
-    /// <param name="definitions">The succeeded records of <see cref="HelloMarkup.Load"/>.</param>
+    /// <param name="modes">The modes of the sample, built before GLFW, registered before GLFW in
+    /// <see cref="HelloMarkup.Load"/>, and mounted inside <see cref="RunImGui"/>.</param>
     /// <param name="frameLimit">The number of frames to render, or <see cref="NoFrameLimit"/>.</param>
     /// <returns>
     /// The result of the run: the frame count, the draw list counts of the last frame, and the allocation sums of the
@@ -560,7 +561,6 @@ internal static class Program
         UiContext ui,
         HelloState state,
         HelloModes modes,
-        DefinitionLoadResult definitions,
         int frameLimit)
     {
         if (!Glfw.VulkanSupported())
@@ -595,7 +595,7 @@ internal static class Program
         ImGuiContextPtr imGuiContext = ImGui.CreateContext();
         try
         {
-            return RunImGui(window, vulkan, checker, sheet, uiRenderer, ui, state, modes, definitions, frameLimit);
+            return RunImGui(window, vulkan, checker, sheet, uiRenderer, ui, state, modes, frameLimit);
         }
         finally
         {
@@ -605,8 +605,8 @@ internal static class Program
 
     /// <summary>
     /// Creates the two ImGui backends and the input adapter for the renderer and the context built in
-    /// <see cref="Run"/>. Then registers the checker texture, adds the sheet, mounts the loaded records, runs the
-    /// frame loop, removes the texture, and disposes the adapter and the backends.
+    /// <see cref="Run"/>. Then registers the checker texture, adds the sheet, mounts the registered records, runs
+    /// the frame loop, removes the texture, and disposes the adapter and the backends.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -627,8 +627,8 @@ internal static class Program
     /// property gives the texture service.</param>
     /// <param name="ui">The context of the tree, built in <see cref="Run"/>.</param>
     /// <param name="state">The state of the sample, built in <see cref="Run"/>.</param>
-    /// <param name="modes">The modes of the sample, built in <see cref="Run"/> and mounted here.</param>
-    /// <param name="definitions">The succeeded records of <see cref="HelloMarkup.Load"/>.</param>
+    /// <param name="modes">The modes of the sample, built in <see cref="Run"/>, registered in
+    /// <see cref="HelloMarkup.Load"/>, and mounted here.</param>
     /// <param name="frameLimit">The number of frames to render, or <see cref="NoFrameLimit"/>.</param>
     /// <returns>
     /// The result of the run: the frame count, the draw list counts of the last frame, and the allocation sums of the
@@ -643,7 +643,6 @@ internal static class Program
         UiContext ui,
         HelloState state,
         HelloModes modes,
-        DefinitionLoadResult definitions,
         int frameLimit)
     {
         // ImGui writes no imgui.ini file into the working directory.
@@ -681,11 +680,12 @@ internal static class Program
             // The sheet gives each size and each color of the screen. The trees set only the classes.
             ui.AddSheet(sheet);
 
-            // Mount registers the loaded records, builds each panel root at build time, and runs the panel
-            // factories, now that the texture handle exists (the build rule, Decision 5). SetMode records
-            // hello.main. The first Update adds the layout root, mounts the panels, and activates the map before
-            // the input pass of frame 0, so the sample does not call UiActionMap.Activate.
-            HelloMount mount = modes.Mount(definitions, handle);
+            // Mount builds each panel root at build time and runs the panel factories, now that the texture
+            // handle exists (the build rule, Decision 5). HelloMarkup.Load registered the records and ran the
+            // layout factory before the window (Decision 3). SetMode records hello.main. The first Update adds
+            // the layout root, mounts the panels, and activates the map before the input pass of frame 0, so
+            // the sample does not call UiActionMap.Activate.
+            HelloMount mount = modes.Mount(handle);
             modes.Manager.SetMode(HelloModes.MainName);
 
             return RunFrames(
