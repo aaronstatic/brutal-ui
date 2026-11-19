@@ -1,9 +1,9 @@
 # markup/markup-sample - Context & Decisions
 
 **Epic:** markup (feature 6 of 6)
-**Last Updated:** 2026-11-19 10:00
-**Current Phase:** Phase 2 - The Load Error Exit Before the Window
-**Status:** 🟡 Phase 2 closed (tasks 2.1 to 2.5); phase 3 open
+**Last Updated:** 2026-11-19 10:35
+**Current Phase:** Phase 3 - The Sample Shape at Zero Bytes (closed)
+**Status:** 🟡 Phase 3 closed (tasks 3.1 to 3.4, verifier PASS after fix round 1); phase 4 open
 
 ---
 
@@ -15,9 +15,10 @@
 - ✅ Phase 1, group 1 (tasks 1.1 to 1.6): `AddFactory` with the shared name table, the factory resolve rule, the `RegisterTo` controller list, `DefinitionFactoryTests` (5 tests, Framework 389), `HelloRow.cs`, and plants 1 to 3. See the group close record below.
 - ✅ Phase 1, group 2 (tasks 1.7 to 1.9): `HelloState.xml`, `HelloDefinitions.xml`, the csproj analyzer and copy lines, `HelloModes.Mount` with `HelloMount` and `MarkupCounts`, and smoke line 8 with its markup check. Totals unchanged. See the group 2 close record below.
 - ✅ Phase 2 (tasks 2.1 to 2.5): `HelloMarkup.Load` with the name constants and the error print, `Mount(DefinitionLoadResult, TextureHandle)`, the managed build and the load before `Glfw.Init`, the `UnknownTemplate` constant message, the two test strings, and headless checks 1 to 4. Totals unchanged. See the phase 2 close record below.
+- ✅ Phase 3 (tasks 3.1 to 3.4): the C# state row removed from `HelloState` and `HelloScreen`, the sample files linked into `BrutalUi.Framework.Tests`, and the twenty-third gate `SampleMarkupAllocationTests` (3 tests, Framework 392). Plants 4 and 5. See the phase 3 close record below.
 
 **What's Next:**
-- 📋 Phase 3 (tasks 3.1 to 3.4): the twenty-third allocation gate and the removal of the C# state row.
+- 📋 Phase 4 (tasks 4.1 to 4.4): the docs show the sample template; the README block, section 11 and 14, the rollups, and the package check.
 
 **Blockers:**
 - None. The phase 1 demo needs a host with a GPU window. This agent host reports `GLFW init failed: PlatformUnavailable`, so the smoke run stays pending there (Notes item 6 of `implementation.md`).
@@ -285,6 +286,63 @@ The phase 2 demo (check 1) passes on this host: one `UnknownBinding` line on sta
 
 ---
 
+## Phase 3 Close Record (Tasks 3.1 to 3.4)
+
+**Date:** 2026-11-19. Base: the phase 2 working tree (`949fda33` plus the phase 1 and 2 changes, no new commit). The solution builds with `0 Warning(s)` and `0 Error(s)`; build exit code 0.
+
+### Totals
+
+| Measure | Phase 2 close | Phase 3 close | Delta |
+|---|---|---|---|
+| Solution total | 3200 (3 skipped, 0 failed) | 3203 (3 skipped, 0 failed) | +3 |
+| `BrutalUi.Framework.Tests` | 389 | 392 | +3 |
+| `*SampleMarkupAllocationTests` | (none) | 3, `failed: 0` | new |
+
+### What Changed
+
+- `HelloState.cs`: `Row`, `AddButton`, `RebindButton`, `RestoreButton`, `RowClass`, and `s_scoreText` are gone with their build lines (A9). The remarks now name `HelloState.xml` as the state panel, `HelloMarkup` as the holder of the `hello.score` binding, and keep the label rule.
+- `HelloScreen.cs`: `BuildStatePanel` is gone. `RowClass` stays for the mode row. The remarks name `HelloState.xml` and `HelloRow` for the state row; the Tab order text stays.
+- `BrutalUi.Framework.Tests.csproj`: the generator `ProjectReference` analyzer line with the task 1.7 comment, `<Compile Include="../../samples/HelloPanel/HelloRow.cs" LinkBase="Shared" />`, and three `None` items with `Link` and `CopyToOutputDirectory="PreserveNewest"` for `HelloState.xml`, `HelloDefinitions.xml`, and `HelloScreen.css` (Decision 10). No `HelloPanel.csproj` reference.
+- `SampleMarkupAllocationTests.cs`: the twenty-third gate, 3 tests. `BuildScene` follows `HelloMarkup.Load`: the registry with the four commands, the `Store<int>`, the `TemplateBindings` with `hello.score`, the `TemplateLoader` with the generated `RegisterBrutalUiFrameworkTestsElements()`, the check load, the `DefinitionLoader` with the template text, the three factory twins under the three factory names, the map under `hello.actions`, the linked definitions load with `Assert.True(result.Succeeded)`, the `RecordingRenderer` measurer with `DefaultFontSize` 16, the viewport 1280 by 720, the parsed linked sheet, `RegisterTo`, `EnsureRoot` on each controller, `hello.main`, one `Update`, and the cached `Add` center with the two pointer events.
+
+### Gates and Demo
+
+- Demo (this host, no window needed): `BrutalUi.Framework.Tests --filter-class '*SampleMarkupAllocationTests'` gives `total: 3`, `failed: 0`. `AnAddClickOnTheLoadedStatePanelAllocatesNothing` measures 0 bytes over 100 click frames on the panel that `HelloState.xml` builds.
+- `AnAddClickOnTheLoadedStatePanelAllocatesNothing`: 2 warm-up rounds of 9 frames, `AllocationGate.ReleaseAllocationContext()`, 100 measured click frames, 0 bytes.
+- `AModeToggleOnTheLoadedSampleRecordsAllocatesNothing`: the same rounds; each frame sets `hello.detail` and `hello.main` in turn by the frame parity, then runs `Update` and `Draw`; 0 bytes.
+- `TheMeasuredBodyDoesRealWork`: one click frame adds 1 to the store and the count and shows `1` in the `score` label; one toggle frame makes `hello.detail` current with the info root as the one child of `bottom`; the state root holds a `HelloRow` with the class `hello-row`, 6 elements, a binding sum of 1, and 3 buttons with a `Clicked` slot.
+
+### Plants
+
+| # | Fault | `error CS` | Exit | Failed tests | Bytes | Restore |
+|---|---|---|---|---|---|---|
+| 4 | `GC.KeepAlive(new object());` first line of `LabelBindings.NumberText<T, TValue>.Apply` | 0 | 2 | `AnAddClickOnTheLoadedStatePanelAllocatesNothing` (named), plus 6 gates on the same path: `BoundTreeAllocationTests` (3), `TemplateBindingAllocationTests.UpdateAndDrawOnALoadedBoundTreeAllocateNothing`, `ModeDiffAllocationTests` (2 toggle gates) | named 2400; BoundTree 93600; TemplateBinding 4800; ModeDiff 2400 | `cmp` equal |
+| 5 | `GC.KeepAlive(new object());` first line of `UiManager.Apply` | 0 | 2 | `AModeToggleOnTheLoadedSampleRecordsAllocatesNothing` (named), plus `ModeDiffAllocationTests` (2 toggle gates) and `ModeDiffTests.SetModeAndTheDiffAllocateNothingAfterWarmUp` | named 2400; ModeDiff 9600 | `cmp` equal |
+
+The named test of each plant fails with the plant and passes without it. The co-failures ride the same applied path: the number binding of plant 4 also runs inside the toggle bodies, and `UiManager.Apply` of plant 5 also runs inside the eighteenth gate. Logs: `obj/plantscratch/p4.log`, `p5.log`.
+
+### Implementation Decisions (blast radius)
+
+- Decision 10 holds: the gate links the sample files and `HelloRow.cs` and adds the generator analyzer; it does not reference `HelloPanel.csproj` (acceptance grep: no output). The generator writes `RegisterBrutalUiFrameworkTestsElements` from the assembly name with the marked linked `HelloRow`; the build compiles the call.
+- The toggle measured body alternates the two modes by the frame `Round` parity, so each measured frame runs one real mode diff and the body holds no lambda, no string, no boxed value, and no `Assert`. `TheMeasuredBodyDoesRealWork` asserts that round 1 ends on `hello.detail` with the info root in `bottom`, so a body that never toggles cannot pass.
+- The three factory twins: the widget twin and the info twin are panels with `hello-panel` and `hello-panel-root` and one label; the layout twin has the shape of `HelloScreen.BuildLayout` (`hello-slot-root`, the `top` and `bottom` slots, none pickable). The roots build once, so no factory runs in a frame.
+- The test commands: `hello.add` adds 1 to the store and the count; `hello.reset` sets 0 and counts; `hello.rebind` and `hello.restore` count through one static handler. The sample rebind semantics need map actions that the gate does not exercise, so the twins keep the handler shape, not the listen.
+- Group 1 changes no `src/` file in the end state: both plant files restore equal under `cmp`, and `git status --porcelain src/` gives no output after the plants.
+- Task 3.1 grep: `grep -n 'BuildStatePanel\|\.Row\b\|AddButton' samples/HelloPanel/*.cs` lists only `HelloMount.AddButton` (the definition and the two doc crefs) and `mount.AddButton`. Notes item 8 closes: the interim C# state row is gone.
+- Headless check 4 of phase 2 still holds after the edits: the clean run gives no markup line, then `HelloPanel: GLFW init failed: PlatformUnavailable`, exit code 1. The output copies of the two XML files equal the sources under `cmp`.
+
+### Gotcha (new)
+
+- After a plant restore, the per-class binary run keeps the planted `BrutalUi.Framework.dll` copy under the test `bin/` until the test project rebuilds. The re-run after a restore must build the test project (or run `dotnet test`); the phase 3 re-check hit this once: the class gave 2400 bytes again, and gave 0 after `dotnet build tests/...csproj`.
+
+### Demo State
+
+The phase 3 demo passes on this host (the gate needs no window). The smoke run still stops at the GLFW line here: the eight-line run and the earlier windowed items stay pending on a host with a window.
+
+**Fix round 1 (2026-11-19 10:40):** The verifier fault: `SampleMarkupAllocationTests.cs` was 472 lines, over the 400-line cap. Fix: split the class into two partial files; `BuildScene`, the nested types, the ids, the handlers, and the helpers moved to `SampleMarkupAllocationScene.cs` (297 lines); `SampleMarkupAllocationTests.cs` keeps all test bodies and is now 185 lines. Re-check: build 0 warnings, 0 errors; class run total 3, failed 0; suite total 3203, failed 0, skipped 3; Framework 392.
+
+---
+
 ## API Integration
 
 - `DefinitionLoader.AddFactory(string name, Func<PanelContext, Element> factory)` - new. A `template` value of a `Panel` or a `Layout` names a text or a factory, through one name table.
@@ -323,6 +381,7 @@ The phase 2 demo (check 1) passes on this host: one `UnknownBinding` line on sta
 - [ ] Phase 1 demo: the developer runs `HelloPanel --frames 120` on a host with a window and reads an eighth line `HelloPanel: markup: elements 6, bindings 1, commands 3, panels 3, layouts 1, modes 2.` Line 6 still shows `adds`, `resets`, and `versions` above 0, and the exit code is 0.
 - [ ] Phase 2 demo: the developer changes `bind-text="hello.score"` to `bind-text="hello.scor"` in `samples/HelloPanel/bin/Debug/net10.0/HelloState.xml`, runs `HelloPanel --frames 120`, and reads one line that starts with `HelloState.xml(` and holds `): UnknownBinding: 'hello.scor' is not a bound key.` on standard error, no GLFW line, and exit code 1.
 - [ ] Phase 2 windowed half of check 4: on a host with a window, the clean run gives 8 lines and exit code 0.
+- [ ] Phase 3 demo: the developer runs `BrutalUi.Framework.Tests --filter-class '*SampleMarkupAllocationTests'` and reads a total of 3 with `failed: 0`. `AnAddClickOnTheLoadedStatePanelAllocatesNothing` measures 0 bytes over 100 click frames on the panel that `HelloState.xml` builds.
 
 ---
 
@@ -338,10 +397,10 @@ The phase 2 demo (check 1) passes on this host: one `UnknownBinding` line on sta
 1. ✅ Phase 1, group 1: tasks 1.1 to 1.6. Closed 2026-11-19.
 2. ✅ Phase 1, group 2: tasks 1.7 to 1.9. Closed 2026-11-19.
 3. ✅ Phase 2: tasks 2.1 to 2.5. Closed 2026-11-19. See the phase 2 close record.
+4. ✅ Phase 3: tasks 3.1 to 3.4. Closed 2026-11-19. See the phase 3 close record.
 
 ### Short Term (This Week)
-1. Phase 3: the twenty-third gate and the removal of the C# state row.
-2. Phase 4: the docs.
+1. Phase 4: the docs show the sample template.
 
 ### Future (After This Phase)
 1. `/update-epic markup` closes the epic and Phase 3 (Notes item 11 of `implementation.md`).
@@ -403,6 +462,21 @@ The phase 2 demo (check 1) passes on this host: one `UnknownBinding` line on sta
 - The verifier (brief `phase-2-verify.md`) returned PASS with zero fix rounds. Gates: build 0 warnings, 0 errors; suite total 3200, failed 0, skipped 3; `*DefinitionErrorTests` 12 and `*DefinitionFactoryTests` 5 passed; the load call at `Program.cs:422` precedes `Glfw.Init` at `:428`; the `DefinitionErrorTests.cs` diff against `949fda33` is exactly four lines; the blast radius is the four planned files plus the new `HelloMarkup.cs` (120 lines).
 - Demo: PASS. Checks 1 to 4 reproduced on the output copies; each file restored equal under `cmp`. The windowed half of check 4 (8 lines, exit 0) stays pending on a host with a window.
 - The four Phase 2 acceptance boxes in `tasks.md` are now `[x]`. The demo line is added to `## Needs Human Verification` here only; no line was written to `human-testing.md` (the coordinator copies them after the merge). No inbox item; no git write ran.
+
+### 2026-11-19 10:25 (Phase 3, group 1 close)
+- The STANDARD dev agent ran tasks 3.1 to 3.4 on the phase 2 working tree. No git write ran.
+- The C# state row is gone: `HelloState.Row`, its three buttons, `RowClass`, and `s_scoreText` left `HelloState.cs`, and `HelloScreen.BuildStatePanel` left `HelloScreen.cs`. `HelloState.xml` is the only state row (A9). The remarks carry the new owners.
+- `BrutalUi.Framework.Tests` now links `HelloRow.cs`, the generator analyzer line, and the three `PreserveNewest` copies (the two XML files and `HelloScreen.css`). No `HelloPanel.csproj` reference (Decision 10).
+- `SampleMarkupAllocationTests` (the twenty-third gate) added 3 tests. Framework grew 389 to 392; the solution grew 3200 to 3203, with 3 skipped and 0 failed. The build shows 0 warnings and 0 errors. The demo passes on this host: the filter-class run gives total 3, failed 0.
+- Plants 4 and 5 each gave exit code 2 with 0 `error CS` lines, failed exactly the named test plus the gates on the same path, and restored equal under `cmp` (table in the close record). The re-runs after each restore give 0 failed.
+- Headless check 4 of phase 2 still gives no markup line, then the GLFW line, exit code 1. The smoke run and the eight-line demo stay pending on a host with a window.
+- No existing test changed. No open question. No inbox message reached this phase.
+
+### 2026-11-19 10:35 (Phase 3 verifier close)
+- The verifier (brief `phase-3-verify.md`) returned FAIL on the first pass: gate step 10, `SampleMarkupAllocationTests.cs` was 472 lines, over the 400-line cap. Steps 1 to 9 and 11 passed; Demo: PASS. The fault became one open `bug` line in `inbox.md`.
+- Fix round 1 (brief `phase-3-fix1.md`, STANDARD dev agent): partial-class split into `SampleMarkupAllocationTests.cs` (185 lines) and `SampleMarkupAllocationScene.cs` (297 lines). Test names, bodies, semantics, and totals unchanged; no other file touched.
+- The verifier re-run returned PASS on all 11 gate steps. Build 0 warnings, 0 errors; suite total 3203, failed 0, skipped 3; class run total 3, failed 0; plants 4 and 5 evidence holds in the close record and the `p4.log`/`p5.log` logs. Demo: PASS (0 bytes over 100 click frames).
+- The `bug` line is marked `done: phase-3-fix1.md`. The Phase 3 demo line is added to `## Needs Human Verification` here only; no line was written to `human-testing.md` (the coordinator copies them after the merge). No inbox item reached the phase beyond the verifier fault; no git write ran.
 
 ---
 
