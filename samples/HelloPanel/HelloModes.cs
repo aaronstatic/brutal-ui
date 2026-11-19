@@ -1,10 +1,8 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using Brutal.GlfwApi;
 using BrutalUi.Core;
 using BrutalUi.Framework;
-using BrutalUi.Markup;
 
 namespace HelloPanel;
 
@@ -93,9 +91,6 @@ internal sealed class HelloModes
         }
     };
 
-    /// <summary>The selector of the score binding. It returns the score itself, static, created one time.</summary>
-    private static readonly Func<int, int> s_score = static s => s;
-
     /// <summary>The state of the sample. Its map serves both modes, and its XML row fills the state panel.</summary>
     private readonly HelloState _state;
 
@@ -180,65 +175,45 @@ internal sealed class HelloModes
     }
 
     /// <summary>
-    /// Loads the state panel template from <c>HelloState.xml</c> and the six records from
-    /// <c>HelloDefinitions.xml</c>, registers the records with the manager, builds every panel root, and returns the
-    /// mounted trees.
+    /// Registers the loaded records with the manager, builds every panel root, and returns the mounted trees.
+    /// <see cref="HelloMarkup.Load"/> has read <c>HelloState.xml</c> and <c>HelloDefinitions.xml</c> and run both
+    /// loads before this call.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The flow order: the bindings attach to the template loader, the generated register call adds the marked
-    /// types, the check load of <c>HelloState.xml</c> runs first, and the definitions load follows. The load calls
-    /// no factory; <see cref="PanelController.EnsureRoot"/> runs the factories (the build rule). Phase 2 moves this
-    /// flow and the error print to <c>HelloMarkup.Load</c>, ahead of the window.
+    /// The method starts at <see cref="DefinitionLoadResult.RegisterTo(UiManager)"/>. The load calls no factory;
+    /// <see cref="PanelController.EnsureRoot"/> runs the factories (the build rule), so the panel factories run only
+    /// inside <see cref="Mount"/>, after the texture handle exists (Decision 5). The load itself needs no GPU and
+    /// runs before the window, in <see cref="HelloMarkup.Load"/> (Decision 6).
     /// </para>
     /// <para>
-    /// A failed load throws with one message line per error, in the <see cref="TemplateError.ToString"/> and
-    /// <see cref="DefinitionError.ToString"/> form, joined with LF (Notes item 7). The check tree is dropped: the
-    /// mounted state root comes from the template panel record (Decision 9).
+    /// The mounted state root comes from the template panel record; the check tree of the load is dropped
+    /// (Decision 7).
     /// </para>
     /// </remarks>
+    /// <param name="definitions">The succeeded result of <see cref="HelloMarkup.Load"/>.</param>
     /// <param name="checker">The checker texture for the image of the widget panel.</param>
     /// <returns>The mount: the two roots, the six labels, the widgets, the <c>Add</c> button, and the counts.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="definitions"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException"><paramref name="definitions"/> is a failed result.</exception>
     /// <exception cref="InvalidOperationException">
-    /// The check load or the definitions load failed, with one error line each. The widget factory left the gate
-    /// label, the input label, the stick label, the move label, the scheme label, the rebind label, or the widget
-    /// section null. A panel controller, a mounted element, or a loaded mode is missing. The build rule cannot fail
-    /// in this sample; the checks document the contract of <see cref="HelloScreen.BuildWidgetPanel"/>.
+    /// The widget factory left the gate label, the input label, the stick label, the move label, the scheme label,
+    /// the rebind label, or the widget section null. A panel controller, a mounted element, or a loaded mode is
+    /// missing. The build rule cannot fail in this sample; the checks document the contract of
+    /// <see cref="HelloScreen.BuildWidgetPanel"/>.
     /// </exception>
-    public HelloMount Mount(TextureHandle checker)
+    public HelloMount Mount(DefinitionLoadResult definitions, TextureHandle checker)
     {
+        ArgumentNullException.ThrowIfNull(definitions);
+        if (!definitions.Succeeded)
+        {
+            throw new ArgumentException("The definitions load failed. Mount needs a succeeded result.",
+                nameof(definitions));
+        }
+
         _checker = checker;
 
-        byte[] stateText = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "HelloState.xml"));
-        byte[] definitionsText = File.ReadAllBytes(
-            Path.Combine(AppContext.BaseDirectory, "HelloDefinitions.xml"));
-
-        TemplateLoader templates = new();
-        TemplateBindings bindings = new(_state.Map.Commands);
-        bindings.AddText("hello.score", _state.Score, s_score);
-        bindings.AttachTo(templates);
-        templates.RegisterHelloPanelElements();
-
-        TemplateLoadResult check = templates.Load(stateText, "HelloState.xml");
-        if (!check.Succeeded)
-        {
-            throw new InvalidOperationException(JoinErrors(check.Errors));
-        }
-
-        DefinitionLoader loader = new(templates);
-        loader.AddTemplate("HelloState.xml", stateText);
-        loader.AddFactory("HelloModes.CreateWidgetPanel", CreateWidgetPanel);
-        loader.AddFactory("HelloModes.CreateInfoPanel", CreateInfoPanel);
-        loader.AddFactory("HelloModes.CreateLayout", CreateLayout);
-        loader.AddActionMap("hello.actions", _state.Map);
-
-        DefinitionLoadResult result = loader.Load(definitionsText, "HelloDefinitions.xml");
-        if (!result.Succeeded)
-        {
-            throw new InvalidOperationException(JoinErrors(result.Errors));
-        }
-
-        IReadOnlyList<PanelController> controllers = result.RegisterTo(Manager);
+        IReadOnlyList<PanelController> controllers = definitions.RegisterTo(Manager);
 
         // The build rule: each root exists before the first frame, so no factory runs in a frame (Decision 3).
         foreach (PanelController controller in controllers)
@@ -266,8 +241,8 @@ internal sealed class HelloModes
         Button addButton = stateRoot.Find<Button>("add"u8)
             ?? throw new InvalidOperationException("The state panel has no 'add' button.");
 
-        Main = FindMode(result.Modes, MainName, "hello.main");
-        Detail = FindMode(result.Modes, DetailName, "hello.detail");
+        Main = FindMode(definitions.Modes, MainName, "hello.main");
+        Detail = FindMode(definitions.Modes, DetailName, "hello.detail");
 
         // Decision 9: line 8 counts the mounted state root, not the dropped check tree.
         int elements = 0;
@@ -275,7 +250,8 @@ internal sealed class HelloModes
         int commandCount = 0;
         CountTree(stateRoot, ref elements, ref bindingCount, ref commandCount);
         MarkupCounts markup = new(
-            elements, bindingCount, commandCount, result.Panels.Count, result.Layouts.Count, result.Modes.Count);
+            elements, bindingCount, commandCount, definitions.Panels.Count, definitions.Layouts.Count,
+            definitions.Modes.Count);
 
         return new HelloMount
         {
@@ -368,19 +344,6 @@ internal sealed class HelloModes
         {
             CountTree(child, ref elements, ref bindings, ref commands);
         }
-    }
-
-    /// <summary>Joins the <see cref="object.ToString"/> line of each error with LF.</summary>
-    private static string JoinErrors<T>(IReadOnlyList<T> errors)
-        where T : struct
-    {
-        List<string> lines = new(errors.Count);
-        foreach (T error in errors)
-        {
-            lines.Add(error.ToString() ?? string.Empty);
-        }
-
-        return string.Join("\n", lines);
     }
 
     /// <summary>The factory of <c>hello.widgets</c>. It builds the widget panel and writes seven out fields.</summary>

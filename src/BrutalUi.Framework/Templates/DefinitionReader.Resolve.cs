@@ -34,6 +34,12 @@ namespace BrutalUi.Framework;
 /// </remarks>
 internal sealed partial class DefinitionReader
 {
+    /// <summary>The fixed part of the <c>UnknownTemplate</c> message. The pass writes the quoted template name
+    /// before this text.</summary>
+    private const string UnknownTemplateMessage =
+        "' is not a registered template. Add it with DefinitionLoader.AddTemplate or DefinitionLoader.AddFactory " +
+        "before the load.";
+
     /// <summary>Resolves the entries and builds the three record lists. A fault of one entry gives no error in
     /// another (the follow-on rule).</summary>
     private void Resolve(List<PanelDefinition> panels, List<LayoutDefinition> layouts, List<ModeDefinition> modes)
@@ -80,7 +86,7 @@ internal sealed partial class DefinitionReader
             {
                 AddError(
                     DefinitionErrorKind.UnknownTemplate,
-                    $"'{entry.Template.Text}' is not a registered template. Add it with DefinitionLoader.AddTemplate before the load.",
+                    $"'{entry.Template.Text}{UnknownTemplateMessage}",
                     entry.Template.Line,
                     entry.Template.Column);
                 faulty = true;
@@ -129,7 +135,7 @@ internal sealed partial class DefinitionReader
             {
                 AddError(
                     DefinitionErrorKind.UnknownTemplate,
-                    $"'{entry.Template.Text}' is not a registered template. Add it with DefinitionLoader.AddTemplate before the load.",
+                    $"'{entry.Template.Text}{UnknownTemplateMessage}",
                     entry.Template.Line,
                     entry.Template.Column);
                 faulty = true;

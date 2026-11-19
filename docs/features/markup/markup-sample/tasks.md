@@ -1,8 +1,8 @@
 # markup/markup-sample - Task Checklist
 
 **Epic:** markup (feature 6 of 6)
-**Last Updated:** 2026-11-19 09:35
-**Progress:** 9/22 tasks complete (41%)
+**Last Updated:** 2026-11-19 10:00
+**Progress:** 14/22 tasks complete (64%)
 
 Agent tiers: Phase 1 ADVANCED (opus), Phase 2 ADVANCED (opus), Phase 3 STANDARD (sonnet), Phase 4 STANDARD (sonnet).
 
@@ -44,28 +44,28 @@ The task text comes word for word from the phase sections of `implementation.md`
 
 ---
 
-## Phase 2: The Load Error Exit Before the Window (0/5 complete) — ADVANCED
+## Phase 2: The Load Error Exit Before the Window (5/5 complete) — ADVANCED
 
 **Demo:** the developer changes `bind-text="hello.score"` to `bind-text="hello.scor"` in `samples/HelloPanel/bin/Debug/net10.0/HelloState.xml`, runs `HelloPanel --frames 120`, and reads one line that starts with `HelloState.xml(` and holds `): UnknownBinding: 'hello.scor' is not a bound key.` on standard error, no GLFW line, and exit code 1.
 **Needs:** Phase 1
 **Agent tier:** ADVANCED (opus). This phase moves the object build across the GLFW and ImGui boundary of `Program.cs` and changes the error path.
 
 **Tasks (one group, 6 files):**
-- [ ] 2.1 Write `samples/HelloPanel/HelloMarkup.cs` with `internal static class HelloMarkup`: the two file name constants, the template name and factory name constants of The Two Files, the static selector `s_score` (`static s => s`), and `public static DefinitionLoadResult? Load(HelloState state, HelloModes modes, TextWriter errors)`. The method reads both files from `AppContext.BaseDirectory` and runs the flow of The Sample. It writes each `TemplateError.ToString` of the check load and each `DefinitionError.ToString` of the definitions load to `errors`, one line each, with no prefix (A3). It runs both loads, so one run gives each error, and returns `null` when one error or more exists. An IO fault throws, as `LoadSheet` does. The remarks state the A4 order, the check load of Decision 7, and the rule that the method needs no GPU and no window. Move the load code out of `HelloModes.Mount`.
-- [ ] 2.2 Edit `samples/HelloPanel/HelloModes.cs`. `Mount` becomes `Mount(DefinitionLoadResult definitions, TextureHandle checker)`: it throws `ArgumentNullException` for `null` and `ArgumentException` for a failed result, and starts at `RegisterTo`. Update the remarks: the constructor needs no GPU, and the factories run only inside `Mount`, after the texture exists.
-- [ ] 2.3 Edit `samples/HelloPanel/Program.cs`. In `Run`, after `LoadSheet` and before `Glfw.Init`, create the font service, the texture service, the renderer, the `UiContext`, the `HelloState`, and the `HelloModes`, then call `HelloMarkup.Load(state, modes, Console.Error)`. A `null` result returns `ExitFailure` with no GLFW call. Pass the renderer, the context, the state, the modes, and the result through `RunWindow` to `RunImGui`, and remove their creation from `RunImGui`; the texture service comes from `renderer.Textures`. `RunImGui` calls `modes.Mount(definitions, handle)`. Update the remarks of the class (the load of the two files before the window) and of `Run`.
-- [ ] 2.4 Edit `src/BrutalUi.Framework/Templates/DefinitionReader.Resolve.cs`. Put the `UnknownTemplate` message in one constant: `'<name>' is not a registered template. Add it with DefinitionLoader.AddTemplate or DefinitionLoader.AddFactory before the load.` Edit `tests/BrutalUi.Framework.Tests/Templates/DefinitionErrorTests.cs`: change the two expected strings (at :42 and :294 at planning time) to the new message and change nothing else (Notes item 9).
-- [ ] 2.5 Run the build and the tests, and expect no total change in this phase. Run the headless checks on the output folder. Check 1 (the demo): the broken key in `HelloState.xml` gives one `UnknownBinding` line, no GLFW line, and exit code 1. Check 2: `template="HelloModes.CreateLayot"` in `HelloDefinitions.xml` gives one line that starts with `HelloDefinitions.xml(` and holds `): UnknownTemplate: 'HelloModes.CreateLayot' is not a registered template.`, and exit code 1. Check 3: both faults in one run give both lines, sorted by file, and exit code 1. Check 4: the clean files on this host give no markup line, then the GLFW line, and exit code 1 (so the load passed before GLFW); on a host with a window, the clean run gives 8 lines and exit code 0. Restore each file with `cp` and check it with `cmp`. Record each check, the counts, and the demo state in `context.md`.
+- [x] 2.1 Write `samples/HelloPanel/HelloMarkup.cs` with `internal static class HelloMarkup`: the two file name constants, the template name and factory name constants of The Two Files, the static selector `s_score` (`static s => s`), and `public static DefinitionLoadResult? Load(HelloState state, HelloModes modes, TextWriter errors)`. The method reads both files from `AppContext.BaseDirectory` and runs the flow of The Sample. It writes each `TemplateError.ToString` of the check load and each `DefinitionError.ToString` of the definitions load to `errors`, one line each, with no prefix (A3). It runs both loads, so one run gives each error, and returns `null` when one error or more exists. An IO fault throws, as `LoadSheet` does. The remarks state the A4 order, the check load of Decision 7, and the rule that the method needs no GPU and no window. Move the load code out of `HelloModes.Mount`.
+- [x] 2.2 Edit `samples/HelloPanel/HelloModes.cs`. `Mount` becomes `Mount(DefinitionLoadResult definitions, TextureHandle checker)`: it throws `ArgumentNullException` for `null` and `ArgumentException` for a failed result, and starts at `RegisterTo`. Update the remarks: the constructor needs no GPU, and the factories run only inside `Mount`, after the texture exists.
+- [x] 2.3 Edit `samples/HelloPanel/Program.cs`. In `Run`, after `LoadSheet` and before `Glfw.Init`, create the font service, the texture service, the renderer, the `UiContext`, the `HelloState`, and the `HelloModes`, then call `HelloMarkup.Load(state, modes, Console.Error)`. A `null` result returns `ExitFailure` with no GLFW call. Pass the renderer, the context, the state, the modes, and the result through `RunWindow` to `RunImGui`, and remove their creation from `RunImGui`; the texture service comes from `renderer.Textures`. `RunImGui` calls `modes.Mount(definitions, handle)`. Update the remarks of the class (the load of the two files before the window) and of `Run`.
+- [x] 2.4 Edit `src/BrutalUi.Framework/Templates/DefinitionReader.Resolve.cs`. Put the `UnknownTemplate` message in one constant: `'<name>' is not a registered template. Add it with DefinitionLoader.AddTemplate or DefinitionLoader.AddFactory before the load.` Edit `tests/BrutalUi.Framework.Tests/Templates/DefinitionErrorTests.cs`: change the two expected strings (at :42 and :294 at planning time) to the new message and change nothing else (Notes item 9).
+- [x] 2.5 Run the build and the tests, and expect no total change in this phase. Run the headless checks on the output folder. Check 1 (the demo): the broken key in `HelloState.xml` gives one `UnknownBinding` line, no GLFW line, and exit code 1. Check 2: `template="HelloModes.CreateLayot"` in `HelloDefinitions.xml` gives one line that starts with `HelloDefinitions.xml(` and holds `): UnknownTemplate: 'HelloModes.CreateLayot' is not a registered template.`, and exit code 1. Check 3: both faults in one run give both lines, sorted by file, and exit code 1. Check 4: the clean files on this host give no markup line, then the GLFW line, and exit code 1 (so the load passed before GLFW); on a host with a window, the clean run gives 8 lines and exit code 0. Restore each file with `cp` and check it with `cmp`. Record each check, the counts, and the demo state in `context.md`.
 
 **Estimated Steps:** about 50 (5 tasks, about ten steps for one task)
 
 **Files (6):** `HelloMarkup.cs`, `HelloModes.cs`, `Program.cs`, `DefinitionReader.Resolve.cs`, `DefinitionErrorTests.cs`, `context.md`
 
 **Acceptance Criteria:**
-- [ ] Checks 1 to 4 give the expected lines and exit codes, and each restored file equals its source under `cmp`.
-- [ ] In `Run`, the call of `HelloMarkup.Load` comes before the first `Glfw.` call (`grep -n 'HelloMarkup.Load\|Glfw.Init' samples/HelloPanel/Program.cs` lists the load first).
-- [ ] `git diff <phase 1 close> -- tests/BrutalUi.Framework.Tests/Templates/DefinitionErrorTests.cs | grep -E '^[+-][^+-]'` gives four lines: the two old and the two new message strings.
-- [ ] Each test passes, and the solution total equals the phase 1 close.
+- [x] Checks 1 to 4 give the expected lines and exit codes, and each restored file equals its source under `cmp`.
+- [x] In `Run`, the call of `HelloMarkup.Load` comes before the first `Glfw.` call (`grep -n 'HelloMarkup.Load\|Glfw.Init' samples/HelloPanel/Program.cs` lists the load first).
+- [x] `git diff <phase 1 close> -- tests/BrutalUi.Framework.Tests/Templates/DefinitionErrorTests.cs | grep -E '^[+-][^+-]'` gives four lines: the two old and the two new message strings.
+- [x] Each test passes, and the solution total equals the phase 1 close.
 
 ---
 
@@ -150,6 +150,7 @@ The task text comes word for word from the phase sections of `implementation.md`
 - ✅ Phase 1, group 1 (tasks 1.1 to 1.6): `DefinitionLoader.AddFactory`, the resolve rule, the `RegisterTo` controller list, `DefinitionFactoryTests` (5 tests, Framework 389, solution 3200 with 3 skipped), plants 1 to 3, and `HelloRow.cs`. See `context.md`.
 - ✅ Phase 1, group 2 (tasks 1.7 to 1.9): the two XML files, the generator analyzer line and the copies in `HelloPanel.csproj`, `HelloModes.Mount` with `HelloMount` and `MarkupCounts`, and smoke line 8 with the markup check in `Program.cs`. Totals unchanged (3200, failed 0, skipped 3; Framework 389). The smoke run and its plant give the GLFW line here: pending a host with a window. See `context.md`.
 - ✅ Phase 1 acceptance criteria closed on the send-back: each of the six items re-checked on this host (build 0 warnings; suite total 3200, failed 0, skipped 3; `*DefinitionFactoryTests` 5 passed; src diff limited to the three planned files with no edited test; plants 1 to 3 restored equal under `cmp`; the two XML output copies equal; one generated register call compiled; the smoke recorded pending). See the close record in `context.md`.
+- ✅ Phase 2 (tasks 2.1 to 2.5): `HelloMarkup.Load` with the name constants and the error print; `Mount(DefinitionLoadResult, TextureHandle)`; the renderer, context, state, modes, and load moved before `Glfw.Init` in `Run`; the `UnknownTemplate` constant message; the two test strings. Totals unchanged (3200, failed 0, skipped 3; Framework 389). Headless checks 1 to 4 give the expected lines and exit codes; the output XML copies restored equal under `cmp`. See the close record in `context.md`.
 
 ### Discovered New Tasks
 - (none)

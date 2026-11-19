@@ -1,9 +1,9 @@
 # markup/markup-sample - Context & Decisions
 
 **Epic:** markup (feature 6 of 6)
-**Last Updated:** 2026-11-19 09:35
+**Last Updated:** 2026-11-19 10:00
 **Current Phase:** Phase 2 - The Load Error Exit Before the Window
-**Status:** 🟡 In Progress
+**Status:** 🟡 Phase 2 closed (tasks 2.1 to 2.5); phase 3 open
 
 ---
 
@@ -14,9 +14,10 @@
 - ✅ The dev docs exist: `tasks.md`, `context.md`, and `inbox.md`.
 - ✅ Phase 1, group 1 (tasks 1.1 to 1.6): `AddFactory` with the shared name table, the factory resolve rule, the `RegisterTo` controller list, `DefinitionFactoryTests` (5 tests, Framework 389), `HelloRow.cs`, and plants 1 to 3. See the group close record below.
 - ✅ Phase 1, group 2 (tasks 1.7 to 1.9): `HelloState.xml`, `HelloDefinitions.xml`, the csproj analyzer and copy lines, `HelloModes.Mount` with `HelloMount` and `MarkupCounts`, and smoke line 8 with its markup check. Totals unchanged. See the group 2 close record below.
+- ✅ Phase 2 (tasks 2.1 to 2.5): `HelloMarkup.Load` with the name constants and the error print, `Mount(DefinitionLoadResult, TextureHandle)`, the managed build and the load before `Glfw.Init`, the `UnknownTemplate` constant message, the two test strings, and headless checks 1 to 4. Totals unchanged. See the phase 2 close record below.
 
 **What's Next:**
-- 📋 Phase 2 (tasks 2.1 to 2.5): `HelloMarkup.Load`, the mount split, the load error exit before the window, the `UnknownTemplate` message, and the four headless checks.
+- 📋 Phase 3 (tasks 3.1 to 3.4): the twenty-third allocation gate and the removal of the C# state row.
 
 **Blockers:**
 - None. The phase 1 demo needs a host with a GPU window. This agent host reports `GLFW init failed: PlatformUnavailable`, so the smoke run stays pending there (Notes item 6 of `implementation.md`).
@@ -226,6 +227,64 @@ The expected line 8 is `HelloPanel: markup: elements 6, bindings 1, commands 3, 
 
 ---
 
+## Phase 2 Close Record (Tasks 2.1 to 2.5)
+
+**Date:** 2026-11-19. Base commit `949fda33e89acfa3274b6fa18b690ff86d35183d` (the phase 1 close). The solution builds with `0 Warning(s)` and `0 Error(s)`; build exit code 0.
+
+### Totals
+
+| Measure | Phase 1 close | Phase 2 close | Delta |
+|---|---|---|---|
+| Solution total | 3200 (3 skipped, 0 failed) | 3200 (3 skipped, 0 failed) | none, as expected |
+| `BrutalUi.Framework.Tests` | 389 | 389 | none |
+| `*DefinitionErrorTests` | 12 | 12, `failed: 0` | none |
+
+`dotnet test --solution brutal-ui.sln`: `total: 3200, failed: 0, succeeded: 3197, skipped: 3`, exit 0. The per-assembly Framework run: `total: 389, failed: 0`.
+
+### What Moved
+
+- New `samples/HelloPanel/HelloMarkup.cs` (120 lines): `internal static class HelloMarkup` with the constants `StateFileName`, `DefinitionsFileName`, `StateTemplateName`, `WidgetPanelFactoryName`, `InfoPanelFactoryName`, `LayoutFactoryName`, `ActionsMapName`, the private `ScoreKey`, the static selector `s_score` (`static s => s`), and `public static DefinitionLoadResult? Load(HelloState state, HelloModes modes, TextWriter errors)`. The method reads both files from `AppContext.BaseDirectory`, runs the A4 flow with the check load of Decision 7, prints each `TemplateError.ToString` then each `DefinitionError.ToString` to `errors` one line each with no prefix, and returns `null` when one error or more exists. An IO fault throws.
+- `HelloModes.Mount` is now `Mount(DefinitionLoadResult definitions, TextureHandle checker)`: `ArgumentNullException.ThrowIfNull(definitions)`, then `ArgumentException` for a failed result, then the method starts at `RegisterTo`. The file reads, the loaders, the flow, the throw-with-joined-lines, the `s_score` selector, and `JoinErrors` left the class. The remarks now state that the constructor needs no GPU and the factories run only inside `Mount`, after the texture exists.
+- `Program.Run` builds `ImGuiFontService`, `ImGuiTextureService`, `ImGuiRenderer`, `UiContext`, `HelloState`, and `HelloModes`, then calls `HelloMarkup.Load(state, modes, Console.Error)`, all before `Glfw.Init`; a `null` result returns `ExitFailure` with no GLFW call. The five objects and the result pass through `RunWindow` to `RunImGui`, which no longer creates them; `RunImGui` takes the texture service from `renderer.Textures` and calls `modes.Mount(definitions, handle)`. The class remarks, the `Run` remarks, and the `RunWindow`/`RunImGui` docs carry the new order and the Decision 6 no-native-call rule.
+- `DefinitionReader.Resolve.cs`: one constant `UnknownTemplateMessage` holds the fixed part, `' is not a registered template. Add it with DefinitionLoader.AddTemplate or DefinitionLoader.AddFactory before the load.`; each call site interpolates the quoted name before it (the constant form keeps the message in one place; the `'<name>'` shape of the plan holds at emit time). `DefinitionErrorTests.cs`: the two expected strings updated, nothing else (Notes item 9).
+
+### Headless Checks (on `samples/HelloPanel/bin/Debug/net10.0/`)
+
+Plants ran on the output copies; each file was restored with `cp` from `samples/HelloPanel/` and verified with `cmp` (all equal). The temporary `.orig` copies under the output folder were removed after the checks.
+
+- **Check 1 (the demo):** `bind-text="hello.score"` to `bind-text="hello.scor"` in the output `HelloState.xml`. One line on standard error, no GLFW line, exit code 1:
+  `HelloState.xml(6,45): UnknownBinding: 'hello.scor' is not a bound key. Register it with TemplateBindings.AddText on the TemplateBindings object that this loader attached first, before the load. ...`
+  The definitions load ran too and gave no line, so the check passed on its own. `cmp` after restore: equal.
+- **Check 2:** `template="HelloModes.CreateLayout"` to `template="HelloModes.CreateLayot"` in the output `HelloDefinitions.xml`. One line on standard error, exit code 1:
+  `HelloDefinitions.xml(5,34): UnknownTemplate: 'HelloModes.CreateLayot' is not a registered template. Add it with DefinitionLoader.AddTemplate or DefinitionLoader.AddFactory before the load.`
+  `cmp` after restore: equal.
+- **Check 3:** both faults in one run. Two lines on standard error, exit code 1, in this order: the `HelloState.xml(6,45): UnknownBinding: ...` line first, then the `HelloDefinitions.xml(5,34): UnknownTemplate: ...` line. The observed order is sorted by file: the check load prints before the definitions load, and the check-load source name is the first file. `cmp` after restore: both equal.
+- **Check 4:** clean files. No markup line, then `HelloPanel: GLFW init failed: PlatformUnavailable (Failed to detect any supported platform).` on standard error, exit code 1. The load passed before GLFW, exactly the window rule: the failure is the window, not the markup. On a host with a window this run gives the eight lines and exit code 0 (pending).
+
+### Acceptance Checks
+
+- `grep -n 'HelloMarkup.Load\|Glfw.Init' samples/HelloPanel/Program.cs`: the call at :422 comes before the first `Glfw.Init` at :428 (the earlier matches are doc crefs).
+- `git diff 949fda33 -- tests/BrutalUi.Framework.Tests/Templates/DefinitionErrorTests.cs | grep -E '^[+-][^+-]'`: exactly four lines, the two old strings and the two new strings.
+- The full suite passes with the phase 1 totals.
+
+### Blast Radius
+
+- `git diff --stat 949fda33`: the four planned files (`HelloModes.cs`, `Program.cs`, `DefinitionReader.Resolve.cs`, `DefinitionErrorTests.cs`) plus the new `HelloMarkup.cs`. No other file changed; no git write ran.
+- The one `src/` change is the `UnknownTemplate` message and its constant. The message is public text: the only tests that pin it are the two strings edited here. `BrutalUi.Core`, `BrutalUi.Markup`, and `BrutalUi.Framework/Panels` are untouched.
+- The managed-before-GLFW build moves the `UiManager` constructor slot write (Decision 6) before `Glfw.Init`; the constructors store fields and call no ImGui, GLFW, or Vulkan function, checked at planning time and kept in the remarks of `Run`. `HelloState.Row`, the C# buttons, and `HelloScreen.BuildStatePanel` stay untouched until phase 3 (Notes item 8).
+- Phase 3 impact: `HelloMarkup.Load` is the flow the gate test duplicates; `SampleMarkupAllocationTests` links `HelloRow.cs` and the two XML files, not `HelloMarkup.cs`, so the sample-only class needs no test hook.
+
+### Demo State
+
+The phase 2 demo (check 1) passes on this host: one `UnknownBinding` line on standard error, no GLFW line, exit code 1. The clean windowed run (eight lines, exit 0) and the phase 1 demo stay pending on a host with a window.
+
+### Migration Risks and Follow-up Work
+
+- Risk: a game that copies the sample must build the six managed objects before `Glfw.Init` only if their constructors stay native-free; the `Run` remarks carry the rule. No follow-up is due inside this feature.
+- Follow-up (phase 3): delete `HelloState.Row`, the C# buttons, and `HelloScreen.BuildStatePanel`; add the twenty-third gate.
+
+---
+
 ## API Integration
 
 - `DefinitionLoader.AddFactory(string name, Func<PanelContext, Element> factory)` - new. A `template` value of a `Panel` or a `Layout` names a text or a factory, through one name table.
@@ -253,7 +312,7 @@ The expected line 8 is `HelloPanel: markup: elements 6, bindings 1, commands 3, 
 
 ### Manual Testing Checklist
 - [ ] The smoke run prints 8 lines with exit code 0 on a host with a window.
-- [ ] The headless checks 1 to 4 of phase 2 give the expected lines and exit codes.
+- [x] The headless checks 1 to 4 of phase 2 give the expected lines and exit codes (this host, 2026-11-19; see the phase 2 close record).
 
 ---
 
@@ -262,6 +321,8 @@ The expected line 8 is `HelloPanel: markup: elements 6, bindings 1, commands 3, 
 `/autorun-feature` adds one line per item that the verifier cannot check, for a person to test.
 
 - [ ] Phase 1 demo: the developer runs `HelloPanel --frames 120` on a host with a window and reads an eighth line `HelloPanel: markup: elements 6, bindings 1, commands 3, panels 3, layouts 1, modes 2.` Line 6 still shows `adds`, `resets`, and `versions` above 0, and the exit code is 0.
+- [ ] Phase 2 demo: the developer changes `bind-text="hello.score"` to `bind-text="hello.scor"` in `samples/HelloPanel/bin/Debug/net10.0/HelloState.xml`, runs `HelloPanel --frames 120`, and reads one line that starts with `HelloState.xml(` and holds `): UnknownBinding: 'hello.scor' is not a bound key.` on standard error, no GLFW line, and exit code 1.
+- [ ] Phase 2 windowed half of check 4: on a host with a window, the clean run gives 8 lines and exit code 0.
 
 ---
 
@@ -276,11 +337,11 @@ The expected line 8 is `HelloPanel: markup: elements 6, bindings 1, commands 3, 
 ### Immediate (Today/This Session)
 1. ✅ Phase 1, group 1: tasks 1.1 to 1.6. Closed 2026-11-19.
 2. ✅ Phase 1, group 2: tasks 1.7 to 1.9. Closed 2026-11-19.
+3. ✅ Phase 2: tasks 2.1 to 2.5. Closed 2026-11-19. See the phase 2 close record.
 
 ### Short Term (This Week)
-1. Phase 2: the load error exit before the window.
-2. Phase 3: the twenty-third gate and the removal of the C# state row.
-3. Phase 4: the docs.
+1. Phase 3: the twenty-third gate and the removal of the C# state row.
+2. Phase 4: the docs.
 
 ### Future (After This Phase)
 1. `/update-epic markup` closes the epic and Phase 3 (Notes item 11 of `implementation.md`).
@@ -328,6 +389,20 @@ The expected line 8 is `HelloPanel: markup: elements 6, bindings 1, commands 3, 
 - Item 5: `grep -rn 'RegisterHelloPanelElements' samples/HelloPanel/*.cs` gives the one real call at `HelloModes.cs:220` plus the remarks line; the fresh build compiles it.
 - Item 6: unchanged, `context.md` records the smoke as pending a host with a window; the windowed check stays open in `## Needs Human Verification`.
 - The six acceptance boxes in `tasks.md` are now `[x]`. No file of the build changed in this round; no git write ran.
+
+### 2026-11-19 09:50 (Phase 2 close)
+- The ADVANCED dev agent ran tasks 2.1 to 2.5 on base `949fda33`. No git write ran.
+- `HelloMarkup.Load` now owns the two file reads, the A4 flow with the Decision 7 check load, the error print (no prefix), and the name constants. `HelloModes.Mount(definitions, checker)` starts at `RegisterTo` and checks its argument. `Program.Run` builds the six managed objects and loads the markup before `Glfw.Init`; a `null` result exits 1 with no GLFW call. `RunImGui` takes the texture service from `renderer.Textures`.
+- The `UnknownTemplate` message names `AddTemplate` and `AddFactory` from one constant; the two `DefinitionErrorTests.cs` strings changed and nothing else (4 diff lines against `949fda33`).
+- The build shows 0 warnings and 0 errors. The tests give total 3200, failed 0, skipped 3; Framework 389. No total change, as expected.
+- Headless checks 1 to 4 passed on the output folder with the expected lines and exit codes; the check 3 order is the `HelloState.xml(` line before the `HelloDefinitions.xml(` line (sorted by file); each restored file equals its source under `cmp`. Check 4 shows the GLFW line only: the load passed before GLFW on this no-window host.
+- The phase 2 demo (check 1) holds here. The clean eight-line run and the phase 1 demo stay pending on a host with a window.
+- No open question. No inbox message reached this phase.
+
+### 2026-11-19 10:00 (Phase 2 verifier close)
+- The verifier (brief `phase-2-verify.md`) returned PASS with zero fix rounds. Gates: build 0 warnings, 0 errors; suite total 3200, failed 0, skipped 3; `*DefinitionErrorTests` 12 and `*DefinitionFactoryTests` 5 passed; the load call at `Program.cs:422` precedes `Glfw.Init` at `:428`; the `DefinitionErrorTests.cs` diff against `949fda33` is exactly four lines; the blast radius is the four planned files plus the new `HelloMarkup.cs` (120 lines).
+- Demo: PASS. Checks 1 to 4 reproduced on the output copies; each file restored equal under `cmp`. The windowed half of check 4 (8 lines, exit 0) stays pending on a host with a window.
+- The four Phase 2 acceptance boxes in `tasks.md` are now `[x]`. The demo line is added to `## Needs Human Verification` here only; no line was written to `human-testing.md` (the coordinator copies them after the merge). No inbox item; no git write ran.
 
 ---
 

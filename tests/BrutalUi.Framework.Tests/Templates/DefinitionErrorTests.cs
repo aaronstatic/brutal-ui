@@ -39,7 +39,7 @@ public sealed partial class DefinitionErrorTests
         Assert.Equal(DefinitionErrorKind.UnknownTemplate, errors[0].Kind);
         AssertAt(errors[0], Text, "template=\"hud.panl\"");
         Assert.Equal(
-            "'hud.panl' is not a registered template. Add it with DefinitionLoader.AddTemplate before the load.",
+            "'hud.panl' is not a registered template. Add it with DefinitionLoader.AddTemplate or DefinitionLoader.AddFactory before the load.",
             errors[0].Message);
         Assert.Equal(DefinitionErrorKind.UnknownTemplate, errors[1].Kind);
         AssertAt(errors[1], Text, "template=\"game.layout\"");
@@ -291,7 +291,7 @@ public sealed partial class DefinitionErrorTests
         Assert.Equal(DefinitionErrorKind.UnknownAttribute, errors[1].Kind);
         Assert.Equal(
             $"defs.xml({errors[0].Line},{errors[0].Column}): UnknownTemplate: "
-                + "'no.such' is not a registered template. Add it with DefinitionLoader.AddTemplate before the load.",
+                + "'no.such' is not a registered template. Add it with DefinitionLoader.AddTemplate or DefinitionLoader.AddFactory before the load.",
             errors[0].ToString());
     }
 
