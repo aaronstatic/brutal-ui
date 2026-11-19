@@ -23,7 +23,8 @@ namespace BrutalUi.Framework;
 /// <strong>A name that the manager holds.</strong> The load checks duplicate names inside one text only (A6). A name
 /// that the <see cref="UiManager"/> holds already makes its <c>Register</c> call throw
 /// <see cref="ArgumentException"/> inside <see cref="RegisterTo"/>. <see cref="RegisterTo"/> is not atomic: the
-/// records before the throw stay registered.
+/// records before the throw stay registered and the call gives no list. The list serves
+/// <see cref="PanelController.EnsureRoot"/> before the first frame.
 /// </para>
 /// </remarks>
 public sealed class DefinitionLoadResult
@@ -99,7 +100,8 @@ public sealed class DefinitionLoadResult
             errors);
     }
 
-    /// <summary>Registers the records on a manager: the panels, then the layouts, then the modes.</summary>
+    /// <summary>Registers the records on a manager: the panels, then the layouts, then the modes. Gives the
+    /// controllers of the panels, in the order of <see cref="Panels"/>.</summary>
     /// <remarks>
     /// <para>
     /// The method registers nothing for a failed result. It throws with one <see cref="DefinitionError.ToString"/>
@@ -107,18 +109,24 @@ public sealed class DefinitionLoadResult
     /// <see cref="BrutalUi.Markup.TemplateLoadResult.GetRootOrThrow"/>.
     /// </para>
     /// <para>
+    /// The list serves <see cref="PanelController.EnsureRoot"/> before the first frame: the caller builds each
+    /// panel root at build time and keeps the controllers it needs. The returned list is a
+    /// <see cref="ReadOnlyCollection{T}"/> over the panel order of the text.
+    /// </para>
+    /// <para>
     /// The call is not atomic. A name that the <see cref="UiManager"/> holds already makes its <c>Register</c> call
-    /// throw <see cref="ArgumentException"/> (A6), and the records before the throw stay registered. A game that
-    /// needs a clean manager builds the manager again and calls <see cref="RegisterTo"/> once for each text, or
-    /// registers the records itself.
+    /// throw <see cref="ArgumentException"/> (A6), the records before the throw stay registered, and a throw in the
+    /// middle gives no list. A game that needs a clean manager builds the manager again and calls
+    /// <see cref="RegisterTo"/> once for each text, or registers the records itself.
     /// </para>
     /// </remarks>
     /// <param name="ui">The manager that takes the records.</param>
+    /// <returns>The controller of each panel, in the order of <see cref="Panels"/>.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="ui"/> is <see langword="null"/>.</exception>
     /// <exception cref="InvalidOperationException">The result holds one error or more. Nothing registers.</exception>
     /// <exception cref="ArgumentException">The <see cref="UiManager"/> holds the name of a record already. The
-    /// records before the clash stay registered.</exception>
-    public void RegisterTo(UiManager ui)
+    /// records before the clash stay registered, and the call gives no list.</exception>
+    public IReadOnlyList<PanelController> RegisterTo(UiManager ui)
     {
         ArgumentNullException.ThrowIfNull(ui);
 
@@ -138,9 +146,10 @@ public sealed class DefinitionLoadResult
             throw new InvalidOperationException(text.ToString());
         }
 
-        foreach (PanelDefinition panel in Panels)
+        PanelController[] controllers = new PanelController[Panels.Count];
+        for (int i = 0; i < Panels.Count; i++)
         {
-            ui.Register(panel);
+            controllers[i] = ui.Register(Panels[i]);
         }
 
         foreach (LayoutDefinition layout in Layouts)
@@ -152,5 +161,7 @@ public sealed class DefinitionLoadResult
         {
             ui.Register(mode);
         }
+
+        return new ReadOnlyCollection<PanelController>(controllers);
     }
 }

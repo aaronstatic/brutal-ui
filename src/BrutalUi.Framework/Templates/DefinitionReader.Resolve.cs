@@ -8,20 +8,28 @@ namespace BrutalUi.Framework;
 
 /// <summary>
 /// The resolve pass of one definitions load: the three name tables, the duplicate check, the check load of each
-/// sound layout, the slot check, and the build of the three records.
+/// sound template-text layout, the slot check, and the build of the three records.
 /// </summary>
 /// <remarks>
 /// <para>
 /// The pass runs after the read pass, also when the read pass found an error, so one load gives each error. It stops
 /// only for <see cref="DefinitionErrorKind.NotWellFormed"/>. <strong>The follow-on rule (one fault, one error):</strong>
 /// an entry with a name stays in its name table, also when another value of the entry has a fault; such an entry is
-/// faulty. A reference to a faulty entry gives no error. A mode on a faulty layout skips the slot check. A placement
-/// with no panel record skips the slot check.
+/// faulty. A reference to a faulty entry gives no error. A mode on a faulty layout or on a factory layout skips the
+/// slot check. A placement with no panel record skips the slot check.
 /// </para>
 /// <para>
 /// A fault hides nothing in its own entry: the pass reads each other value of the entry and each placement of a
-/// mode, so one load gives each fault. The check load covers each layout that is not faulty, also one that no mode
-/// names (Decision 15), so a successful result holds no factory that throws inside <c>RegisterTo</c>.
+/// mode, so one load gives each fault. The check load covers each layout that names a template text and is not
+/// faulty, also one that no mode names (Decision 15), so a successful result holds no template-text factory that
+/// throws inside <c>RegisterTo</c>.
+/// </para>
+/// <para>
+/// <strong>The factory rule (Decision 2, Decision 3).</strong> A <c>template</c> value names a template text or a
+/// factory. The pass looks up the text first, then the factory, and gives the record the added delegate as is. The
+/// pass calls no factory, so the load runs no game code. A layout with a factory gets no check load, has no slot
+/// list, and its modes skip the slot check; <see cref="UiManager.Register(ModeDefinition)"/> checks the slots
+/// inside <see cref="DefinitionLoadResult.RegisterTo"/>.
 /// </para>
 /// </remarks>
 internal sealed partial class DefinitionReader
@@ -44,21 +52,31 @@ internal sealed partial class DefinitionReader
         ReportDuplicates(_layoutEntries, layoutNames, static entry => entry.Name, "layout");
         ReportDuplicates(_modeEntries, modeNames, static entry => entry.Name, "mode");
 
-        // Step 2. The panels. Each record gets a factory that loads its template at each call (A4). The array keeps
-        // each record by entry index, so a placement with no slot value can read the default slot of its panel (Q5).
-        // A faulty entry keeps a null element and gives its reference no second error (the follow-on rule). The pass
-        // looks up a present template also when another value of the entry has a fault, so one load gives each fault.
+        // Step 2. The panels. A text value gives a factory that loads the template at each call (A4); a factory
+        // value gives the added delegate as is (Decision 2). The array keeps each record by entry index, so a
+        // placement with no slot value can read the default slot of its panel (Q5). A faulty entry keeps a null
+        // element and gives its reference no second error (the follow-on rule). The pass looks up a present
+        // template also when another value of the entry has a fault, so one load gives each fault.
         PanelDefinition?[] panelRecords = new PanelDefinition?[_panelEntries.Count];
         for (int i = 0; i < _panelEntries.Count; i++)
         {
             PanelEntry entry = _panelEntries[i];
             bool faulty = !entry.Name.HasName || !entry.Slot.HasName || !IsFirstName(panelNames, entry.Name, i);
             byte[]? text = null;
+            Func<PanelContext, Element>? factory = null;
             if (!entry.Template.HasName)
             {
                 faulty = true;
             }
-            else if (!_loader.TryGetTemplate(entry.Template.Text!, out text))
+            else if (_loader.TryGetTemplate(entry.Template.Text!, out text))
+            {
+                // The template text path.
+            }
+            else if (_loader.TryGetFactory(entry.Template.Text!, out factory))
+            {
+                // The factory path. The load calls no factory (Decision 3).
+            }
+            else
             {
                 AddError(
                     DefinitionErrorKind.UnknownTemplate,
@@ -77,26 +95,37 @@ internal sealed partial class DefinitionReader
             PanelDefinition record = new(
                 name,
                 Encoding.UTF8.GetBytes(entry.Slot.Text!),
-                CreateFactory(text!, entry.Template.Text!));
+                factory ?? CreateFactory(text!, entry.Template.Text!));
             panelRecords[i] = record;
             panels.Add(record);
         }
 
         // Step 3. The layouts. A faulty layout is faulty for the slot check of each mode on it (the follow-on rule).
         // The table keeps the slot names of each checked layout, in pre-order, first entry first. The pass looks up
-        // a present template also when another value of the entry has a fault.
+        // a present template also when another value of the entry has a fault. A factory layout keeps its delegate
+        // as is (Decision 2) and gets no check load (Decision 3).
         bool[] layoutFaulty = new bool[_layoutEntries.Count];
+        bool[] layoutIsFactory = new bool[_layoutEntries.Count];
         Dictionary<int, string[]> layoutSlots = [];
         for (int i = 0; i < _layoutEntries.Count; i++)
         {
             LayoutEntry entry = _layoutEntries[i];
             bool faulty = !entry.Name.HasName || !IsFirstName(layoutNames, entry.Name, i);
             byte[]? text = null;
+            Func<PanelContext, Element>? factory = null;
             if (!entry.Template.HasName)
             {
                 faulty = true;
             }
-            else if (!_loader.TryGetTemplate(entry.Template.Text!, out text))
+            else if (_loader.TryGetTemplate(entry.Template.Text!, out text))
+            {
+                // The template text path.
+            }
+            else if (_loader.TryGetFactory(entry.Template.Text!, out factory))
+            {
+                // The factory path. The load calls no factory (Decision 3).
+            }
+            else
             {
                 AddError(
                     DefinitionErrorKind.UnknownTemplate,
@@ -113,15 +142,18 @@ internal sealed partial class DefinitionReader
             }
 
             byte[] name = Encoding.UTF8.GetBytes(entry.Name.Text!);
-            layouts.Add(new LayoutDefinition(name, CreateFactory(text!, entry.Template.Text!)));
+            layouts.Add(new LayoutDefinition(name, factory ?? CreateFactory(text!, entry.Template.Text!)));
+            layoutIsFactory[i] = factory is not null;
         }
 
-        // Step 3b. The check load (Q3, A5, Decision 15). Each layout that is not faulty loads its template one time,
-        // also a layout that no mode names, so a fault of an unused layout lands at load time and RegisterTo can
-        // only throw the failed-result rule. The extra load costs build time only (epic A10).
+        // Step 3b. The check load (Q3, A5, Decision 15). Each layout that names a template text and is not faulty
+        // loads its template one time, also a layout that no mode names, so a fault of an unused layout lands at
+        // load time and RegisterTo can only throw the failed-result rule. The extra load costs build time only
+        // (epic A10). A factory layout skips the check load: the loader has no PanelContext and a game factory can
+        // have side effects (Decision 3).
         for (int i = 0; i < _layoutEntries.Count; i++)
         {
-            if (layoutFaulty[i])
+            if (layoutFaulty[i] || layoutIsFactory[i])
             {
                 continue;
             }
@@ -173,9 +205,10 @@ internal sealed partial class DefinitionReader
                 faulty = true;
             }
 
-            // A mode on a faulty layout, and a mode with no resolved layout, skip the slot check (the follow-on
-            // rule). The UnknownLayout error of an unresolved layout stands on its own.
-            bool checkSlots = layoutIndex >= 0 && !layoutFaulty[layoutIndex];
+            // A mode on a faulty layout, a mode with no resolved layout, and a mode on a factory layout skip the
+            // slot check (the follow-on rule and Decision 3): only a layout with a slot list can answer the check.
+            // The UnknownLayout error of an unresolved layout stands on its own.
+            bool checkSlots = layoutIndex >= 0 && !layoutFaulty[layoutIndex] && layoutSlots.ContainsKey(layoutIndex);
             string[] slots = layoutSlots.TryGetValue(layoutIndex, out string[]? known) ? known : [];
             string layout = entry.Layout.Text!;
 

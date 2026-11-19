@@ -19,7 +19,7 @@ namespace HelloPanel;
 /// </summary>
 /// <remarks>
 /// <para>
-/// After a run, the sample writes seven lines to standard output:
+/// After a run, the sample writes eight lines to standard output:
 /// <c>HelloPanel: &lt;count&gt; frames rendered.</c>,
 /// <c>HelloPanel: last frame: draw commands &lt;C&gt;, vertices &lt;V&gt;.</c>,
 /// <c>HelloPanel: bytes after warm-up: Update and Draw &lt;B&gt;, frame &lt;F&gt;, in &lt;M&gt; frames.</c>,
@@ -28,14 +28,19 @@ namespace HelloPanel;
 /// <c>HelloPanel: widgets: clicks &lt;C&gt;, flips &lt;T&gt;, values &lt;V&gt;, scrolls &lt;S&gt;, edits &lt;E&gt;,
 /// submits &lt;U&gt;.</c>, and
 /// <c>HelloPanel: state: adds &lt;A&gt;, resets &lt;R&gt;, versions &lt;V&gt;.</c>, and
-/// <c>HelloPanel: modes: switches &lt;S&gt;, backs &lt;B&gt;, main frames &lt;M&gt;, detail frames &lt;D&gt;.</c> The
+/// <c>HelloPanel: modes: switches &lt;S&gt;, backs &lt;B&gt;, main frames &lt;M&gt;, detail frames &lt;D&gt;.</c>,
+/// and
+/// <c>HelloPanel: markup: elements &lt;E&gt;, bindings &lt;B&gt;, commands &lt;C&gt;, panels &lt;P&gt;, layouts
+/// &lt;L&gt;, modes &lt;M&gt;.</c> The
 /// counts of line 2 come from the ImGui background draw list of the last frame. The counts of line 5 come from
 /// <see cref="HelloWidgets"/> and cover the full run. The counts of line 6 come from <see cref="HelloState"/> and cover
 /// the full run. The counts of line 7 cover the full run for the switches and the backs, and the measured frames for
-/// the two mode frame counts. The exit code is 0 for success,
+/// the two mode frame counts. The counts of line 8 come from the mounted trees and the loaded records of
+/// <see cref="HelloModes.Mount"/>, computed one time before the frames. The exit code is 0 for success,
 /// 1 for a runtime failure, for an allocation of the UI region after warm-up, or for a smoke run in which the
 /// synthetic input did not reach the UI, the gate read the pointer over the UI in each measured frame, a widget got no
-/// change, the state row got no command, no action, or no store change, or a mode count is 0, and 2 for a usage error.
+/// change, the state row got no command, no action, or no store change, a mode count is 0, or a markup count is 0,
+/// and 2 for a usage error.
 /// The command line contract is in <c>docs/features/dev-ops/solution-skeleton/context.md</c>.
 /// </para>
 /// <para>
@@ -45,8 +50,8 @@ namespace HelloPanel;
 /// a scroll at the center of the scroll view), then a Tab, then an Escape key (each fourth frame), then one F1 key or
 /// one F2 key, then the text field events (a char or a Backspace, an Enter, and a left press and a left release on
 /// the field), then a pointer move.
-/// The widget events include a click on the <c>Add</c> button of <see cref="HelloState"/>, after the toggle click and
-/// before the slider click. The frame loop also polls the gamepad and pushes the buttons into the action map. The first measured frame also fills
+/// The widget events include a click on the <c>Add</c> button of the XML state panel
+/// (<see cref="HelloMount.AddButton"/>), after the toggle click and before the slider click. The frame loop also polls the gamepad and pushes the buttons into the action map. The first measured frame also fills
 /// the text field to its capacity and empties it again, so the two text labels get their longest text in a measured
 /// frame. Thus the run proves with no user that the input reaches the UI and each widget.
 /// </para>
@@ -200,6 +205,10 @@ internal static class Program
     /// The number of measured frames with <c>hello.detail</c> as the current mode after
     /// <see cref="UiContext.Update(float)"/>.
     /// </param>
+    /// <param name="Markup">
+    /// The markup counts of line 8: the mounted state tree and the loaded records.
+    /// <see cref="HelloModes.Mount"/> computes them one time.
+    /// </param>
     private readonly record struct RunResult(
         int FramesRendered,
         int DrawCommandCount,
@@ -222,7 +231,8 @@ internal static class Program
         int Switches,
         int Backs,
         int MainFrames,
-        int DetailFrames);
+        int DetailFrames,
+        MarkupCounts Markup);
 
     private static int Main(string[] args)
     {
@@ -304,13 +314,15 @@ internal static class Program
     /// Loads the sheet, starts GLFW, runs the sample, and ends GLFW. After the run, writes the frame count (line 1),
     /// the draw command count and the vertex count of the last frame (line 2), the allocated bytes after warm-up
     /// (line 3), the gate counts of the measured frames (line 4), the widget counts of the full run (line 5), the
-    /// state counts of the full run (line 6), and the mode counts (line 7) to standard output. When the UI region allocates after warm-up, writes the allocation line to standard error and
+    /// state counts of the full run (line 6), the mode counts (line 7), and the markup counts (line 8) to standard
+    /// output. When the UI region allocates after warm-up, writes the allocation line to standard error and
     /// returns <see cref="ExitFailure"/>. When the synthetic input of a smoke run did not reach the UI, or when the
     /// gate read the pointer over the UI in each measured frame, writes the input line to standard error and returns
     /// <see cref="ExitFailure"/>. When a widget count of a smoke run is 0, or when the text field holds the focus after
     /// the update in no measured frame, writes the widget line to standard error and returns <see cref="ExitFailure"/>.
     /// When a mode count of a smoke run is 0, writes the mode line to standard error and returns
-    /// <see cref="ExitFailure"/>.
+    /// <see cref="ExitFailure"/>. When a markup count of a smoke run is 0, writes the markup line to standard error
+    /// and returns <see cref="ExitFailure"/>.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -360,6 +372,12 @@ internal static class Program
     /// the synthetic input did not reach the mode switch. The method writes the mode line to standard error and
     /// returns <see cref="ExitFailure"/>.
     /// </para>
+    /// <para>
+    /// The markup check runs after the mode check, with the same condition. The smoke run loads the records of
+    /// <c>HelloDefinitions.xml</c> and the state panel of <c>HelloState.xml</c>, so the markup counts of line 8 are
+    /// above 0. A count of 0 means that the markup panel did not load. The method writes the markup line to standard
+    /// error and returns <see cref="ExitFailure"/>.
+    /// </para>
     /// </remarks>
     /// <param name="frameLimit">The number of frames to render, or <see cref="NoFrameLimit"/>.</param>
     /// <returns>The exit code.</returns>
@@ -401,6 +419,10 @@ internal static class Program
         Console.WriteLine(
             $"HelloPanel: modes: switches {result.Switches}, backs {result.Backs}, " +
             $"main frames {result.MainFrames}, detail frames {result.DetailFrames}.");
+        Console.WriteLine(
+            $"HelloPanel: markup: elements {result.Markup.Elements}, bindings {result.Markup.Bindings}, " +
+            $"commands {result.Markup.Commands}, panels {result.Markup.Panels}, " +
+            $"layouts {result.Markup.Layouts}, modes {result.Markup.Modes}.");
 
         // The gate reads the UI sum only. The frame sum also holds the managed bytes of the backends.
         if (result.UiAllocatedBytes > 0)
@@ -455,6 +477,16 @@ internal static class Program
             if (result.Switches == 0 || result.Backs == 0 || result.MainFrames == 0 || result.DetailFrames == 0)
             {
                 Console.Error.WriteLine("HelloPanel: the synthetic input did not reach the mode switch.");
+                return ExitFailure;
+            }
+
+            // The markup check. The load of HelloDefinitions.xml gives the six records, and the template panel
+            // builds the state row with three command buttons and one score binding. A count of 0 means that the
+            // markup panel did not load.
+            if (result.Markup.Elements == 0 || result.Markup.Bindings == 0 || result.Markup.Commands == 0
+                || result.Markup.Panels == 0 || result.Markup.Layouts == 0 || result.Markup.Modes == 0)
+            {
+                Console.Error.WriteLine("HelloPanel: the markup panel did not load.");
                 return ExitFailure;
             }
         }
@@ -593,11 +625,13 @@ internal static class Program
             // The sheet gives each size and each color of the screen. The trees set only the classes.
             ui.AddSheet(sheet);
 
-            // The modes own the panel context, the manager, the commands, the keys, and the mode button. The
-            // constructor builds each panel root at build time, and SetMode records hello.main. The first Update
-            // adds the layout root, mounts the panels, and activates the map before the input pass of frame 0, so
-            // the sample does not call UiActionMap.Activate.
-            HelloModes modes = new HelloModes(ui, state, handle);
+            // The modes own the panel context, the manager, the commands, the keys, and the mode button. Mount
+            // loads the six records from HelloDefinitions.xml and the state panel from HelloState.xml, registers
+            // them, and builds each panel root at build time. SetMode records hello.main. The first Update adds the
+            // layout root, mounts the panels, and activates the map before the input pass of frame 0, so the sample
+            // does not call UiActionMap.Activate.
+            HelloModes modes = new HelloModes(ui, state);
+            HelloMount mount = modes.Mount(handle);
             modes.Manager.SetMode(HelloModes.MainName);
 
             return RunFrames(
@@ -608,14 +642,7 @@ internal static class Program
                 input,
                 ui,
                 uiRenderer,
-                modes.WidgetPanel,
-                modes.GateLabel,
-                modes.InputLabel,
-                modes.StickLabel,
-                modes.MoveLabel,
-                modes.SchemeLabel,
-                modes.RebindLabel,
-                modes.Widgets,
+                mount,
                 state,
                 modes,
                 frameLimit);
@@ -733,7 +760,8 @@ internal static class Program
     /// <para>
     /// <see cref="Run"/> writes the frame count as line 1, the two counts of the last frame as line 2, the two sums
     /// and the measured frame count as line 3, the two gate counts and the measured frame count as line 4, the
-    /// widget counts as line 5, the state counts as line 6, and the mode counts as line 7. The loop reads the widget
+    /// widget counts as line 5, the state counts as line 6, the mode counts as line 7, and the markup counts as
+    /// line 8. The loop reads the widget
     /// counts, the state counts, and the switch and back counts after the last frame, so they cover the full run. The
     /// main count and the detail count cover the measured frames.
     /// </para>
@@ -746,36 +774,13 @@ internal static class Program
     /// <paramref name="ui"/>.</param>
     /// <param name="ui">The UI context that holds the screen.</param>
     /// <param name="uiRenderer">The brutal-ui renderer. It is also the measurer of <paramref name="ui"/>.</param>
-    /// <param name="panel">The root of the widget panel. The smoke input aims its pointer move at the panel. The
-    /// manager keeps this panel mounted in the <c>top</c> slot through both modes.</param>
-    /// <param name="gateLabel">The gate label of the screen. The loop sets its text after each draw.</param>
-    /// <param name="inputLabel">
-    /// The input label of the screen. The loop sets its text after each draw, from <see cref="UiContext.GameInput"/>.
-    /// </param>
-    /// <param name="stickLabel">
-    /// The stick label of the screen. The loop sets its text after each draw, from slot 0 of
-    /// <see cref="UiContext.GameInput"/>.
-    /// </param>
-    /// <param name="moveLabel">
-    /// The move label of the screen. The loop sets its text after each draw, from the <c>Move</c> action of the map
-    /// of <paramref name="state"/>.
-    /// </param>
-    /// <param name="schemeLabel">
-    /// The scheme label of the screen. The loop sets its text after each draw, from
-    /// <see cref="UiActionMap.ActiveScheme"/> of the map of <paramref name="state"/>.
-    /// </param>
-    /// <param name="rebindLabel">
-    /// The rebind label of the screen. The loop sets its text after each draw, from
-    /// <see cref="UiActionMap.IsRebinding"/> and the last rebind result of the map of <paramref name="state"/>.
-    /// </param>
-    /// <param name="widgets">
-    /// The widget section of the screen. The smoke input aims its widget events at the widgets, and the loop reads the
-    /// widget counts after the last frame.
-    /// </param>
+    /// <param name="mount">The mount of the sample. The loop reads the widget panel root, the six labels, and the
+    /// widgets from it. The smoke input aims its Add click at its <see cref="HelloMount.AddButton"/> button, and
+    /// line 8 shows its <see cref="HelloMount.Markup"/> counts.</param>
     /// <param name="state">
     /// The state of the sample. Its map reads the frame input in <see cref="UiContext.Update(float)"/> (Q4), the
-    /// loop reads the <c>Move</c> value of the map for the move label, the smoke input aims a click at its <c>Add</c>
-    /// button, and the loop reads its counts after the last frame.
+    /// loop reads the <c>Move</c> value of the map for the move label, and the loop reads its counts after the last
+    /// frame.
     /// </param>
     /// <param name="modes">
     /// The modes of the sample. The loop reads the current mode after each update, caches the center of the
@@ -786,7 +791,7 @@ internal static class Program
     /// <returns>
     /// The result of the run: the frame count, the draw list counts of the last frame, the allocation sums of the
     /// measured frames, the gate counts of the measured frames, the widget counts of the full run, the state counts
-    /// of the full run, and the mode counts.
+    /// of the full run, the mode counts, and the markup counts of the mount.
     /// </returns>
     private static RunResult RunFrames(
         GlfwWindow window,
@@ -796,18 +801,21 @@ internal static class Program
         GlfwUiInput input,
         UiContext ui,
         ImGuiRenderer uiRenderer,
-        Element panel,
-        Label gateLabel,
-        Label inputLabel,
-        Label stickLabel,
-        Label moveLabel,
-        Label schemeLabel,
-        Label rebindLabel,
-        HelloWidgets widgets,
+        HelloMount mount,
         HelloState state,
         HelloModes modes,
         int frameLimit)
     {
+        // The frame body keeps its old local names. The mount takes the place of the eight tree arguments.
+        Element panel = mount.WidgetPanel;
+        Label gateLabel = mount.GateLabel;
+        Label inputLabel = mount.InputLabel;
+        Label stickLabel = mount.StickLabel;
+        Label moveLabel = mount.MoveLabel;
+        Label schemeLabel = mount.SchemeLabel;
+        Label rebindLabel = mount.RebindLabel;
+        HelloWidgets widgets = mount.Widgets;
+
         ImGuiIOPtr io = ImGui.GetIO();
         int framesRendered = 0;
         int drawCommandCount = 0;
@@ -914,7 +922,7 @@ internal static class Program
             // current mode. The hit test of the next frame reads the layout of this frame, so the point stays valid.
             if (ReferenceEquals(currentMode, modes.Main))
             {
-                addPoint = ViewportCenter(state.AddButton);
+                addPoint = ViewportCenter(mount.AddButton);
             }
 
             // The caret pass of Update runs for the focus owner only (CR-3). The compare allocates nothing.
@@ -1018,7 +1026,8 @@ internal static class Program
             modes.Switches,
             modes.Backs,
             mainFrames,
-            detailFrames);
+            detailFrames,
+            mount.Markup);
     }
 
     /// <summary>

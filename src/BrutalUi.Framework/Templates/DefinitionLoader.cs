@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using BrutalUi.Core;
 using BrutalUi.Markup;
 
 namespace BrutalUi.Framework;
@@ -17,11 +18,18 @@ namespace BrutalUi.Framework;
 /// throw <see cref="ArgumentException"/> in the constructor.
 /// </para>
 /// <para>
-/// <strong>One name holds one template, and one name holds one map.</strong> The tables compare names with an
-/// ordinal compare, because <c>XmlReader</c> gives each value as a <see cref="string"/>. An empty name throws
-/// <see cref="ArgumentException"/>, and a second <see cref="AddTemplate"/> or <see cref="AddActionMap"/> call for
-/// one name throws <see cref="ArgumentException"/> before the add, so the throw leaves the table unchanged.
-/// <see cref="AddTemplate"/> copies the text, so a later change of the source changes nothing.
+/// <strong>One name holds one template text or one factory, and one name holds one map.</strong> One name table
+/// holds the texts and the factories of <see cref="AddTemplate"/> and <see cref="AddFactory"/>. The tables compare
+/// names with an ordinal compare, because <c>XmlReader</c> gives each value as a <see cref="string"/>. An empty name
+/// throws <see cref="ArgumentException"/>, and a second <see cref="AddTemplate"/>, <see cref="AddFactory"/>, or
+/// <see cref="AddActionMap"/> call for one name throws <see cref="ArgumentException"/> before the add, so the throw
+/// leaves the table unchanged. <see cref="AddTemplate"/> copies the text, so a later change of the source changes
+/// nothing.
+/// </para>
+/// <para>
+/// <strong>The load calls no factory.</strong> A record that names a factory holds the delegate as is, and the
+/// record calls it at run time, as it calls a template factory. A layout with a factory gets no check load, because
+/// the loader has no <see cref="PanelContext"/> and a game factory can have side effects (Decision 3).
 /// </para>
 /// <para>
 /// <strong>An add after a load is valid.</strong> The next load reads the tables again. An add call and a load call
@@ -46,15 +54,19 @@ public sealed class DefinitionLoader
     /// <summary>The template table: name to UTF-8 text copy. The compare is ordinal.</summary>
     private readonly Dictionary<string, byte[]> _templatesByName;
 
+    /// <summary>The factory table: name to factory delegate. The compare is ordinal. One name table holds the
+    /// texts and the factories, so each add method checks both dictionaries.</summary>
+    private readonly Dictionary<string, Func<PanelContext, Element>> _factoriesByName;
+
     /// <summary>The action map table: name to map. The compare is ordinal.</summary>
     private readonly Dictionary<string, UiActionMap> _actionMaps;
 
     /// <summary>The message of an empty template name.</summary>
     private const string EmptyTemplateNameMessage = "The template name is empty. Give each template one name.";
 
-    /// <summary>The message of a second AddTemplate call for one name.</summary>
+    /// <summary>The message of a second <see cref="AddTemplate"/> or <see cref="AddFactory"/> call for one name.</summary>
     private const string DuplicateTemplateNameMessage =
-        "One name holds one template. The table holds this name already. Use another name.";
+        "One name holds one template text or one factory. The table holds this name already. Use another name.";
 
     /// <summary>The message of an empty action map name.</summary>
     private const string EmptyMapNameMessage = "The action map name is empty. Give each map one name.";
@@ -79,6 +91,7 @@ public sealed class DefinitionLoader
 
         _templates = templates;
         _templatesByName = new Dictionary<string, byte[]>(StringComparer.Ordinal);
+        _factoriesByName = new Dictionary<string, Func<PanelContext, Element>>(StringComparer.Ordinal);
         _actionMaps = new Dictionary<string, UiActionMap>(StringComparer.Ordinal);
         templates.Register(SlotContainerTemplate.Create());
     }
@@ -95,8 +108,8 @@ public sealed class DefinitionLoader
     /// <param name="name">The name of the template, for example <c>hud.panel</c>. The compare is ordinal.</param>
     /// <param name="utf8">The template text, coded as UTF-8.</param>
     /// <exception cref="ArgumentNullException"><paramref name="name"/> is <see langword="null"/>.</exception>
-    /// <exception cref="ArgumentException"><paramref name="name"/> is empty, or the table holds the name already.
-    /// The add does not run.</exception>
+    /// <exception cref="ArgumentException"><paramref name="name"/> is empty, or a text or a factory holds the name
+    /// already. The add does not run.</exception>
     public void AddTemplate(string name, ReadOnlySpan<byte> utf8)
     {
         ArgumentNullException.ThrowIfNull(name);
@@ -105,12 +118,44 @@ public sealed class DefinitionLoader
             throw new ArgumentException(EmptyTemplateNameMessage, nameof(name));
         }
 
-        if (_templatesByName.ContainsKey(name))
+        if (_templatesByName.ContainsKey(name) || _factoriesByName.ContainsKey(name))
         {
             throw new ArgumentException(DuplicateTemplateNameMessage, nameof(name));
         }
 
         _templatesByName[name] = utf8.ToArray();
+    }
+
+    /// <summary>Adds one panel or layout factory under a name. A definition value names the factory with its
+    /// <c>template</c> attribute.</summary>
+    /// <remarks>
+    /// <para>
+    /// The load never calls the factory. A record that names the factory holds the delegate as is, and the record
+    /// calls it as it calls a C# factory. The game owns the factory contract: a new, detached root at each call.
+    /// An add after a load is valid: the next load reads the tables again.
+    /// </para>
+    /// </remarks>
+    /// <param name="name">The name of the factory, for example <c>hud.create</c>. The compare is ordinal.</param>
+    /// <param name="factory">The factory of the root element. It returns a new, detached element.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="name"/> or <paramref name="factory"/> is
+    /// <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException"><paramref name="name"/> is empty, or a text or a factory holds the name
+    /// already. The add does not run.</exception>
+    public void AddFactory(string name, Func<PanelContext, Element> factory)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+        ArgumentNullException.ThrowIfNull(factory);
+        if (name.Length == 0)
+        {
+            throw new ArgumentException(EmptyTemplateNameMessage, nameof(name));
+        }
+
+        if (_templatesByName.ContainsKey(name) || _factoriesByName.ContainsKey(name))
+        {
+            throw new ArgumentException(DuplicateTemplateNameMessage, nameof(name));
+        }
+
+        _factoriesByName[name] = factory;
     }
 
     /// <summary>Adds one action map under a name. A mode value names the map with its <c>actions</c> attribute.</summary>
@@ -160,6 +205,15 @@ public sealed class DefinitionLoader
     internal bool TryGetTemplate(string name, out byte[]? utf8)
     {
         return _templatesByName.TryGetValue(name, out utf8);
+    }
+
+    /// <summary>Gives the factory delegate of one factory name.</summary>
+    /// <param name="name">The factory name. The compare is ordinal.</param>
+    /// <param name="factory">The delegate on a success, or <see langword="null"/> on a miss.</param>
+    /// <returns><see langword="true"/> when the table holds the name.</returns>
+    internal bool TryGetFactory(string name, out Func<PanelContext, Element>? factory)
+    {
+        return _factoriesByName.TryGetValue(name, out factory);
     }
 
     /// <summary>Gives one action map by name.</summary>
