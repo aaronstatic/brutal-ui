@@ -1,10 +1,10 @@
 # Markup Sample - Implementation Plan
 
 **Epic:** markup (feature 6 of 6)
-**Status:** In Progress
+**Status:** Ready for Review
 **Started:** 2026-11-19
-**Target Completion:** TBD
-**Last Updated:** 2026-11-19 08:28
+**Target Completion:** 2026-11-19
+**Last Updated:** 2026-11-19 12:13
 
 ---
 

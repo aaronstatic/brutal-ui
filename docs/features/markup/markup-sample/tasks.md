@@ -1,8 +1,8 @@
 # markup/markup-sample - Task Checklist
 
 **Epic:** markup (feature 6 of 6)
-**Last Updated:** 2026-11-19 11:10
-**Progress:** 22/22 tasks complete (100%)
+**Last Updated:** 2026-11-19 12:13
+**Progress:** 22/22 tasks complete (100%) — four phases built and gate-verified, the cross-phase review closed (6 findings, 6 fixed), and the review fixes verified
 
 Agent tiers: Phase 1 ADVANCED (opus), Phase 2 ADVANCED (opus), Phase 3 STANDARD (sonnet), Phase 4 STANDARD (sonnet).
 
@@ -115,6 +115,12 @@ The task text comes word for word from the phase sections of `implementation.md`
 - [x] `CHANGELOG.md` has one line tagged `(markup/markup-sample)`, and `human-testing.md` has `## markup-sample`. (This run: the CHANGELOG half holds here. The `## markup-sample` content — the demo line of each phase and the A10 windowed checks — stands in `## Needs Human Verification` of `context.md`, and the coordinator copies it into `docs/features/markup/human-testing.md` after the merge into the epic branch. The phase spec of this run forbade a worker write to that file. Question `msg_e893e050f051` asked the coordinator to confirm; the answer had not arrived at the close.)
 - [x] The package step prints `package-test: PASS Gauge level 0.5`.
 
+**Cross-phase review (`/review-feature`, 2026-11-19, worker `task_91975c56455b`):** 6 findings, 0 CRITICAL, 0 HIGH, 1 MEDIUM, 5 LOW. `code-review.md` holds them with the file and line of each. The one real gap is CR-1: a slot typo in `HelloDefinitions.xml` passed the load, because Decision 3 skips the slot check of a factory layout, and then threw inside `RegisterTo`, after the window opened. `docs/features/markup/markup-sample/code-review.md` reads `Resolved - 0 findings open, 6 resolved`.
+
+**Review-fix run (2026-11-19, groups 1 and 2, one verifier PASS):** CR-1 to CR-6 closed. Group 1 (CR-1, CR-2, CR-6): `HelloModes` split `Mount(DefinitionLoadResult, TextureHandle)` into `Register(DefinitionLoadResult)` and `Mount(TextureHandle)`, and `HelloMarkup.Load` calls `Register` before the window, after both loads pass, so a slot typo prints one line, `HelloDefinitions.xml: A mode names a slot that its layout holds not. (Parameter 'mode')`, and exits with code 1 with no GLFW call; `TryResolveTemplate` now serves both resolve loops; `Register` and `Mount` each carry a one-time guard. Group 2 (CR-3, CR-4, CR-5): new `samples/HelloPanel/HelloMarkupNames.cs` (62 lines) single-sources the shared names, linked into `BrutalUi.Framework.Tests` beside `HelloRow.cs`; the `Program.Run` comment names the XML state row inside `HelloModes.Mount`; `AFactoryPanelAndAFactoryLayoutLoadAndMount` now pins the panel and the layout delegate. Verifier: PASS, Demo: PASS. Final counts: build `0 Warning(s)`, `0 Error(s)`; solution 3203 (0 failed, 3 skipped); `BrutalUi.Framework.Tests` 392; per class 5, 3, and 12, each `failed: 0`; `package-test: PASS Gauge level 0.5`. No test was added or removed, so the totals of the phase 3 close hold.
+
+**Open for the coordinator (docs only, out of the review-fix edit scope):** `docs/technical-design.md` section 11 (**The HelloPanel sample.**, the paragraph at line 1827) says the sample loads the two files before `Glfw.Init`. One sentence there should also name the register step of review CR-1. The docs step checked the other place in the Fix Record note, `README.md` line 155: the flow block at line 135 already puts `result.RegisterTo(manager)` inside the step marked "Once, at start, before the window opens", so the README needs no change. See the session note of 2026-11-19 12:13 in `context.md`.
+
 ---
 
 ## Bugs & Issues
@@ -123,13 +129,15 @@ The task text comes word for word from the phase sections of `implementation.md`
 - (none)
 
 **Fixed Bugs:**
-- (none)
+- 2026-11-19 (inbox `bug` line, verifier gate step 10): `SampleMarkupAllocationTests.cs` was 472 lines, over the 400-line cap for a new source file. Fixed in round 1 by the partial-class split: the scene moved to `SampleMarkupAllocationScene.cs` (297 lines), the test file keeps the bodies (185 lines). No test name, assertion, or count changed. Not promoted to `docs/bugs/`: the line closed inside the run.
+- 2026-11-19 (review CR-1, MEDIUM): a slot typo in `HelloDefinitions.xml` escaped the before-window check and threw after the window opened. Fixed by the `Register` / `Mount` split in `HelloModes`, with `HelloMarkup.Load` calling `Register` before `Glfw.Init`. See the review-fix run note above.
 
 ---
 
 ## Technical Debt
 
-- (none)
+- The slot fault of a mode on a factory layout still gives no file position and no slot name (Decision 3, Notes item 5, review CR-1). The sample catches the `ArgumentException` of `UiManager.Register(ModeDefinition)` before the window and prints one line; a positioned `UnknownSlot` for that case needs an `AddFactory` overload with a slot list, which Decision 3 rejected as YAGNI.
+- The gate keeps its own scene: `SampleMarkupAllocationScene.BuildScene` repeats the steps of `HelloMarkup.Load`. Review CR-3 single-sourced the names through `HelloMarkupNames.cs` (the floor of the finding), not the whole flow, so a change of the C# flow steps still needs a matching edit in the scene.
 
 ---
 
@@ -153,9 +161,14 @@ The task text comes word for word from the phase sections of `implementation.md`
 - ✅ Phase 2 (tasks 2.1 to 2.5): `HelloMarkup.Load` with the name constants and the error print; `Mount(DefinitionLoadResult, TextureHandle)`; the renderer, context, state, modes, and load moved before `Glfw.Init` in `Run`; the `UnknownTemplate` constant message; the two test strings. Totals unchanged (3200, failed 0, skipped 3; Framework 389). Headless checks 1 to 4 give the expected lines and exit codes; the output XML copies restored equal under `cmp`. See the close record in `context.md`.
 - ✅ Phase 3 (tasks 3.1 to 3.4): the C# state row removed from `HelloState.cs` and `HelloScreen.cs`; `HelloRow.cs` linked and the generator analyzer and three `PreserveNewest` copies added to `BrutalUi.Framework.Tests.csproj`; `SampleMarkupAllocationTests` (3 tests, Framework 392, solution 3203 with 3 skipped). Plants 4 and 5 with the named tests failing. See the close record in `context.md`.
 - ✅ Phase 4 (tasks 4.1 to 4.4): `README.md` shows the `HelloState.xml` block (step 9 gives `same`), the C# load flow, and the A7 note; section 11 holds `AddFactory`, the factory rules, and **The HelloPanel sample.**; section 14 holds **A twenty-third allocation gate.** and the 8-line sample bullet; `docs/overview.md` names the twenty-third gate in two lines; `CHANGELOG.md` has one `(markup/markup-sample)` line. Build 0 warnings, 0 errors; tests 3203, failed 0, skipped 3; `package-test: PASS Gauge level 0.5`; headless checks 1 and 4 re-run and restored equal under `cmp`. `human-testing.md` not touched by the edit limit; its content stands in `## Needs Human Verification` of `context.md`. See the close record in `context.md`.
+- ✅ Cross-phase review (`/review-feature`): 6 findings in `code-review.md` (1 MEDIUM, 5 LOW), no CRITICAL and no HIGH. The review confirmed the one name table, the no-call-at-load rule, the source-compatible `RegisterTo` change, and the 0-byte frame path.
+- ✅ Review fixes, group 1 (`review-fix-g1.md`): CR-1, CR-2, CR-6. `HelloModes.Register` + `HelloModes.Mount(TextureHandle)`; `HelloMarkup.Load` registers before the window and turns the register `ArgumentException` into one error line and exit 1; `TryResolveTemplate` serves both resolve loops; the one-time guards. Files: `DefinitionReader.Resolve.cs`, `HelloModes.cs`, `HelloMarkup.cs`, `Program.cs`. See the group 1 close record in `context.md`.
+- ✅ Review fixes, group 2 (`review-fix-g2.md`): CR-5, CR-4, CR-3. The layout delegate pin; the corrected `Run` comment; `HelloMarkupNames.cs` linked into the Framework tests with no name literals left in the sample or the scene. Files: `DefinitionFactoryTests.cs`, `Program.cs`, `HelloMarkupNames.cs` (new), `HelloMarkup.cs`, `BrutalUi.Framework.Tests.csproj`, `SampleMarkupAllocationScene.cs`. See the group 2 close record in `context.md`.
+- ✅ Review-fix verifier (`review-fix-verify.md`): PASS, Demo: PASS. Build 0 warnings, 0 errors; suite 3203 (failed 0, skipped 3); `*DefinitionFactoryTests` 5, `*SampleMarkupAllocationTests` 3, `*DefinitionErrorTests` 12, each failed 0; the slot-typo headless check, check 1, and the clean run give the expected lines and exit 1; `package-test: PASS Gauge level 0.5`.
+- ✅ Docs step (`/update-feature markup/markup-sample`, 2026-11-19 12:13): this file, `context.md`, and `implementation.md` hold the close state, with the review and the review fixes folded in. No open inbox line; no `docs/bugs/` promotion. No source file changed, and no git write ran.
 
 ### Discovered New Tasks
-- (none)
+- (none open). The review found 6 tasks, and all 6 closed in the review-fix run; see the review-fix run note above.
 
 ### Blocked Items
 - (none)

@@ -1,9 +1,9 @@
 # markup/markup-sample - Context & Decisions
 
 **Epic:** markup (feature 6 of 6)
-**Last Updated:** 2026-11-19 11:12
-**Current Phase:** Phase 4 - The Docs Show the Sample Template (closed)
-**Status:** 🟢 Feature complete: 22/22 tasks. Phase 4 closed (tasks 4.1 to 4.4, verifier PASS, zero fix rounds, Demo: PASS). The windowed checks and the `human-testing.md` copy await the coordinator.
+**Last Updated:** 2026-11-19 12:13
+**Current Phase:** Complete (phases 1 to 4, the cross-phase review, and the review fixes are done)
+**Status:** ✅ Ready for Review. The docs step ran: 22/22 tasks, six review findings closed, one review-fix verifier PASS. `README.md` and `docs/technical-design.md` sections 11 and 14 hold the result. The windowed checks, the `human-testing.md` copy, and one sentence in section 11 of `technical-design.md` await the coordinator.
 
 ---
 
@@ -17,10 +17,16 @@
 - ✅ Phase 2 (tasks 2.1 to 2.5): `HelloMarkup.Load` with the name constants and the error print, `Mount(DefinitionLoadResult, TextureHandle)`, the managed build and the load before `Glfw.Init`, the `UnknownTemplate` constant message, the two test strings, and headless checks 1 to 4. Totals unchanged. See the phase 2 close record below.
 - ✅ Phase 3 (tasks 3.1 to 3.4): the C# state row removed from `HelloState` and `HelloScreen`, the sample files linked into `BrutalUi.Framework.Tests`, and the twenty-third gate `SampleMarkupAllocationTests` (3 tests, Framework 392). Plants 4 and 5. See the phase 3 close record below.
 - ✅ Phase 4 (tasks 4.1 to 4.4): the README XML section with the load flow and the A7 note, section 11 with `AddFactory` and **The HelloPanel sample.**, section 14 with the twenty-third gate bullet and the 8-line sample bullet, `docs/overview.md` and `CHANGELOG.md`, and the human-test lines in this file. Build 0 warnings, tests 3203, package PASS, checks 1 and 4 re-run. See the phase 4 close record below.
+- ✅ Cross-phase review (`/review-feature`, worker `task_91975c56455b`): `code-review.md` holds 6 findings — 0 CRITICAL, 0 HIGH, 1 MEDIUM (CR-1), 5 LOW (CR-2 to CR-6) — and now reads `Resolved - 0 findings open, 6 resolved`. The review found no allocation fault and no API break; CR-1 is the one real gap in the A3 promise.
+- ✅ Review fixes, group 1 (`review-fix-g1.md`, ADVANCED): CR-1, CR-2, CR-6. `HelloModes` split `Mount(DefinitionLoadResult, TextureHandle)` into `Register(DefinitionLoadResult)` and `Mount(TextureHandle)`; `HelloMarkup.Load` calls `Register` before the window, so a mode slot typo on the factory layout prints one line and exits 1 with no GLFW call; `TryResolveTemplate` serves both resolve loops; both methods carry a one-time guard. See the group 1 close record below.
+- ✅ Review fixes, group 2 (`review-fix-g2.md`, STANDARD): CR-5, CR-4, CR-3. The factory test pins the panel and the layout delegate; the `Run` comment names the XML state row; new `HelloMarkupNames.cs` (62 lines) single-sources the shared names and is linked into `BrutalUi.Framework.Tests` beside `HelloRow.cs`. See the group 2 close record below.
+- ✅ Review-fix verifier (`review-fix-verify.md`): PASS, Demo: PASS, zero fix rounds. Build `0 Warning(s)`, `0 Error(s)`; solution 3203 (0 failed, 3 skipped); `BrutalUi.Framework.Tests` 392; per class 5, 3, and 12, each `failed: 0`; `package-test: PASS Gauge level 0.5`; the slot-typo check, headless check 1, and the clean run give the expected lines and exit 1.
+- ✅ Docs step (`/update-feature markup/markup-sample`): this file, `tasks.md`, and the `implementation.md` header hold the close state, with the review and the review fixes folded in. `inbox.md` holds no open line; no bug needed promotion to `docs/bugs/`.
 
 **What's Next:**
-- 📋 The feature is built and documented. The coordinator: merge `feat/markup-sample` (or the current feature branch) into the epic branch, copy the open human tests under `## Needs Human Verification` to `docs/features/markup/human-testing.md` as a `## markup-sample` section, then run `/update-feature`, `/update-epic markup`, and `/update-master`. Question `msg_e893e050f051` asks the coordinator to confirm that split; no answer had arrived at the phase close.
-- 📋 README line 7 (the status quote) keeps three stale claims (the loader "not written yet", "2921 tests", "the input epic has two features left"). Phase 4 named lines 5, 16, 28, 117, 151, and the `samples/` line only, so the quote waits for `/update-feature` or `/update-master`.
+- 📋 The coordinator: merge `feat/markup/markup-sample` into the epic branch, copy the open human tests under `## Needs Human Verification` to `docs/features/markup/human-testing.md` as a `## markup-sample` section, then run `/update-epic markup` and `/update-master`. The epic closes with this feature (Notes item 11 of `implementation.md`).
+- 📋 One shipped-doc sentence from the review-fix run, recorded as out of scope for the review-fix worker (`code-review.md`, end of the Fix Record): `docs/technical-design.md` section 11 (**The HelloPanel sample.**, the paragraph at line 1827) says "The sample loads the two files before `Glfw.Init`". It should also say that the sample registers the records there, from review CR-1. The docs step checked the other place in that note: the `README.md` block at line 135 already shows `result.RegisterTo(manager)` inside the step marked "Once, at start, before the window opens" (line 155), so the README needs no change.
+- 📋 README line 7 (the status quote) keeps three stale claims (the loader "not written yet", "2921 tests", "the input epic has two features left"). Phase 4 named lines 5, 16, 28, 117, 151, and the `samples/` line only, and the coordinator decided the quote stays as it is (`inbox.md`, the 11:12 note). The rollup of that line belongs to `/update-master`.
 
 **Blockers:**
 - None. The phase 1 demo needs a host with a GPU window. This agent host reports `GLFW init failed: PlatformUnavailable`, so the smoke run stays pending there (Notes item 6 of `implementation.md`).
@@ -58,7 +64,9 @@ The sections below come from `implementation.md`. Word-for-word text stays there
 
 ### The Sample (end state)
 
-`samples/HelloPanel/` gains `HelloState.xml` (state panel template), `HelloDefinitions.xml` (3 panels, 1 layout, 2 modes), `HelloRow.cs` (`[TemplateElement("HelloRow")] HelloRow : Element`), `HelloMarkup.cs` (phase 2: reads both files, runs the load flow, prints the errors), and csproj changes (the generator analyzer line and two `PreserveNewest` copy items). `Program.Run` loads before `Glfw.Init` (phase 2); `RunImGui` calls `modes.Mount`; `RunFrames` reads the mounted trees; line 8 prints the markup counts. The widget panel, the info panel, and the layout stay C# factories (A5, A9).
+`samples/HelloPanel/` gains `HelloState.xml` (state panel template), `HelloDefinitions.xml` (3 panels, 1 layout, 2 modes), `HelloRow.cs` (`[TemplateElement("HelloRow")] HelloRow : Element`), `HelloMarkup.cs` (phase 2: reads both files, runs the load flow, prints the errors), `HelloMarkupNames.cs` (review CR-3: the shared names), and csproj changes (the generator analyzer line and two `PreserveNewest` copy items). `Program.Run` loads before `Glfw.Init` (phase 2); `RunImGui` calls `modes.Mount`; `RunFrames` reads the mounted trees; line 8 prints the markup counts. The widget panel, the info panel, and the layout stay C# factories (A5, A9).
+
+**Where the plan and the code differ (recorded here, not in `implementation.md`).** The plan puts the register step inside `Mount`, after the window (Decision 5, The Sample flow, `Program.Run (end state)`). Review CR-1 moved it earlier: `HelloModes.Register(DefinitionLoadResult)` runs inside `HelloMarkup.Load`, before `Glfw.Init`, and `Mount(TextureHandle)` keeps only the root build and the lookups. The plan body keeps its original text as the record of what was planned. See Decision 3 below and the group 1 close record.
 
 ### The Two Files
 
@@ -99,17 +107,20 @@ The sections below come from `implementation.md`. Word-for-word text stays there
 
 ### Core Implementation
 - `src/BrutalUi.Framework/Templates/DefinitionLoader.cs` - The definition loader. Phase 1 adds `AddFactory` and the factory table.
-- `src/BrutalUi.Framework/Templates/DefinitionReader.Resolve.cs` - The resolve pass. Phase 1 resolves a `template` value to a factory. Phase 2 changes the `UnknownTemplate` message.
+- `src/BrutalUi.Framework/Templates/DefinitionReader.Resolve.cs` - The resolve pass. Phase 1 resolves a `template` value to a factory. Phase 2 changes the `UnknownTemplate` message. Review CR-2 extracts `TryResolveTemplate`, which serves the panel loop and the layout loop.
 - `src/BrutalUi.Framework/Templates/DefinitionLoadResult.cs` - Phase 1 makes `RegisterTo` return `IReadOnlyList<PanelController>` (Q5).
-- `samples/HelloPanel/HelloRow.cs` - New. The custom `[TemplateElement("HelloRow")]` type (Q3).
+- `samples/HelloPanel/HelloRow.cs` - New. The custom `[TemplateElement("HelloRow")]` type (Q3). 39 lines.
 - `samples/HelloPanel/HelloState.xml` and `samples/HelloPanel/HelloDefinitions.xml` - New. The state panel template and the six records (A1).
-- `samples/HelloPanel/HelloMarkup.cs` - New in phase 2. It runs the load before the window and prints the errors (A3).
-- `samples/HelloPanel/HelloModes.cs`, `samples/HelloPanel/Program.cs`, `samples/HelloPanel/HelloPanel.csproj` - The sample changes: the mount step, line 8, and the generator line.
-- `tests/BrutalUi.Framework.Tests/Templates/DefinitionFactoryTests.cs` - New in phase 1. 5 tests.
-- `tests/BrutalUi.Framework.Tests/Templates/SampleMarkupAllocationTests.cs` - New in phase 3. The twenty-third gate, with 3 tests.
+- `samples/HelloPanel/HelloMarkup.cs` - New in phase 2. It reads both files, runs the A4 flow, registers the records, and prints the errors, all before the window (A3, review CR-1). 121 lines.
+- `samples/HelloPanel/HelloMarkupNames.cs` - New in the review-fix run (CR-3). The shared names: the two file names, the template name, the three factory names, the action map name, the score key, and the four command keys. 62 lines, linked into the Framework tests.
+- `samples/HelloPanel/HelloModes.cs`, `samples/HelloPanel/Program.cs`, `samples/HelloPanel/HelloPanel.csproj` - The sample changes: the `Register` and `Mount` steps with their one-time guards (CR-1, CR-6), line 8, and the generator line.
+- `tests/BrutalUi.Framework.Tests/Templates/DefinitionFactoryTests.cs` - New in phase 1. 5 tests; CR-5 pins the panel and the layout delegate.
+- `tests/BrutalUi.Framework.Tests/Templates/SampleMarkupAllocationTests.cs` - New in phase 3. The twenty-third gate, with 3 tests, 185 lines (the bodies).
+- `tests/BrutalUi.Framework.Tests/Templates/SampleMarkupAllocationScene.cs` - New in the phase 3 fix round. The gate scene, `BuildScene`, the twins, and the handlers, 297 lines; it reads `HelloMarkupNames` (CR-3).
 
 ### Related Files
 - `docs/features/markup/markup-sample/implementation.md` - The implementation plan.
+- `docs/features/markup/markup-sample/code-review.md` - The cross-phase review: 6 findings, all resolved, with the fix record.
 - `docs/features/markup/definition-loader/context.md` - The load flow of A4 (lines 38 and 429).
 - `docs/features/markup/binding-attributes/implementation.md` - Notes item 7: a game with its own `[TemplateElement]` types references `BrutalUi.Markup`.
 - `docs/features/markup/element-generator/implementation.md` - Notes item 8: the analyzer `ProjectReference` line.
@@ -133,6 +144,20 @@ The sections below come from `implementation.md`. Word-for-word text stays there
 **Rationale:** The demo comes early, and the Framework API ships with its tests in the same slice.
 **Impact:** Phases 1 and 2 are ADVANCED (opus). Phases 3 and 4 are STANDARD (sonnet).
 
+### Decision 3: The sample registers before the window (review CR-1)
+**Date:** 2026-11-19
+**Context:** Decision 3 of the plan holds that the resolve pass calls no factory and skips the slot check of a mode on a factory layout, and that `UiManager.Register(ModeDefinition)` checks each slot inside `RegisterTo`. The plan put `RegisterTo` inside `HelloModes.Mount`, which runs after the window. A slot typo such as `<ui:Slot name="botom">` then threw an `ArgumentException` with a stack trace after `Glfw.Init`, which breaks the A3 promise of the sample (Notes item 5 recorded the open point).
+**Decision:** `HelloModes` splits into `Register(DefinitionLoadResult)` and `Mount(TextureHandle)`. `HelloMarkup.Load` calls `Register` after both loads pass, still before `Glfw.Init`, catches the register `ArgumentException`, prints one line `HelloDefinitions.xml: <message>`, and returns `null`. Both methods carry a one-time guard that throws `InvalidOperationException` and names the double call (CR-6).
+**Rationale:** The sample owns when it calls `RegisterTo`, so an early call closes the gap with no Framework behaviour change and no flip of Decision 3. Registration needs no GPU: `UiManager.Register(PanelDefinition)` defers each root build, and the layout factory is `HelloScreen.BuildLayout`, which takes no texture.
+**Impact:** Headless proof on this host: the typo gives one line, `HelloDefinitions.xml: A mode names a slot that its layout holds not. (Parameter 'mode')`, exit code 1, with no GLFW line. Known limit, kept by Decision 3 of the plan: the line names no file position and no slot name. Section 11 of `technical-design.md` still says only that the sample loads the two files before `Glfw.Init`; one sentence there must name the register step too.
+
+### Decision 4: The shared names live in one linked file (review CR-3)
+**Date:** 2026-11-19
+**Context:** `SampleMarkupAllocationScene.BuildScene` repeated the load flow of `HelloMarkup.Load`, and the three factory names were literals in the test and constants in the sample. A change of the C# flow could pass the gate.
+**Decision:** New `samples/HelloPanel/HelloMarkupNames.cs` holds the two file names, the template name, the three factory names, the action map name, the score key, and the four command keys. `BrutalUi.Framework.Tests.csproj` links it beside `HelloRow.cs`. The sample and the scene both read it, and no name literal is left in either.
+**Rationale:** The finding offered a full flow move (`HelloMarkup.Configure`) or the names alone. The brief took the floor: the linked file gives one source for each name with no reference to `HelloPanel.csproj` (Decision 10 holds).
+**Impact:** The scene still repeats the flow steps, so a new flow step needs a matching edit there. `Technical Debt` in `tasks.md` records it. The type uses only `System` types, so it compiles in both assemblies.
+
 The Key Technical Decisions of `implementation.md` (Decisions 1 to 10) hold the rest. Do not copy them here. Record a new decision here when the work makes one.
 
 ---
@@ -143,6 +168,9 @@ The Key Technical Decisions of `implementation.md` (Decisions 1 to 10) hold the 
 - `dotnet test --solution` gives exit code 2 for a failed test, not 1. The plant rule needs only a non-zero code.
 - The plant scratch folder already holds `.orig` copies from earlier features. Group 1 uses the names `DefinitionLoader.cs.orig`, `DefinitionReader.Resolve.cs.orig`, and `DefinitionLoadResult.cs.orig`.
 - `UiManager.Register(PanelDefinition)` defers the root build (the controller calls the factory in the mode diff). `UiManager.Register(LayoutDefinition)` calls the layout factory in the register call, so `RegisterTo` calls each layout factory one time.
+- The register call needs no GPU, so it can run before the window: `HelloScreen.BuildLayout` builds two `SlotContainer` objects and reads no texture. A game whose layout factory needs a texture cannot take the CR-1 shape and must keep the slot check at `RegisterTo`.
+- `Register` and `Mount` each run one time, and `Mount` needs one succeeded `Register` before it. A copy of the sample that calls `Mount` first, or calls either twice, gets an `InvalidOperationException` that names the double call, not a duplicate-record `ArgumentException`.
+- A linked shared-name file must use only `System` types, because it compiles in two assemblies with no reference between them (`HelloMarkupNames.cs`, CR-3).
 
 ---
 
@@ -404,6 +432,7 @@ The phase 4 demo passes on this host: `README.md` shows the `HelloState.xml` blo
 - `DefinitionLoader.AddFactory(string name, Func<PanelContext, Element> factory)` - new. A `template` value of a `Panel` or a `Layout` names a text or a factory, through one name table.
 - `DefinitionLoadResult.RegisterTo(UiManager)` - now returns `IReadOnlyList<PanelController>` in the order of `Panels`.
 - The sample uses `TemplateLoader`, `TemplateBindings`, the generated `RegisterHelloPanelElements()`, `DefinitionLoader`, and `UiManager`.
+- Sample-only shape after review CR-1 and CR-6: `HelloMarkup.Load(state, modes, errors)` reads both files, runs both loads, calls `HelloModes.Register(result)` (which calls `RegisterTo`), and prints each fault; `HelloModes.Mount(checker)` builds each root, runs the lookups, and returns `HelloMount`. `Program.Run` calls the load before `Glfw.Init`; `RunImGui` calls `Mount` after the texture exists. No Framework API changed in the review-fix run.
 
 ---
 
@@ -421,12 +450,13 @@ The phase 4 demo passes on this host: `README.md` shows the `HelloState.xml` blo
 - The factory panel and the factory layout, the shared name table, the argument checks, and the controller list of `RegisterTo`. Plants 1 to 3.
 
 ### Integration Tests
-**Files:** `tests/BrutalUi.Framework.Tests/Templates/SampleMarkupAllocationTests.cs`
-- The sample shape at 0 bytes for an `Add` click and a mode toggle, and a real-work check. Plants 4 and 5.
+**Files:** `tests/BrutalUi.Framework.Tests/Templates/SampleMarkupAllocationTests.cs`, `SampleMarkupAllocationScene.cs`, `samples/HelloPanel/HelloMarkupNames.cs`
+- The sample shape at 0 bytes for an `Add` click and a mode toggle, and a real-work check. Plants 4 and 5. The scene reads the shared names, so the file, template, factory, map, and key names have one source (CR-3).
 
 ### Manual Testing Checklist
 - [ ] The smoke run prints 8 lines with exit code 0 on a host with a window.
 - [x] The headless checks 1 to 4 of phase 2 give the expected lines and exit codes (this host, 2026-11-19; see the phase 2 close record).
+- [x] The headless slot-typo check of review CR-1 gives one `HelloDefinitions.xml:` line, no GLFW line, and exit code 1 (this host, 2026-11-19; see the group 1 close record).
 
 ---
 
@@ -445,8 +475,9 @@ The phase 4 demo passes on this host: `README.md` shows the `HelloState.xml` blo
 - [ ] markup-sample (A10): the plant of task 1.9 — remove `bind-text="hello.score"` from the output copy of `HelloState.xml` under `bin/Debug/net10.0/`, run `HelloPanel --frames 120`, and read line 8 with `bindings 0`, the line `HelloPanel: the markup panel did not load.` on standard error, and exit code 1. Restore the file and check with `cmp`.
 - [ ] markup-sample (A10): line 2 keeps the draw-command and vertex counts of the last measure: the XML state panel builds the same tree as the old C# row.
 - [ ] markup-sample (A10): `scripts/test-linux.sh` and `scripts/test-windows.ps1` print their PASS line.
+- [ ] Review fix (CR-1, CR-6, window host): the clean run registers before `Glfw.Init`, opens the window, and prints 8 lines with exit code 0. The sample calls `Register` and `Mount` one time each, so the one-time guards show only through the plant of the group 1 close record; a person who adds a second call in the flow reads `Mount runs one time. A second call builds each panel root again.` or `Register runs one time. A second call registers each record twice.`
 
-Note for the coordinator: the A10 item "the smoke run prints 8 lines with exit code 0" needs no extra line here. The Phase 1 demo line above states it in full: the run reads the eighth line with the counts and exits with code 0. `docs/features/markup/human-testing.md` stays untouched in this run (the phase 4 brief edit limit); copy this section there after the merge.
+Note for the coordinator: the A10 item "the smoke run prints 8 lines with exit code 0" needs no extra line here. The Phase 1 demo line above states it in full: the run reads the eighth line with the counts and exits with code 0. `docs/features/markup/human-testing.md` holds no line from this feature: copy this section there after the merge. One shipped-doc sentence also waits, from the end of the Fix Record of `code-review.md`: section 11 of `docs/technical-design.md`, the **The HelloPanel sample.** paragraph at line 1827, should say that the sample registers the records before `Glfw.Init`, not only that it loads the two files. The docs step checked the README place of that note and found no change due: the flow block at line 135 already puts `RegisterTo` in the step marked "Once, at start, before the window opens".
 
 ---
 
@@ -458,18 +489,22 @@ Note for the coordinator: the A10 item "the smoke run prints 8 lines with exit c
 
 ## Next Steps
 
-### Immediate (Today/This Session)
+### Immediate (Next session)
 1. ✅ Phase 1, group 1: tasks 1.1 to 1.6. Closed 2026-11-19.
 2. ✅ Phase 1, group 2: tasks 1.7 to 1.9. Closed 2026-11-19.
 3. ✅ Phase 2: tasks 2.1 to 2.5. Closed 2026-11-19. See the phase 2 close record.
 4. ✅ Phase 3: tasks 3.1 to 3.4. Closed 2026-11-19. See the phase 3 close record.
 5. ✅ Phase 4: tasks 4.1 to 4.4. Closed 2026-11-19. See the phase 4 close record.
+6. ✅ Cross-phase review and the review fixes: 6 findings, 6 closed, verifier PASS. See the two group close records.
+7. ✅ Docs step: `/update-feature markup/markup-sample`, 2026-11-19 12:13.
 
 ### Short Term (This Week)
-1. The phase 4 verifier and the acceptance boxes; `/update-feature markup/markup-sample`.
+1. The coordinator on `feat/markup/markup-sample`: add the register sentence to section 11 of `docs/technical-design.md`, merge the feature branch into the epic branch, copy `## Needs Human Verification` here into `docs/features/markup/human-testing.md` as `## markup-sample`, then run `/update-epic markup` and `/update-master`.
+2. The `epic-overview.md` row for this feature still reads Planned, and the epic still reports 4/6. `/update-epic markup` owns both (Notes item 11 of `implementation.md`).
 
-### Future (After This Phase)
+### Future (After This Feature)
 1. `/update-epic markup` closes the epic and Phase 3 (Notes item 11 of `implementation.md`).
+2. A person with a GPU window works through the open lines of `## Needs Human Verification`, then `scripts/test-linux.sh` and `scripts/test-windows.ps1`.
 
 ---
 
@@ -576,6 +611,17 @@ Note for the coordinator: the A10 item "the smoke run prints 8 lines with exit c
 - **CR-3.** New `HelloMarkupNames.cs` (62 lines) holds the shared names once: the two file names, the state template name, the three factory names, the action map name, the score binding key, and the four command keys as `ReadOnlySpan<byte>` properties. `HelloMarkup.cs` dropped its own consts and calls the type. The test csproj links the file with `LinkBase="Shared"`, beside the `HelloRow.cs` link, and still holds no reference to `HelloPanel.csproj`. `BuildScene` reads the constants; no factory, template, definitions-file, map, or score-key literal stands in the scene. The scene keeps its own twins (the floor fix, not the full `HelloMarkup.Configure` move). The linked file compiles in both assemblies: it uses only `System` types.
 - Runs: build `0 Warning(s)`, `0 Error(s)`. Full suite: total 3203, failed 0, skipped 3 — the baseline totals; CR-5 added one assert inside an existing test. Per class: `*DefinitionFactoryTests` total 5, failed 0; `*SampleMarkupAllocationTests` total 3, failed 0, and both allocation bodies (`AnAddClickOnTheLoadedStatePanelAllocatesNothing`, `AModeToggleOnTheLoadedSampleRecordsAllocatesNothing`) still measure 0 bytes.
 - Demo: the headless sample run passed the loads with the shared names and stopped at `HelloPanel: GLFW init failed: PlatformUnavailable (Failed to detect any supported platform).` (exit 1), the window rule of this host. The windowed smoke run and the eight-line demo stay pending on a host with a window.
+
+### 2026-11-19 12:13 (Docs step: `/update-feature markup/markup-sample`)
+- The docs worker ran `/update-feature markup/markup-sample` on the HEAD of `feat/markup/markup-sample` (`ec12ea0`, the cross-phase review fix), with a clean worktree. No source file changed, and no git write ran. Epic context loaded per section 4 of `.beast-mode/epic-resolution.md`: `epic-overview.md`, `epic-requirements.md`, and the sibling features. Features 1 to 5 read Ready for Review, and this feature is the last of 6.
+- `tasks.md`: the progress line, the cross-phase review note, the review-fix run note, the open item for the coordinator, the two fixed-bug lines, the new "Completed This Session" lines, and the two technical-debt lines. The 22 task boxes and the four acceptance blocks keep their state; the review added no task to the plan count.
+- This file: the header, the Quick Status, the plan-excerpt note on the plan-to-code difference, two new decisions (CR-1, CR-3), four new gotchas, the Key Files list with `HelloMarkupNames.cs` and `SampleMarkupAllocationScene.cs`, the API Integration shape, the manual-test lines, one new human-test line, and the Next Steps.
+- `implementation.md`: only the header changed (Status: Ready for Review, Target Completion 2026-11-19, the timestamp). The plan body keeps its text; the CR-1 difference stands in Decision 3 above and the Plan Excerpts note.
+- Inbox fold (section 12 rule 7 of `.beast-mode/phase-handoff.md`): `inbox.md` holds no open line, so the step promoted no bug; `docs/bugs/` does not exist and the step created nothing. The two done lines fold here.
+  - Inbox bug: Verifier FAIL: tests/BrutalUi.Framework.Tests/Templates/SampleMarkupAllocationTests.cs is 472 lines; the 400-line cap for a new source file fails (gate step 10 of phase-3-verify). All other gate steps and the demo passed. (done: phase-3-fix1.md)
+  - Inbox note: Message that reached the phase 4 verifier tab: "1) Did you verify that the README csharp block matches HelloMarkup.Load's A4 flow (the abridged form task 4.1 intends)? 2) Did you check the UnknownTemplate message quote verbatim, character for character, against DefinitionReader.Resolve.cs and context.md? Noted: the coordinator decides README line 7 stays as is — it belongs to /update-feature. That does not change your verdict; reply only if your checks leave either question open." (done: no brief follows (phase 4 is the last phase). The two questions got their answers in the verifier result (the flow matches in the abridged form of task 4.1; the message quote is verbatim equal). The guidance restates the recorded decision in the phase 4 close record, so it wrote no plan change.)
+- The docs step kept `README.md` line 7 as the coordinator decided (the inbox note above), and wrote no shipped-doc edit: `human-testing.md`, `epic-overview.md`, and section 11 of `technical-design.md` stay with the coordinator.
+- Feature state after this step: 22/22 tasks, four phases verified, six review findings closed, one review-fix verifier PASS, solution 3203 (failed 0, skipped 3), Framework 392, `package-test: PASS Gauge level 0.5`. What stays open is outside this host: the windowed checks in `## Needs Human Verification` and the coordinator rollup above.
 
 ---
 
