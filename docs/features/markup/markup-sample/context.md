@@ -1,9 +1,9 @@
 # markup/markup-sample - Context & Decisions
 
 **Epic:** markup (feature 6 of 6)
-**Last Updated:** 2026-11-19 10:35
-**Current Phase:** Phase 3 - The Sample Shape at Zero Bytes (closed)
-**Status:** 🟡 Phase 3 closed (tasks 3.1 to 3.4, verifier PASS after fix round 1); phase 4 open
+**Last Updated:** 2026-11-19 11:12
+**Current Phase:** Phase 4 - The Docs Show the Sample Template (closed)
+**Status:** 🟢 Feature complete: 22/22 tasks. Phase 4 closed (tasks 4.1 to 4.4, verifier PASS, zero fix rounds, Demo: PASS). The windowed checks and the `human-testing.md` copy await the coordinator.
 
 ---
 
@@ -16,9 +16,11 @@
 - ✅ Phase 1, group 2 (tasks 1.7 to 1.9): `HelloState.xml`, `HelloDefinitions.xml`, the csproj analyzer and copy lines, `HelloModes.Mount` with `HelloMount` and `MarkupCounts`, and smoke line 8 with its markup check. Totals unchanged. See the group 2 close record below.
 - ✅ Phase 2 (tasks 2.1 to 2.5): `HelloMarkup.Load` with the name constants and the error print, `Mount(DefinitionLoadResult, TextureHandle)`, the managed build and the load before `Glfw.Init`, the `UnknownTemplate` constant message, the two test strings, and headless checks 1 to 4. Totals unchanged. See the phase 2 close record below.
 - ✅ Phase 3 (tasks 3.1 to 3.4): the C# state row removed from `HelloState` and `HelloScreen`, the sample files linked into `BrutalUi.Framework.Tests`, and the twenty-third gate `SampleMarkupAllocationTests` (3 tests, Framework 392). Plants 4 and 5. See the phase 3 close record below.
+- ✅ Phase 4 (tasks 4.1 to 4.4): the README XML section with the load flow and the A7 note, section 11 with `AddFactory` and **The HelloPanel sample.**, section 14 with the twenty-third gate bullet and the 8-line sample bullet, `docs/overview.md` and `CHANGELOG.md`, and the human-test lines in this file. Build 0 warnings, tests 3203, package PASS, checks 1 and 4 re-run. See the phase 4 close record below.
 
 **What's Next:**
-- 📋 Phase 4 (tasks 4.1 to 4.4): the docs show the sample template; the README block, section 11 and 14, the rollups, and the package check.
+- 📋 The feature is built and documented. The coordinator: merge `feat/markup-sample` (or the current feature branch) into the epic branch, copy the open human tests under `## Needs Human Verification` to `docs/features/markup/human-testing.md` as a `## markup-sample` section, then run `/update-feature`, `/update-epic markup`, and `/update-master`. Question `msg_e893e050f051` asks the coordinator to confirm that split; no answer had arrived at the phase close.
+- 📋 README line 7 (the status quote) keeps three stale claims (the loader "not written yet", "2921 tests", "the input epic has two features left"). Phase 4 named lines 5, 16, 28, 117, 151, and the `samples/` line only, so the quote waits for `/update-feature` or `/update-master`.
 
 **Blockers:**
 - None. The phase 1 demo needs a host with a GPU window. This agent host reports `GLFW init failed: PlatformUnavailable`, so the smoke run stays pending there (Notes item 6 of `implementation.md`).
@@ -343,6 +345,60 @@ The phase 3 demo passes on this host (the gate needs no window). The smoke run s
 
 ---
 
+## Phase 4 Close Record (Tasks 4.1 to 4.4)
+
+**Date:** 2026-11-19. Base: the phase 3 close `6eb10d9` (no new commit; no git write ran). The phase is docs only, plus the runs of task 4.4. The solution builds with `0 Warning(s)` and `0 Error(s)`; build exit code 0.
+
+### Totals
+
+| Measure | Phase 3 close | Phase 4 close | Delta |
+|---|---|---|---|
+| Solution total | 3203 (3 skipped, 0 failed) | 3203 (3 skipped, 0 failed) | none, as expected |
+| `BrutalUi.Framework.Tests` | 392 | 392 | none |
+
+`dotnet test --solution brutal-ui.sln`: `total: 3203, failed: 0, succeeded: 3200, skipped: 3`. The phase 3 totals hold: no code or test changed.
+
+### What Changed
+
+- `README.md`: the section is now `### The same tree in XML`, with the text of `HelloState.xml` as the `xml` block, one sentence on `HelloRow` and the generator, a `csharp` block with the load flow (`TemplateBindings`, `AttachTo`, `RegisterHelloPanelElements`, `AddTemplate`, three `AddFactory` calls, `AddActionMap`, `Load`, the error print, and `RegisterTo` with the controller list), and the A7 note on the `BrutalUi.Markup` reference and the analyzer line. Line 5, line 16, and line 28 are current; line 28 names the XML element loader, the element generator, and the stylesheet parser. The `UiManager` line names `HelloDefinitions.xml` and the C# factories, and the `samples/` line names the XML state panel.
+- `docs/technical-design.md`: section 11 **### Definition format** holds the `AddFactory` line in the C# block with the named `RegisterTo` return, the `Panel`, `Layout`, and `UnknownTemplate` rows now name a text or a factory, the **The factories.** paragraph states the game-factory rule (delegate as is, no call at load, game panel factory at the first mount, game layout factory inside `RegisterTo`), the **The check of each layout** paragraph states the factory-layout rule (no check load, the slot check at `RegisterTo` with no position) and limits the no-throw sentence to template factories (Notes item 12), and **The rules of the object** states one name table, the `AddFactory` checks, the first-entry rule, the text-then-factory lookup, and the `IReadOnlyList<PanelController>` return. **The HelloPanel sample.** holds both XML files and the line `HelloPanel: markup: elements 6, bindings 1, commands 3, panels 3, layouts 1, modes 2.` Section 14 holds the new bullet **A twenty-third allocation gate.** (the scene, the two measured bodies, the real-work checks, and plants 4 and 5 with their bytes from the phase 3 close record) and the sample bullet now lists 8 lines with the markup check message and the load error exit before `Glfw.Init`.
+- `docs/overview.md`: the epic roll line and the v2.8 line now name markup-sample's `SampleMarkupAllocationTests` as the twenty-third allocation gate. See the reading decision below.
+- `CHANGELOG.md`: one line under `### Added`, tagged `(markup/markup-sample)`: `AddFactory`, the controller list of `RegisterTo`, the XML state panel and records of HelloPanel with `HelloRow`, smoke line 8, the load error exit, and the twenty-third gate.
+- `context.md` (this file): the header, the Quick Status, the phase 4 close record, the session note, and the six new lines under `## Needs Human Verification` (the phase 4 demo and the five new A10 windowed checks; the A10 "8 lines, exit 0" item holds in the phase 1 demo line, noted for the coordinator).
+
+### Implementation Decisions (docs phase)
+
+- **The overview.md reading (task 4.3, as the brief states).** The two `twenty-second gate` mentions at lines 23 and 55 name `TemplateBindingAllocationTests` of binding-attributes, and that number stays correct for that gate; no mention was relabeled. The roll reads twenty-third instead: the markup epic row and the v2.8 line now state that markup-sample adds `SampleMarkupAllocationTests`, the twenty-third allocation gate. `grep -n 'twenty-third allocation gate' docs/overview.md` gives two lines (23 and 55), so step 10 of the Verification Method passes.
+- **The README status line (line 7) was not changed.** The brief names lines 5, 16, 28, 117, 151, and the `samples/` line only. Line 7 still reads "The XML markup loader and the debugger window are not written yet", "the suite runs 2921 tests", and "the input epic has two features left". Those three claims are stale (phase 4, `3203`, and the input epic close). The whole status quote is a rollup line and belongs to `/update-feature` and `/update-master`, so it stays for the orchestrator. The acceptance grep `grep -n 'planned' README.md` gives no line: the remaining `Planned` word at line 29 is the debugger row, uppercase, and not a markup line.
+- **`docs/features/markup/human-testing.md` was not touched** (the edit limit of task 4.3). The content the plan wants in its `## markup-sample` section stands in `## Needs Human Verification` of this file; the coordinator copies it after the merge.
+- **Section 11 demo shape.** The C# block adds `definitions.AddFactory("hud.live", liveFactory);` with the comment `// one name holds a text or a C# factory`. The XML demo text keeps its two template names, so the factory line shows the API, not a third record; the rows and the rules state the text-or-factory rule.
+
+### Runs (task 4.4)
+
+- Build: `0 Warning(s)`, `0 Error(s)`, exit 0 (`-nodeReuse:false`, `DOTNET_CLI_HOME=/tmp/dui-cli-home`, `MSBUILDDISABLENODEREUSE=1`).
+- Tests: `total: 3203, failed: 0, succeeded: 3200, skipped: 3` — the phase 3 close totals.
+- Package (the `pack`, `package-restore`, and `package` steps of `scripts/test-linux.sh`, by hand): pack wrote the five packages; `dotnet run --project tests/BrutalUi.PackageTest/... --no-restore` printed `package-test: PASS Gauge level 0.5`.
+- README check (step 9): the `awk`+`diff` against `samples/HelloPanel/HelloState.xml` gives no difference, `same`. `grep -n 'planned' README.md` lists no markup line.
+- Headless check 1 re-run (output copy of `HelloState.xml`, `hello.score` to `hello.scor`): one line, no GLFW line, exit code 1: `HelloState.xml(6,45): UnknownBinding: 'hello.scor' is not a bound key. ...`. Restored with `cp`; `cmp` equal. No `.orig` file under the output folder.
+- Headless check 4 re-run (clean files): no `HelloState.xml(` or `HelloDefinitions.xml(` line, then `HelloPanel: GLFW init failed: PlatformUnavailable (Failed to detect any supported platform).`, exit code 1. The load passes before GLFW.
+
+### Acceptance Checks (evidence for the orchestrator; boxes left open)
+
+- README: the diff check gives `same`; `grep -n 'planned' README.md` gives no markup line. [box open]
+- Section 11: `grep -n 'AddFactory' docs/technical-design.md` lists the C# block line and the four rule paragraphs; `grep -n 'The HelloPanel sample'` gives the paragraph at line 1783. Section 14: `grep -n 'twenty-third allocation gate'` gives the bullet at line 2105; the sample bullet lists 8 lines with `HelloPanel: markup: elements <E>, ...`. [box open]
+- CHANGELOG: `grep -n 'markup/markup-sample' CHANGELOG.md` gives exactly one line (58). `human-testing.md` has no `## markup-sample` in this run by the edit limit; the content is in this file for the coordinator. [box open]
+- Package: `package-test: PASS Gauge level 0.5`. [box open]
+
+### Blast Radius
+
+`git status --porcelain`: six modified files — `README.md`, `docs/technical-design.md`, `docs/overview.md`, `CHANGELOG.md`, `docs/features/markup/markup-sample/context.md`, and `docs/features/markup/markup-sample/tasks.md`. No source, sample, or test file changed; no git write ran; base `6eb10d9`.
+
+### Demo State
+
+The phase 4 demo passes on this host: `README.md` shows the `HelloState.xml` block equal to the file character for character, with the C# load code under it. The windowed checks stay pending on a host with a window: the eight-line smoke run with exit code 0, the `Add` click raising the score, the F1 and F2 checks, the task 1.9 plant with `bindings 0`, the line 2 counts, and both test-script PASS lines. They stand in `## Needs Human Verification`.
+
+---
+
 ## API Integration
 
 - `DefinitionLoader.AddFactory(string name, Func<PanelContext, Element> factory)` - new. A `template` value of a `Panel` or a `Layout` names a text or a factory, through one name table.
@@ -382,6 +438,15 @@ The phase 3 demo passes on this host (the gate needs no window). The smoke run s
 - [ ] Phase 2 demo: the developer changes `bind-text="hello.score"` to `bind-text="hello.scor"` in `samples/HelloPanel/bin/Debug/net10.0/HelloState.xml`, runs `HelloPanel --frames 120`, and reads one line that starts with `HelloState.xml(` and holds `): UnknownBinding: 'hello.scor' is not a bound key.` on standard error, no GLFW line, and exit code 1.
 - [ ] Phase 2 windowed half of check 4: on a host with a window, the clean run gives 8 lines and exit code 0.
 - [ ] Phase 3 demo: the developer runs `BrutalUi.Framework.Tests --filter-class '*SampleMarkupAllocationTests'` and reads a total of 3 with `failed: 0`. `AnAddClickOnTheLoadedStatePanelAllocatesNothing` measures 0 bytes over 100 click frames on the panel that `HelloState.xml` builds.
+- [ ] Phase 4 demo: the reader opens `README.md` at `### The same tree in XML` and sees the XML block of `samples/HelloPanel/HelloState.xml`, equal to the file character for character, with the C# load code under it.
+- [ ] markup-sample (A10): the XML state panel shows in `hello.main` with the `Add`, `Rebind (Up)`, and `Restore` buttons and the score label.
+- [ ] markup-sample (A10): a click on `Add` raises the score.
+- [ ] markup-sample (A10): F1 and the `Mode (F1)` button toggle `hello.main` and `hello.detail`, and F2 steps back.
+- [ ] markup-sample (A10): the plant of task 1.9 — remove `bind-text="hello.score"` from the output copy of `HelloState.xml` under `bin/Debug/net10.0/`, run `HelloPanel --frames 120`, and read line 8 with `bindings 0`, the line `HelloPanel: the markup panel did not load.` on standard error, and exit code 1. Restore the file and check with `cmp`.
+- [ ] markup-sample (A10): line 2 keeps the draw-command and vertex counts of the last measure: the XML state panel builds the same tree as the old C# row.
+- [ ] markup-sample (A10): `scripts/test-linux.sh` and `scripts/test-windows.ps1` print their PASS line.
+
+Note for the coordinator: the A10 item "the smoke run prints 8 lines with exit code 0" needs no extra line here. The Phase 1 demo line above states it in full: the run reads the eighth line with the counts and exits with code 0. `docs/features/markup/human-testing.md` stays untouched in this run (the phase 4 brief edit limit); copy this section there after the merge.
 
 ---
 
@@ -398,9 +463,10 @@ The phase 3 demo passes on this host (the gate needs no window). The smoke run s
 2. ✅ Phase 1, group 2: tasks 1.7 to 1.9. Closed 2026-11-19.
 3. ✅ Phase 2: tasks 2.1 to 2.5. Closed 2026-11-19. See the phase 2 close record.
 4. ✅ Phase 3: tasks 3.1 to 3.4. Closed 2026-11-19. See the phase 3 close record.
+5. ✅ Phase 4: tasks 4.1 to 4.4. Closed 2026-11-19. See the phase 4 close record.
 
 ### Short Term (This Week)
-1. Phase 4: the docs show the sample template.
+1. The phase 4 verifier and the acceptance boxes; `/update-feature markup/markup-sample`.
 
 ### Future (After This Phase)
 1. `/update-epic markup` closes the epic and Phase 3 (Notes item 11 of `implementation.md`).
@@ -477,6 +543,20 @@ The phase 3 demo passes on this host (the gate needs no window). The smoke run s
 - Fix round 1 (brief `phase-3-fix1.md`, STANDARD dev agent): partial-class split into `SampleMarkupAllocationTests.cs` (185 lines) and `SampleMarkupAllocationScene.cs` (297 lines). Test names, bodies, semantics, and totals unchanged; no other file touched.
 - The verifier re-run returned PASS on all 11 gate steps. Build 0 warnings, 0 errors; suite total 3203, failed 0, skipped 3; class run total 3, failed 0; plants 4 and 5 evidence holds in the close record and the `p4.log`/`p5.log` logs. Demo: PASS (0 bytes over 100 click frames).
 - The `bug` line is marked `done: phase-3-fix1.md`. The Phase 3 demo line is added to `## Needs Human Verification` here only; no line was written to `human-testing.md` (the coordinator copies them after the merge). No inbox item reached the phase beyond the verifier fault; no git write ran.
+
+### 2026-11-19 10:55 (Phase 4 close)
+- The STANDARD dev agent ran tasks 4.1 to 4.4 on base `6eb10d9`. No git write ran; no file outside the six docs changed.
+- `README.md` now shows the sample template and the load flow: the XML block equals `HelloState.xml` character for character (step 9 gives `same`), the `planned` loader lines are current, and the A7 note stands. `technical-design.md` section 11 holds `AddFactory` in the C# block, the text-or-factory rows, the factory-layout rules, the template-factory limit (Notes item 12), the named `RegisterTo` return, and **The HelloPanel sample.** with both files and line 8. Section 14 holds **A twenty-third allocation gate.** with plants 4 and 5 and the 8-line sample bullet with the markup check message and the load error exit. `docs/overview.md` names the twenty-third gate in the epic roll and the v2.8 line; `CHANGELOG.md` has one `(markup/markup-sample)` line.
+- Runs: build `0 Warning(s)`, `0 Error(s)`; tests `total: 3203, failed: 0, skipped: 3` (the phase 3 totals); `package-test: PASS Gauge level 0.5`; headless checks 1 and 4 re-run with the expected lines and exit code 1; the output XML restored equal under `cmp`.
+- The windowed checks and the task 1.9 plant stay pending on a host with a window; the six human-test lines stand in `## Needs Human Verification` for the coordinator to copy into `human-testing.md` after the merge. `human-testing.md` and `epic-overview.md` were not touched.
+- Open note for the orchestrator: README line 7 (the status quote) keeps three stale claims (the loader "not written yet", "2921 tests", "the input epic has two features left"); the brief did not name the line, so it waits for `/update-feature` or `/update-master`.
+- No inbox item reached this phase; no open question.
+
+### 2026-11-19 11:12 (Phase 4 verifier close)
+- The verifier (brief `phase-4-verify.md`, STANDARD agent) returned PASS on the first pass, with zero fix rounds. All 18 gate steps ran and passed: build `0 Warning(s)`, `0 Error(s)`; suite `total: 3203, failed: 0, skipped: 3` (the phase 3 totals, no test growth); `*SampleMarkupAllocationTests` total 3, failed 0; the README XML block `same` against `samples/HelloPanel/HelloState.xml`; no `planned` markup line (the uppercase `Planned` at line 29 is the debugger row); section 11 holds `AddFactory`, the text-or-factory rows, the factory-layout rule, the template-factory limit, the named `RegisterTo` return, and **The HelloPanel sample.**; section 14 holds one **A twenty-third allocation gate.** bullet and the 8-line sample bullet with the markup check message and the load-error exit; `docs/overview.md` names the twenty-third gate on two lines and keeps both correct `twenty-second` labels; `CHANGELOG.md` has exactly one `(markup/markup-sample)` line naming all six items; both section 11 XML copies are equal to the files; the `UnknownTemplate` quote is verbatim equal to `DefinitionReader.Resolve.cs`; the added doc prose holds no contraction; `package-test: PASS Gauge level 0.5`; headless checks 1 and 4 re-run with the expected lines and exit code 1, and the output XML restored equal under `cmp`. Demo: PASS. UI check: none.
+- The verifier also confirmed the two follow-up questions that reached its tab: the README `csharp` block matches the flow of `HelloMarkup.Load` in the abridged form that task 4.1 names (the check-load call is not in that list), and the `UnknownTemplate` message holds character for character. Those two questions arrived as the `Inbox:` line of the verifier result; they got a short answer and no inbox line (section 12 rule 3).
+- Part 2 (record): the four Phase 4 acceptance boxes and the four task boxes read `[x]`; `tasks.md` now shows 22/22 tasks complete. Part 3 (called mode, with the run change): the Phase 4 demo line stands in `## Needs Human Verification` of this file only; `docs/features/markup/human-testing.md` holds no line from this run. Part 5 (read the inbox): no open line; the single `bug` line was closed at the phase 3 fix. Question `msg_e893e050f051` to the coordinator (who owns the `## markup-sample` section of `human-testing.md`) had no answer at the close; this run followed the phase spec.
+- Blast radius: six modified files — `README.md`, `docs/technical-design.md`, `docs/overview.md`, `CHANGELOG.md`, and the feature `context.md` and `tasks.md`. No source, sample, test, script, package-pin, or epic-rollup change; no git write ran.
 
 ---
 
