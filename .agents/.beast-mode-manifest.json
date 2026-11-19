@@ -1,9 +1,9 @@
 {
   "schema": 1,
-  "beastModeVersion": "6.2.0",
+  "beastModeVersion": "6.2.1",
   "harness": "dsh",
   "harnessRoot": ".agents",
-  "generated": "2026-11-18T16:10:07.049Z",
+  "generated": "2026-11-19T05:28:39.824Z",
   "files": [
     {
       "destination": ".agents/skills/audit-feature/SKILL.md",
@@ -68,13 +68,13 @@
     {
       "destination": ".agents/skills/orca-epic/SKILL.md",
       "source": "templates/skills/orca-epic/SKILL.md",
-      "sha256": "48290d58132d831172b18181f6fdef724863276a81c1920e0c528fcc23c97e51",
+      "sha256": "361d236d27c42ee5f3020b42bec34047d2780bcaf604c387a7e6fa71d0fc4672",
       "owned": true
     },
     {
       "destination": ".agents/skills/orca-feature/SKILL.md",
       "source": "templates/skills/orca-feature/SKILL.md",
-      "sha256": "4f25d243531b24318da889283b941e932a05f8532ad22b486792d71ff04509ef",
+      "sha256": "842e6252449bf07d8b0714cb9b99ff5bc3448b3e5b6a60e22ab03f9a31491470",
       "owned": true
     },
     {
