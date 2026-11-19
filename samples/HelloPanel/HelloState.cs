@@ -6,16 +6,17 @@ using BrutalUi.Framework;
 namespace HelloPanel;
 
 /// <summary>
-/// The state row of the sample: one <see cref="Store{T}"/> that drives a label, three commands on the buttons of the
-/// row, and the actions on the keys and the gamepad. The class also builds the focus commands and the action map of
+/// The state of the sample: one <see cref="Store{T}"/> that drives the score label, the commands the XML buttons run,
+/// and the actions on the keys and the gamepad. The class also builds the focus commands and the action map of
 /// the sample.
 /// </summary>
 /// <remarks>
 /// <para>
-/// The class is the A7 demo of the state-and-commands epic. The <c>Add</c> button runs the command
-/// <c>hello.add</c> through <see cref="CommandBindings.BindCommand(Button, CommandRegistry, ReadOnlySpan{byte})"/>.
-/// The command adds 1 to <see cref="Score"/>. The label of the row shows the score through
-/// <see cref="LabelBindings.BindText{T, TValue}(Label, Store{T}, Func{T, TValue}, string?, IFormatProvider?)"/>. The
+/// The class is the A7 demo of the state-and-commands epic. The <c>Add</c> button of <c>HelloState.xml</c> runs the
+/// command <c>hello.add</c> through the <c>command</c> attribute. The command adds 1 to <see cref="Score"/>.
+/// <see cref="HelloMarkup"/> binds the key <c>hello.score</c> to <see cref="Score"/> with
+/// <see cref="TemplateBindings.AddText{T, TValue}(string, Store{T}, Func{T, TValue}, string?, IFormatProvider?)"/>,
+/// and <c>HelloState.xml</c> binds the score label with <c>bind-text="hello.score"</c>. The
 /// action <c>Cancel</c> runs the command <c>hello.reset</c> from the Escape key and from the gamepad button
 /// <c>B</c>. The actions <c>NavigateUp</c> and <c>NavigateDown</c> run the focus commands from the Up key and the
 /// Down key, and from <c>DpadUp</c> and <c>DpadDown</c>. The action <c>Move</c> is a Vector2 action with no
@@ -23,16 +24,17 @@ namespace HelloPanel;
 /// shows <see cref="UiActionMap.ReadVector"/> in the move label.
 /// </para>
 /// <para>
-/// The rebind rule: the <c>Rebind (Up)</c> button runs the command <c>hello.rebind</c>. The handler opens a listen
-/// on the action <c>NavigateUp</c> with the KeyboardMouse scheme id. The sample rebinds that key only. The map
-/// closes the listen itself, so the frame loop needs no extra call: it reads <see cref="UiActionMap.IsRebinding"/>
-/// and the last result, which the result slot stores here in <see cref="RebindStatus"/>,
-/// <see cref="RebindCode"/>, and <see cref="RebindDone"/>. The constructor writes the slot one time with a target
-/// delegate, so the frame path allocates nothing. The sample must never rebind <c>Cancel</c> to Escape: the listen
-/// consumes the cancel key.
+/// The rebind rule: the <c>Rebind (Up)</c> button of <c>HelloState.xml</c> runs the command <c>hello.rebind</c>. The
+/// handler opens a listen on the action <c>NavigateUp</c> with the KeyboardMouse scheme id. The sample rebinds that
+/// key only. The map closes the listen itself, so the frame loop needs no extra call: it reads
+/// <see cref="UiActionMap.IsRebinding"/> and the last result, which the result slot stores here in
+/// <see cref="RebindStatus"/>, <see cref="RebindCode"/>, and <see cref="RebindDone"/>. The constructor writes the
+/// slot one time with a target delegate, so the frame path allocates nothing. The sample must never rebind
+/// <c>Cancel</c> to Escape: the listen consumes the cancel key.
 /// </para>
 /// <para>
-/// The restore rule: the <c>Restore</c> button runs the command <c>hello.restore</c>, and the handler calls
+/// The restore rule: the <c>Restore</c> button of <c>HelloState.xml</c> runs the command <c>hello.restore</c>, and
+/// the handler calls
 /// <see cref="UiActionMap.ResetBindings"/>. It brings the <c>Up</c> key back after a rebind. The map takes the
 /// snapshot on its first <see cref="UiActionMap.Activate(UiContext)"/> call. The
 /// <see cref="UiManager"/> does that call in the mode diff, so the state panel is mounted before the first rebind.
@@ -40,8 +42,9 @@ namespace HelloPanel;
 /// frame that is not a listen.
 /// </para>
 /// <para>
-/// The build-time rule: the constructor does all the allocation. It creates the store, the registry, the map, the
-/// row, and the bindings one time. The handlers are <see langword="static"/> fields and take the state as the
+/// The build-time rule: the constructor does all the allocation. It creates the store, the registry, the focus
+/// commands, and the map one time. <see cref="HelloMarkup"/> builds the template bindings and loads the state panel.
+/// The handlers are <see langword="static"/> fields and take the state as the
 /// target, so a command call allocates nothing. The read slot of the active map reads the keys, the buttons, and
 /// the pad of slot 0 in <see cref="UiContext.Update(float)"/>, and the context calls the map for a key that no
 /// element took. <see cref="HelloModes"/> later registers
@@ -66,9 +69,6 @@ internal sealed class HelloState
 {
     /// <summary>The UTF-8 name of the Vector2 move action. The frame loop shows its value in the move label.</summary>
     public static ReadOnlySpan<byte> MoveAction => "Move"u8;
-
-    /// <summary>The class of the row: the class of the <c>.hello-row</c> rules of the sheet.</summary>
-    private static readonly ClassId RowClass = ClassName.Intern("hello-row");
 
     /// <summary>The handler of <c>hello.add</c>. The target is the state.</summary>
     private static readonly CommandHandler s_add = static target =>
@@ -107,9 +107,6 @@ internal sealed class HelloState
         state.Map.ResetBindings();
     };
 
-    /// <summary>The selector of the score label. It returns the score itself.</summary>
-    private static readonly Func<int, int> s_scoreText = static s => s;
-
     /// <summary>The id of the KeyboardMouse scheme. The key binds and the WASD composite carry it.</summary>
     private readonly int _keyboardScheme;
 
@@ -117,7 +114,7 @@ internal sealed class HelloState
     private readonly int _gamepadScheme;
 
     /// <summary>
-    /// Creates the state and builds the store, the commands, the focus commands, the map, and the row.
+    /// Creates the state and builds the store, the commands, the focus commands, and the map.
     /// </summary>
     /// <remarks>
     /// The constructor does not activate the map. The first apply of the mode that names the map activates it, so the
@@ -155,41 +152,13 @@ internal sealed class HelloState
         Map.BindKeyVector(MoveAction, (int)GlfwKey.W, (int)GlfwKey.A, (int)GlfwKey.S, (int)GlfwKey.D, _keyboardScheme);
         Map.BindGamepadStick(MoveAction, UiGamepadStick.Left, _gamepadScheme);
         Map.OnRebindResult = OnRebind;
-
-        AddButton = new Button(new Button.CreateInfo { Text = "Add" }).BindCommand(commands, "hello.add"u8);
-        RebindButton = new Button(new Button.CreateInfo { Text = "Rebind (Up)" }).BindCommand(
-            commands, "hello.rebind"u8);
-        RestoreButton = new Button(new Button.CreateInfo { Text = "Restore" }).BindCommand(
-            commands, "hello.restore"u8);
-        Label scoreLabel = new Label(new Label.CreateInfo()) { IsPickable = false }.BindText(Score, s_scoreText);
-
-        Row = new Element();
-        Row.Classes.Add(RowClass);
-        Row.Children.Add(AddButton);
-        Row.Children.Add(RebindButton);
-        Row.Children.Add(RestoreButton);
-        Row.Children.Add(scoreLabel);
     }
-
-    /// <summary>Gets the row: the <c>Add</c> button, the <c>Rebind (Up)</c> button, the <c>Restore</c> button, and the
-    /// score label. <see cref="HelloScreen.BuildStatePanel"/> puts the row in the state panel.</summary>
-    public Element Row { get; }
-
-    /// <summary>Gets the <c>Add</c> button. A click runs <c>hello.add</c>.</summary>
-    public Button AddButton { get; }
-
-    /// <summary>Gets the <c>Rebind (Up)</c> button. A click runs <c>hello.rebind</c> and opens the listen.</summary>
-    public Button RebindButton { get; }
-
-    /// <summary>Gets the <c>Restore</c> button. A click runs <c>hello.restore</c> and brings the <c>Up</c> key
-    /// back.</summary>
-    public Button RestoreButton { get; }
 
     /// <summary>Gets the action map. The first apply of the mode that names the map activates it; the caller does not
     /// call <see cref="UiActionMap.Activate(UiContext)"/> (see <see cref="HelloModes"/>).</summary>
     public UiActionMap Map { get; }
 
-    /// <summary>Gets the score store. The label of the row shows it.</summary>
+    /// <summary>Gets the score store. The score label of <c>HelloState.xml</c> shows it.</summary>
     public Store<int> Score { get; }
 
     /// <summary>Gets the number of runs of <c>hello.add</c>.</summary>

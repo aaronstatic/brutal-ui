@@ -71,7 +71,7 @@ Pass `--fresh` on the first call of a run only. A later `--fresh` call stops the
 
 The script runs the stages of one feature in this order. You do not choose a stage. `next` names it in each `start` action, and the tab does the work.
 
-1. **`plan`**: a plan tab, only when the feature has no plan. It runs `/plan-feature`, then `/start-feature`. Each question of the plan reaches you through a question wake.
+1. **`plan`**: a plan tab, only when the feature has no plan. It runs `/plan-feature`, then `/start-feature`. The plan tab asks its questions in its own tab, so the user answers there. Wait while it waits on the person. A question wake comes from the other stages.
 2. **`phase`**: for each phase, a phase tab. It builds the phase by `.beast-mode/phase-handoff.md`. Then the phase steps and the phase commit run. The phase commits only after a `PASS` verdict.
    - `stages.verify` equal to `stages.implement`: the phase tab verifies the phase itself.
    - A different agent: a **verify tab** of that agent runs after the phase tab. It checks the phase, and it writes the verdict file (`PASS`, `FAIL`, or `BLOCKED`, with the evidence and a last `Demo:` line).
@@ -180,6 +180,8 @@ To end the run, state what ran, what the output says, and the smallest next step
 - Run `start --retry` only from the retry option of a `start-failed` ask.
 - A `start-unknown` ask means that Orca gave no answer to a start, so a tab can be open. The options are stop (recommended) and clear. Both say "Check Orca for a new tab of <work> first". Tell the user to check Orca before the answer. Never offer a retry for it.
 - A project command of `orca.json` starts the tab of that agent. The `start` action names `path` (`agent` or `command`) and `command`, and its `say` names the command. Run the `run` line as written: the loop does not change. A start result with `readyState` `ready-unconfirmed` is not a fault. Show its `say`, and call `next`. A failed start leaves its terminal open. Show its detail line, which tells the user to close it in Orca.
+- A dsh tab can keep its prompt as a draft, so the `start` step presses Enter in the tab until the turn starts. A start result with `submit` `unconfirmed` is not a fault. Show its `say`, and call `next`.
+- A dsh tab that waits on its own subagent is left alone: `next` gives `wait`, and the run sends it nothing. When a dsh tab stays idle and no subagent runs, the user can say "resume". Then run a shell command: `beast-mode orca next --feature <path> --wake escalation`, in the form of step 1 of the loop, and go on at step 2.
 - `next` decides from the state, not from the message. So a duplicate wake does no harm.
 - A `run` line names the absolute `node`, the absolute CLI path, and `--project`. It needs no `beast-mode` on the path. Compose no `run` line yourself.
 - Keep your context lean. Show `say` and `show`, not the whole JSON.

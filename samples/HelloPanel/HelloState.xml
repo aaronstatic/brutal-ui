@@ -1,0 +1,8 @@
+<ui:Element class="hello-panel hello-panel-root" xmlns:ui="brutal-ui">
+  <ui:HelloRow>
+    <ui:Button name="add" text="Add" command="hello.add" />
+    <ui:Button name="rebind" text="Rebind (Up)" command="hello.rebind" />
+    <ui:Button name="restore" text="Restore" command="hello.restore" />
+    <ui:Label name="score" pickable="false" bind-text="hello.score" />
+  </ui:HelloRow>
+</ui:Element>
