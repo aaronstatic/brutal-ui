@@ -1,9 +1,9 @@
 {
   "schema": 1,
-  "beastModeVersion": "6.2.1",
+  "beastModeVersion": "6.2.4",
   "harness": "claude",
   "harnessRoot": ".claude",
-  "generated": "2026-11-19T05:28:39.808Z",
+  "generated": "2026-11-22T07:07:08.635Z",
   "files": [
     {
       "destination": ".claude/skills/audit-feature/SKILL.md",
@@ -68,19 +68,19 @@
     {
       "destination": ".claude/skills/orca-epic/SKILL.md",
       "source": "templates/skills/orca-epic/SKILL.md",
-      "sha256": "54f97cc3397fa80acdfddd54585117ae8e61bb78dc16d49dcedbd2a392369539",
+      "sha256": "1bd05416d7864ebca84ba6f0a0b7355cf5513597dd5e4a2f6329c3c015eaf4c3",
       "owned": true
     },
     {
       "destination": ".claude/skills/orca-feature/SKILL.md",
       "source": "templates/skills/orca-feature/SKILL.md",
-      "sha256": "e8fc8f22946361989916d9b4090da280762cdab8aa149c09fed6e3b42a1229c6",
+      "sha256": "64e0bfdf1e87d2d512691355481efda7b9e130865d7cfa67984c7be4c01eb61e",
       "owned": true
     },
     {
       "destination": ".claude/skills/orca-setup/SKILL.md",
       "source": "templates/skills/orca-setup/SKILL.md",
-      "sha256": "60a29545feecafdefb623c8cb8fcabd851c43779c05c4b35a173f7bc388a1fe7",
+      "sha256": "36df5df571236a84453c2d13912fef5561c11a4288fa1df20df5774309abd818",
       "owned": true
     },
     {
